@@ -1,7 +1,11 @@
 import { Resend } from 'resend'
 import { qrPngUrl } from './qr'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let _resend: Resend | null = null
+export function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY)
+  return _resend
+}
 
 export interface BookingConfirmationData {
   bookingNumber: string
@@ -401,7 +405,7 @@ export async function sendBookingConfirmation(
 
     const html = generateBookingEmailHtml(booking)
 
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: process.env.EMAIL_FROM || 'DAVO Group <info@davo.md>',
       to: booking.email,
       subject: `Confirmare Rezervare DAVO - ${booking.bookingNumber}`,
@@ -438,7 +442,7 @@ export async function sendAdminNotification(
       <p>Vezi în panoul admin: <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin">Panou Administrare</a></p>
     `
 
-    await resend.emails.send({
+    await getResend().emails.send({
       from: process.env.EMAIL_FROM || 'DAVO Group <info@davo.md>',
       to: process.env.ADMIN_EMAIL || 'admin@davo.md',
       subject: `🔔 Nouă Rezervare - ${booking.bookingNumber}`,

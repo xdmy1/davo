@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 type OrderLine = {
   productId: string;
@@ -150,7 +148,7 @@ export async function POST(request: NextRequest) {
         <p>Sumar text: ${summary}</p>
       `;
 
-      await resend.emails.send({
+      await getResend().emails.send({
         from: process.env.EMAIL_FROM || "DAVO Group <onboarding@resend.dev>",
         to: process.env.ADMIN_EMAIL || "admin@davo.md",
         subject: `🛒 Colet la cheie — comandă ${orderRef}`,
@@ -168,7 +166,7 @@ export async function POST(request: NextRequest) {
         <p><strong>Plata:</strong> la livrare (cash sau card).</p>
         <p>Pentru întrebări: +373 68 065 699 sau info@davo.md</p>
       `;
-      await resend.emails.send({
+      await getResend().emails.send({
         from: process.env.EMAIL_FROM || "DAVO Group <onboarding@resend.dev>",
         to: customer.email!,
         subject: `Comanda ta DAVO — ${orderRef}`,

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Endpoint admin pentru testare rapidă a configurării Resend.
 // Trimite un email simplu către adresa indicată în query (?to=...).
@@ -67,7 +65,7 @@ export async function GET(request: NextRequest) {
 </body>
 </html>`;
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from,
     to,
     subject: "✓ Test DAVO — configurare Resend funcționează",

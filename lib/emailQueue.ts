@@ -1,7 +1,6 @@
-import { Resend } from "resend";
 import type { Booking, EmailJob } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmation, getResend } from "@/lib/email";
 import {
   reminder24hHtml,
   reminder2hHtml,
@@ -27,8 +26,6 @@ async function buildResponseUrls(bookingNumber: string) {
     return { confirmUrl: undefined, cancelUrl: undefined, trackUrl: undefined };
   }
 }
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 15 * 60 * 1000;
@@ -257,7 +254,7 @@ async function sendJob(job: EmailJob & { booking: Booking }) {
     throw new Error("RESEND_API_KEY not configured");
   }
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: process.env.EMAIL_FROM || "DAVO Group <info@davo.md>",
     to: booking.email,
     subject: subjectForType(type, booking.bookingNumber),
