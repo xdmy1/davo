@@ -568,25 +568,6 @@ function DirectionStep({
           </TripTypeTab>
         </div>
       )}
-
-      <div className="mt-5 rounded-xl border border-[color:var(--navy-200,rgba(20,58,122,0.18))] bg-[color:var(--navy-50)] p-4 text-sm text-[color:var(--navy-900)] flex items-start gap-3">
-        <Calendar className="h-4 w-4 mt-0.5 shrink-0 text-[color:var(--navy-700)]" />
-        <span>
-          La pasul următor vezi toate cursele disponibile pe această rută — alegi
-          ziua și ora care îți convine.
-        </span>
-      </div>
-
-      {/* Mini map — Google Maps de la sediu DAVO */}
-      <div className="mt-6 rounded-2xl overflow-hidden border border-[color:var(--ink-200)] bg-[color:var(--ink-50)] relative min-h-[220px]">
-        <iframe
-          src="https://www.google.com/maps?q=Calea+Ie%C8%99ilor+11%2F3+Chi%C8%99in%C4%83u&output=embed"
-          className="h-[260px] w-full"
-          loading="lazy"
-          title="Sediu DAVO Group — Calea Ieșilor 11/3, Chișinău"
-          referrerPolicy="no-referrer-when-downgrade"
-        />
-      </div>
     </div>
   );
 }
