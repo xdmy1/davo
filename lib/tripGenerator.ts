@@ -101,16 +101,16 @@ export async function generateTrips(input: GenerateScope): Promise<GenerateResul
     }
 
     // === RETUR ===
-    // Doar dacă există explicit ruta inversă activă.
     // Folosim programul "return" al țării-destinație (când se întoarce ÎN Moldova
     // venind din acea țară). originCountry-ul rutei inverse = destCountry-ul rutei dus.
+    // Dacă ruta inversă nu există, o creăm automat (preț + valută identice cu ruta dus).
     if (
       isReturnActive(destCountry) &&
       destCountry.returnWeekday !== null &&
       destCountry.returnTime &&
       destCountry.returnDurationHours
     ) {
-      const inverse = await prisma.route.findUnique({
+      let inverse = await prisma.route.findUnique({
         where: {
           originCityId_destinationCityId: {
             originCityId: r.destinationCityId,
@@ -118,7 +118,20 @@ export async function generateTrips(input: GenerateScope): Promise<GenerateResul
           },
         },
       });
-      if (inverse && inverse.active) {
+      if (!inverse) {
+        inverse = await prisma.route.create({
+          data: {
+            originCityId: r.destinationCityId,
+            destinationCityId: r.originCityId,
+            basePrice: r.basePrice,
+            currency: r.currency,
+            description: r.description,
+            active: true,
+            weeklyDepartures: r.weeklyDepartures,
+          },
+        });
+      }
+      if (inverse.active) {
         const deps = nextDepartures(
           destCountry.returnWeekday,
           destCountry.returnTime,

@@ -102,6 +102,14 @@ async function main() {
       returnTime: "12:00",
       returnDurationHours: 28,
     },
+    luxemburg: {
+      outboundWeekday: 4, // joi
+      outboundTime: "10:00",
+      outboundDurationHours: 28,
+      returnWeekday: 1, // luni
+      returnTime: "07:00",
+      returnDurationHours: 28,
+    },
   };
 
   for (const dest of destinations) {
