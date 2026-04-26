@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   Bus,
-  CalendarDays,
   MapPin,
   Package,
   Search,
@@ -26,7 +25,6 @@ export default function Hero() {
   const [serviceType, setServiceType] = useState("regular");
   const [from, setFrom] = useState("Chișinău");
   const [to, setTo] = useState("");
-  const [date, setDate] = useState("");
 
   const destinationCities = useMemo(
     () => destinations.flatMap((d) => d.cities.map((c) => ({ name: c.name, country: d.name }))),
@@ -38,10 +36,9 @@ export default function Hero() {
       mode: tab === "transport" ? "bilet" : "colet",
       from,
       to,
-      date,
     });
     return `/rezervare?${params.toString()}`;
-  }, [tab, from, to, date]);
+  }, [tab, from, to]);
 
   return (
     <section className="relative overflow-hidden isolate bg-white">
@@ -199,7 +196,7 @@ export default function Hero() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.22 }}
-                  className="grid gap-2.5 md:grid-cols-[1.1fr,1fr,1fr,1fr,auto] items-stretch"
+                  className="grid gap-2.5 md:grid-cols-[1.1fr,1fr,1fr,auto] items-stretch"
                 >
                   <Field label="Tipul serviciului">
                     <select
@@ -231,22 +228,12 @@ export default function Hero() {
                     />
                   </Field>
 
-                  <Field label="Data plecării" icon={<CalendarDays className="h-3.5 w-3.5" />}>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      min={new Date().toISOString().slice(0, 10)}
-                      className="w-full bg-transparent text-[0.95rem] font-semibold text-[color:var(--navy-900)] outline-none"
-                    />
-                  </Field>
-
                   <Link
                     href={searchHref}
                     className="inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--red-500)] px-7 py-3.5 text-white font-bold text-[13px] uppercase tracking-wider hover:bg-[color:var(--red-600)] transition-colors shadow-[0_14px_30px_-10px_rgba(225,30,43,0.55)] md:whitespace-nowrap"
                   >
                     <Search className="h-4 w-4" />
-                    Rezervă loc
+                    Vezi cursele
                   </Link>
                 </motion.form>
               </AnimatePresence>

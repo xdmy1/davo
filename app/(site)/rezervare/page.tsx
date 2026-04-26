@@ -41,6 +41,19 @@ type CityLookup = { id: string; name: string };
 
 const coletSteps = ["Direcție", "Expeditor", "Destinatar", "Detalii colet", "Plată"];
 
+const dateFmtRo = new Intl.DateTimeFormat("ro-RO", {
+  weekday: "short",
+  day: "numeric",
+  month: "long",
+});
+
+function formatRoDate(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return dateFmtRo.format(d);
+}
+
 export default function RezervarePage() {
   return (
     <Suspense fallback={<div className="container-page py-20">Se încarcă...</div>}>
@@ -57,9 +70,7 @@ function RezervareContent() {
   const [step, setStep] = useState(0);
   const [from, setFrom] = useState(params.get("from") || "Chișinău");
   const [to, setTo] = useState(params.get("to") || "London");
-  const [date, setDate] = useState(params.get("date") || "");
   const [trip, setTrip] = useState<"one" | "return">("one");
-  const [returnDate, setReturnDate] = useState("");
 
   // Noi: selecții de Trip + scaune din DB
   const [cityIndex, setCityIndex] = useState<Record<string, CityLookup> | null>(null);
@@ -69,6 +80,10 @@ function RezervareContent() {
   const [returnTripId, setReturnTripId] = useState<string | null>(null);
   const [returnSeats, setReturnSeats] = useState<number[]>([]);
   const [returnTripInfo, setReturnTripInfo] = useState<PublicTrip | null>(null);
+
+  // Datele pentru sumar/booking se derivă din cursele alese — nu mai sunt input.
+  const date = outboundTripInfo?.departureAt ?? "";
+  const returnDate = returnTripInfo?.departureAt ?? "";
   const [result, setResult] = useState<BookingResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -189,14 +204,11 @@ function RezervareContent() {
 
   const next = () => setStep((s) => Math.min(steps.length - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
-  const goToDirection = () => setStep(0);
 
   const canContinue = (() => {
     if (mode !== "bilet") return true;
     if (step === 0) {
-      if (!date) return false;
-      if (trip === "return" && !returnDate) return false;
-      return true;
+      return !!from.trim() && !!to.trim();
     }
     if (step === 1) {
       return !!outboundTripId && outboundSeats.length >= 1;
@@ -286,14 +298,10 @@ function RezervareContent() {
                         <DirectionStep
                           from={from}
                           to={to}
-                          date={date}
                           trip={trip}
-                          returnDate={returnDate}
                           onFrom={setFrom}
                           onTo={setTo}
-                          onDate={setDate}
                           onTrip={setTrip}
-                          onReturnDate={setReturnDate}
                           fromOptions={moldovanCities.map((c) => c.name)}
                           toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
                         />
@@ -306,7 +314,6 @@ function RezervareContent() {
                           subtitle="Alege cursa și scaunul — dus"
                           originCityId={originCityId}
                           destCityId={destCityId}
-                          date={date}
                           maxSeats={4}
                           selectedTripId={outboundTripId}
                           selectedSeats={outboundSeats}
@@ -315,18 +322,17 @@ function RezervareContent() {
                             setOutboundSeats(seats);
                             if (tripInfo !== undefined) setOutboundTripInfo(tripInfo ?? null);
                           }}
-                          onChangeDate={goToDirection}
                         />
                       )}
 
-                      {/* Pasul 2 (doar round-trip): Cursa retur + scaun */}
+                      {/* Pasul 2 (doar round-trip): Cursa retur + scaun (filtrat după dus) */}
                       {step === 2 && trip === "return" && (
                         <TripPicker
                           title="Pasul 3"
                           subtitle="Alege cursa și scaunul — retur"
                           originCityId={destCityId}
                           destCityId={originCityId}
-                          date={returnDate}
+                          fromDate={outboundTripInfo?.arrivalAt ?? null}
                           maxSeats={Math.max(1, outboundSeats.length)}
                           selectedTripId={returnTripId}
                           selectedSeats={returnSeats}
@@ -335,7 +341,6 @@ function RezervareContent() {
                             setReturnSeats(seats);
                             if (tripInfo !== undefined) setReturnTripInfo(tripInfo ?? null);
                           }}
-                          onChangeDate={goToDirection}
                         />
                       )}
 
@@ -368,14 +373,10 @@ function RezervareContent() {
                         <DirectionStep
                           from={from}
                           to={to}
-                          date={date}
                           trip={trip}
-                          returnDate={returnDate}
                           onFrom={setFrom}
                           onTo={setTo}
-                          onDate={setDate}
                           onTrip={setTrip}
-                          onReturnDate={setReturnDate}
                           fromOptions={moldovanCities.map((c) => c.name)}
                           toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
                           hideTrip
@@ -504,28 +505,20 @@ function RezervareContent() {
 function DirectionStep({
   from,
   to,
-  date,
   trip,
-  returnDate,
   onFrom,
   onTo,
-  onDate,
   onTrip,
-  onReturnDate,
   fromOptions,
   toOptions,
   hideTrip = false,
 }: {
   from: string;
   to: string;
-  date: string;
   trip: "one" | "return";
-  returnDate: string;
   onFrom: (v: string) => void;
   onTo: (v: string) => void;
-  onDate: (v: string) => void;
   onTrip: (v: "one" | "return") => void;
-  onReturnDate: (v: string) => void;
   fromOptions: string[];
   toOptions: string[];
   hideTrip?: boolean;
@@ -559,26 +552,6 @@ function DirectionStep({
             sună la {contactInfo.phone}
           </a>
         </div>
-        <FancyField label="Data plecării" icon={<Calendar className="h-4 w-4" />}>
-          <input
-            type="date"
-            value={date}
-            min={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => onDate(e.target.value)}
-            className="w-full bg-transparent text-[0.95rem] font-semibold text-[color:var(--navy-900)] outline-none"
-          />
-        </FancyField>
-        {!hideTrip && trip === "return" && (
-          <FancyField label="Data întoarcerii" icon={<Calendar className="h-4 w-4" />}>
-            <input
-              type="date"
-              value={returnDate}
-              min={date || new Date().toISOString().slice(0, 10)}
-              onChange={(e) => onReturnDate(e.target.value)}
-              className="w-full bg-transparent text-[0.95rem] font-semibold text-[color:var(--navy-900)] outline-none"
-            />
-          </FancyField>
-        )}
       </div>
 
       {!hideTrip && (
@@ -591,6 +564,14 @@ function DirectionStep({
           </TripTypeTab>
         </div>
       )}
+
+      <div className="mt-5 rounded-xl border border-[color:var(--navy-200,rgba(20,58,122,0.18))] bg-[color:var(--navy-50)] p-4 text-sm text-[color:var(--navy-900)] flex items-start gap-3">
+        <Calendar className="h-4 w-4 mt-0.5 shrink-0 text-[color:var(--navy-700)]" />
+        <span>
+          La pasul următor vezi toate cursele disponibile pe această rută — alegi
+          ziua și ora care îți convine.
+        </span>
+      </div>
 
       {/* Mini map — Google Maps de la sediu DAVO */}
       <div className="mt-6 rounded-2xl overflow-hidden border border-[color:var(--ink-200)] bg-[color:var(--ink-50)] relative min-h-[220px]">
@@ -1000,11 +981,11 @@ function SummaryCard({
 
           <div className="mt-5 space-y-2 text-sm">
             <Row icon={<Calendar className="h-3.5 w-3.5" />} label="Plecare">
-              {date || "—"}
+              {formatRoDate(date) || "—"}
             </Row>
             {returnDate && (
               <Row icon={<Calendar className="h-3.5 w-3.5" />} label="Întoarcere">
-                {returnDate}
+                {formatRoDate(returnDate)}
               </Row>
             )}
             {time && (

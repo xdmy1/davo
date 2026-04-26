@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const DEFAULT_LIMIT = 30;
+const MAX_LIMIT = 100;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
     const originCityId = searchParams.get("originCityId");
     const destCityId = searchParams.get("destCityId");
     const date = searchParams.get("date");
+    const fromParam = searchParams.get("from");
+    const limitParam = searchParams.get("limit");
 
-    if (!originCityId || !destCityId || !date) {
+    if (!originCityId || !destCityId) {
       return NextResponse.json(
-        { success: false, error: "originCityId, destCityId, date required" },
+        { success: false, error: "originCityId, destCityId required" },
         { status: 400 }
       );
     }
@@ -28,24 +33,44 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, route: null, trips: [] });
     }
 
-    const parts = date.split("-").map(Number);
-    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
-      return NextResponse.json(
-        { success: false, error: "date must be YYYY-MM-DD" },
-        { status: 400 }
-      );
+    let dateRange: { gte: Date; lt?: Date };
+    if (date) {
+      const parts = date.split("-").map(Number);
+      if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+        return NextResponse.json(
+          { success: false, error: "date must be YYYY-MM-DD" },
+          { status: 400 }
+        );
+      }
+      const [y, mo, d] = parts;
+      dateRange = {
+        gte: new Date(y, mo - 1, d, 0, 0, 0, 0),
+        lt: new Date(y, mo - 1, d + 1, 0, 0, 0, 0),
+      };
+    } else {
+      const fromDate = fromParam ? new Date(fromParam) : new Date();
+      if (Number.isNaN(fromDate.getTime())) {
+        return NextResponse.json(
+          { success: false, error: "from must be a valid date" },
+          { status: 400 }
+        );
+      }
+      dateRange = { gte: fromDate };
     }
-    const [y, mo, d] = parts;
-    const dayStart = new Date(y, mo - 1, d, 0, 0, 0, 0);
-    const dayEnd = new Date(y, mo - 1, d + 1, 0, 0, 0, 0);
+
+    const limit = Math.min(
+      MAX_LIMIT,
+      Math.max(1, Number(limitParam) || DEFAULT_LIMIT)
+    );
 
     const trips = await prisma.trip.findMany({
       where: {
         routeId: route.id,
-        departureAt: { gte: dayStart, lt: dayEnd },
+        departureAt: dateRange,
         status: { in: ["scheduled", "boarding"] },
       },
       orderBy: { departureAt: "asc" },
+      take: date ? undefined : limit,
       include: {
         bus: { select: { id: true, label: true, totalSeats: true } },
         seatBookings: { select: { id: true } },

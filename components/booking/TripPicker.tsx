@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Bus, Users, Phone, AlertCircle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,7 @@ type TripDetail = {
 };
 
 const timeFmt = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" });
-const dateFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "long", day: "numeric", month: "long" });
+const dayHeadingFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "long", day: "numeric", month: "long" });
 
 function formatDuration(fromIso: string, toIso: string): string {
   const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
@@ -41,28 +41,46 @@ function formatDuration(fromIso: string, toIso: string): string {
   return `${h}h${m > 0 ? ` ${m}m` : ""}`;
 }
 
+function dayKey(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function groupByDay(trips: PublicTrip[]): { label: string; iso: string; trips: PublicTrip[] }[] {
+  const groups = new Map<string, { label: string; iso: string; trips: PublicTrip[] }>();
+  for (const t of trips) {
+    const k = dayKey(t.departureAt);
+    if (!groups.has(k)) {
+      const d = new Date(t.departureAt);
+      const label = dayHeadingFmt.format(d);
+      groups.set(k, { label, iso: t.departureAt, trips: [] });
+    }
+    groups.get(k)!.trips.push(t);
+  }
+  return Array.from(groups.values());
+}
+
 export function TripPicker({
   title,
   subtitle,
   originCityId,
   destCityId,
-  date,
+  fromDate,
   maxSeats,
   selectedTripId,
   selectedSeats,
   onSelect,
-  onChangeDate,
 }: {
   title: string;
   subtitle?: string;
   originCityId: string | null;
   destCityId: string | null;
-  date: string;
+  /** ISO date string — earliest acceptable departure (e.g. outbound's departureAt for return picker). */
+  fromDate?: string | null;
   maxSeats: number;
   selectedTripId: string | null;
   selectedSeats: number[];
   onSelect: (tripId: string | null, seats: number[], trip?: PublicTrip | null) => void;
-  onChangeDate: () => void;
 }) {
   const [trips, setTrips] = useState<PublicTrip[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,17 +89,16 @@ export function TripPicker({
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
-    if (!originCityId || !destCityId || !date) {
+    if (!originCityId || !destCityId) {
       setTrips([]);
       return;
     }
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    fetch(
-      `/api/public/trips?originCityId=${encodeURIComponent(originCityId)}&destCityId=${encodeURIComponent(destCityId)}&date=${encodeURIComponent(date)}`,
-      { signal: controller.signal }
-    )
+    const params = new URLSearchParams({ originCityId, destCityId });
+    if (fromDate) params.set("from", fromDate);
+    fetch(`/api/public/trips?${params.toString()}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         if (d?.success) setTrips(d.trips ?? []);
@@ -92,7 +109,7 @@ export function TripPicker({
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [originCityId, destCityId, date]);
+  }, [originCityId, destCityId, fromDate]);
 
   useEffect(() => {
     if (!selectedTripId) {
@@ -112,6 +129,8 @@ export function TripPicker({
       .finally(() => setDetailLoading(false));
     return () => controller.abort();
   }, [selectedTripId]);
+
+  const grouped = useMemo(() => (trips ? groupByDay(trips) : []), [trips]);
 
   const pickTrip = (trip: PublicTrip) => {
     if (selectedTripId === trip.id) {
@@ -136,12 +155,6 @@ export function TripPicker({
         )}
       </div>
 
-      {date && (
-        <div className="mb-4 text-sm text-[color:var(--ink-500)]">
-          Data: <span className="font-semibold text-[color:var(--navy-900)]">{dateFmt.format(new Date(date + "T00:00:00"))}</span>
-        </div>
-      )}
-
       {loading && (
         <div className="flex items-center justify-center py-10 text-sm text-[color:var(--ink-500)]">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--red-500)] border-t-transparent mr-2" />
@@ -156,25 +169,32 @@ export function TripPicker({
         </div>
       )}
 
-      {!loading && !error && trips && trips.length === 0 && (
-        <NoTripsCard onChangeDate={onChangeDate} />
-      )}
+      {!loading && !error && trips && trips.length === 0 && <NoTripsCard />}
 
-      {!loading && trips && trips.length > 0 && (
-        <div className="space-y-2">
-          {trips.map((t) => {
-            const active = selectedTripId === t.id;
-            const sold = t.availableSeats === 0;
-            return (
-              <TripRow
-                key={t.id}
-                trip={t}
-                active={active}
-                disabled={sold && !active}
-                onClick={() => !sold && pickTrip(t)}
-              />
-            );
-          })}
+      {!loading && grouped.length > 0 && (
+        <div className="space-y-6">
+          {grouped.map((g) => (
+            <div key={g.iso}>
+              <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--ink-500)]">
+                {g.label}
+              </div>
+              <div className="space-y-2">
+                {g.trips.map((t) => {
+                  const active = selectedTripId === t.id;
+                  const sold = t.availableSeats === 0;
+                  return (
+                    <TripRow
+                      key={t.id}
+                      trip={t}
+                      active={active}
+                      disabled={sold && !active}
+                      onClick={() => !sold && pickTrip(t)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -224,6 +244,8 @@ function TripRow({
   const dep = timeFmt.format(new Date(trip.departureAt));
   const arr = timeFmt.format(new Date(trip.arrivalAt));
   const duration = formatDuration(trip.departureAt, trip.arrivalAt);
+  const arrivesNextDay =
+    new Date(trip.arrivalAt).getDate() !== new Date(trip.departureAt).getDate();
   return (
     <button
       type="button"
@@ -243,6 +265,9 @@ function TripRow({
       <div className="min-w-0 flex-1">
         <div className="font-[family-name:var(--font-montserrat)] text-lg font-extrabold text-[color:var(--navy-900)]">
           {dep} — {arr}
+          {arrivesNextDay && (
+            <span className="ml-1 text-xs font-semibold text-[color:var(--ink-500)]">(+1)</span>
+          )}
         </div>
         <div className="text-xs text-[color:var(--ink-500)] flex items-center gap-2 mt-0.5">
           <Bus className="h-3 w-3" />
@@ -274,24 +299,17 @@ function TripRow({
   );
 }
 
-function NoTripsCard({ onChangeDate }: { onChangeDate: () => void }) {
+function NoTripsCard() {
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
       <div className="flex items-start gap-3">
         <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
         <div className="flex-1">
-          <div className="font-semibold text-amber-900">Nu sunt curse programate în acea zi</div>
+          <div className="font-semibold text-amber-900">Nu sunt curse programate pe această rută</div>
           <div className="mt-1 text-sm text-amber-800">
-            Alege altă zi sau contactează-ne direct — confirmăm disponibilitatea și te ajutăm să rezervi.
+            Sună-ne — confirmăm disponibilitatea și aranjăm transport personalizat.
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onChangeDate}
-              className="inline-flex items-center rounded-full border border-amber-600 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
-            >
-              Schimbă data
-            </button>
             <a
               href="tel:+37368065699"
               className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--red-500)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--red-600)]"
