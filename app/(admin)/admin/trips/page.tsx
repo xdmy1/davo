@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, CalendarClock, Bus as BusIcon } from "lucide-react";
+import { Plus, CalendarClock, Bus as BusIcon, Sparkles } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import EmptyState from "@/components/admin/EmptyState";
@@ -25,6 +25,8 @@ export default function TripsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("upcoming");
   const [creating, setCreating] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateMsg, setGenerateMsg] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -62,17 +64,57 @@ export default function TripsPage() {
     load();
   }
 
+  async function generateAll() {
+    if (!confirm("Generez curse pentru următoarele 8 săptămâni pe toate rutele cu program activ?")) return;
+    setGenerating(true);
+    setGenerateMsg(null);
+    try {
+      const res = await fetch("/api/admin/trips/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "all", weeks: 8 }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setGenerateMsg(`Eroare: ${data.error ?? "necunoscută"}`);
+        return;
+      }
+      setGenerateMsg(
+        `✓ ${data.created} curse create, ${data.skipped} existente sărite (${data.routes} rute analizate).`
+      );
+      await load();
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Curse"
         subtitle="Plecări concrete cu autocar asignat"
         actions={
-          <button onClick={() => setCreating(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600">
-            <Plus className="h-3.5 w-3.5" /> Cursă nouă
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={generateAll}
+              disabled={generating}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 disabled:opacity-60"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {generating ? "Generez…" : "Generează 8 săptămâni"}
+            </button>
+            <button onClick={() => setCreating(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600">
+              <Plus className="h-3.5 w-3.5" /> Cursă nouă
+            </button>
+          </div>
         }
       />
+
+      {generateMsg && (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+          {generateMsg}
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
         {(["upcoming", "active", "past", "all"] as Filter[]).map((f) => (

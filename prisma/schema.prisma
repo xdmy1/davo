@@ -16,6 +16,20 @@ model Country {
   slug      String   @unique
   flag      String?
   cities    City[]
+
+  // Program săptămânal pentru cursele DUS spre țara asta (din Moldova).
+  // Toate optionale — dacă lipsesc, țara n-are program activ și nu se generează curse.
+  // Weekday: 0=duminică ... 6=sâmbătă (convenția JS Date.getDay()).
+  // Time: "HH:mm" în ora locală Europe/Chisinau.
+  outboundWeekday       Int?
+  outboundTime          String?
+  outboundDurationHours Float?
+
+  // Program săptămânal pentru cursele RETUR (din țara asta spre Moldova).
+  returnWeekday         Int?
+  returnTime            String?
+  returnDurationHours   Float?
+
   createdAt DateTime @default(now())
 }
 
