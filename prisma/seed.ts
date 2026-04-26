@@ -1,7 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { destinations, moldovanCities } from "../lib/data";
 
 const prisma = new PrismaClient();
+
+const DEFAULT_ADMIN_EMAIL = "admin@davo.md";
+const DEFAULT_ADMIN_PASSWORD = "admin123";
 
 type SeatKind = "seat" | "aisle" | "wc" | "driver" | "empty";
 
@@ -140,16 +144,38 @@ async function main() {
     });
   }
 
+  console.log("→ Seed: Admin user (doar dacă nu există)");
+  const existingAdmin = await prisma.adminUser.findUnique({
+    where: { email: DEFAULT_ADMIN_EMAIL },
+  });
+  if (!existingAdmin) {
+    const hash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10);
+    await prisma.adminUser.create({
+      data: {
+        email: DEFAULT_ADMIN_EMAIL,
+        name: "Administrator",
+        password: hash,
+        role: "admin",
+      },
+    });
+    console.log(`   ✓ Admin creat: ${DEFAULT_ADMIN_EMAIL} / ${DEFAULT_ADMIN_PASSWORD}`);
+    console.log("   ⚠ SCHIMBĂ parola după primul login!");
+  } else {
+    console.log(`   - Admin ${DEFAULT_ADMIN_EMAIL} există deja, nu suprascriu parola`);
+  }
+
   const countries = await prisma.country.count();
   const cities = await prisma.city.count();
   const routes = await prisma.route.count();
   const buses = await prisma.bus.count();
+  const admins = await prisma.adminUser.count();
 
   console.log("✔ Seed complet:");
   console.log(`   - ${countries} țări`);
   console.log(`   - ${cities} orașe`);
   console.log(`   - ${routes} rute`);
   console.log(`   - ${buses} autocare`);
+  console.log(`   - ${admins} admini`);
 }
 
 main()

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
 import { createToken, COOKIE_NAME, cookieOptions } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -9,30 +11,41 @@ export async function POST(req: NextRequest) {
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
 
-    const envEmail = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
-    const envPassword = process.env.ADMIN_PASSWORD ?? "";
-
-    if (!envEmail || !envPassword) {
+    if (!email || !password) {
       return NextResponse.json(
-        { success: false, error: "ADMIN_EMAIL / ADMIN_PASSWORD nu sunt configurate" },
-        { status: 500 }
+        { success: false, error: "Email și parolă sunt obligatorii" },
+        { status: 400 }
       );
     }
     if (!process.env.SESSION_SECRET) {
       return NextResponse.json(
-        { success: false, error: "SESSION_SECRET nu e configurat" },
+        { success: false, error: "SESSION_SECRET nu e configurat pe server" },
         { status: 500 }
       );
     }
 
-    if (email !== envEmail || password !== envPassword) {
+    const user = await prisma.adminUser.findUnique({ where: { email } });
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Email sau parolă incorecte" },
         { status: 401 }
       );
     }
 
-    const token = await createToken(email);
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return NextResponse.json(
+        { success: false, error: "Email sau parolă incorecte" },
+        { status: 401 }
+      );
+    }
+
+    await prisma.adminUser.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
+    const token = await createToken(user.email);
     const res = NextResponse.json({ success: true });
     res.cookies.set(COOKIE_NAME, token, cookieOptions());
     return res;
