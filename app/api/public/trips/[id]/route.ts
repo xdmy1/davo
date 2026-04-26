@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import type { SeatLayout } from "@/lib/adminMock";
+
+function safeLayout(raw: string): SeatLayout {
+  try {
+    const l = JSON.parse(raw) as SeatLayout;
+    if (l && Array.isArray(l.cells)) return l;
+  } catch {}
+  return { rows: 1, cols: 1, cells: ["empty"] };
+}
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const trip = await prisma.trip.findUnique({
+      where: { id },
+      include: {
+        route: {
+          include: {
+            originCity: true,
+            destinationCity: true,
+          },
+        },
+        bus: true,
+        seatBookings: { select: { seatNumber: true } },
+      },
+    });
+
+    if (!trip) {
+      return NextResponse.json(
+        { success: false, error: "Trip not found" },
+        { status: 404 }
+      );
+    }
+
+    const layout = safeLayout(trip.bus.layoutJson);
+
+    return NextResponse.json({
+      success: true,
+      trip: {
+        id: trip.id,
+        departureAt: trip.departureAt.toISOString(),
+        arrivalAt: trip.arrivalAt.toISOString(),
+        status: trip.status,
+        route: {
+          id: trip.route.id,
+          origin: trip.route.originCity.name,
+          destination: trip.route.destinationCity.name,
+          basePrice: trip.route.basePrice,
+          currency: trip.route.currency,
+        },
+        bus: {
+          id: trip.bus.id,
+          label: trip.bus.label,
+          totalSeats: trip.bus.totalSeats,
+          layout,
+        },
+        occupiedSeats: trip.seatBookings.map((sb) => sb.seatNumber),
+      },
+    });
+  } catch (error) {
+    console.error("public/trips/[id] GET", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to load trip" },
+      { status: 500 }
+    );
+  }
+}

@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local-only files (not for repo)
+AWSCLIV2.pkg
+aws.txt
+functionality.txt
+ghid.txt
+
+# local sqlite dev database
+prisma/dev.db
+prisma/dev.db-journal

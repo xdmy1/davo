@@ -1,0 +1,159 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Minus, Phone, Mail, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { contactInfo } from "@/lib/data";
+import { Reveal } from "@/components/ui/Reveal";
+
+export const defaultFAQs = [
+  {
+    q: "Cum pot rezerva un bilet?",
+    a: "Rezervarea se face online prin formularul de pe site-ul nostru sau telefonic. Alege ruta, data și selectează locul — vei primi imediat confirmarea pe email, împreună cu biletul electronic.",
+  },
+  {
+    q: "Cât bagaj pot lua cu mine?",
+    a: "Fiecare pasager are dreptul la 35 kg bagaj de cală + 5 kg bagaj de mână gratuit. Pentru bagaje suplimentare ne putem înțelege în prealabil, la preț redus.",
+  },
+  {
+    q: "Ce facilități am la bord?",
+    a: "Wi-Fi gratuit, prize USB la fiecare scaun, ceai și cafea, multimedia, aer condiționat, scaune reclinabile și însoțitoare de bord pe toată durata călătoriei.",
+  },
+  {
+    q: "Pot trimite un colet?",
+    a: "Da. Poți expedia colete pe oricare din destinațiile noastre — de la plicuri la colete mari. Oferim preluare de la adresă și livrare la ușa destinatarului, cu asigurare.",
+  },
+  {
+    q: "Este nevoie să imprim biletul?",
+    a: "Nu este obligatoriu. Poți prezenta biletul electronic pe ecranul telefonului, împreună cu un act de identitate.",
+  },
+  {
+    q: "Ce metode de plată acceptați?",
+    a: "Accepți plata cardul online (Visa, MasterCard, Maestro), transfer bancar, sau plată la îmbarcare în anumite cazuri.",
+  },
+];
+
+export default function FAQ({
+  title = "Întrebări frecvente",
+  items = defaultFAQs,
+}: {
+  title?: string;
+  items?: { q: string; a: string }[];
+}) {
+  const [open, setOpen] = useState<number | null>(0);
+
+  return (
+    <section className="relative py-20 lg:py-28">
+      <div className="container-page">
+        <div className="grid gap-10 lg:grid-cols-[1fr,1fr] lg:gap-16">
+          <Reveal>
+            <span className="eyebrow">
+              <span className="h-1.5 w-6 rounded-full bg-[color:var(--red-500)]" />
+              FAQ
+            </span>
+            <h2 className="display-hero display-lg text-[color:var(--navy-900)] mt-4">{title}</h2>
+            <p className="mt-4 text-[color:var(--ink-700)] max-w-md">
+              Răspundem la cele mai des întâlnite întrebări. Dacă n-ai găsit răspunsul — scrie-ne oricând.
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.05}>
+            <div className="space-y-3">
+              {items.map((item, i) => {
+                const isOpen = open === i;
+                return (
+                  <div
+                    key={item.q}
+                    className={cn(
+                      "rounded-2xl border bg-white transition-colors overflow-hidden",
+                      isOpen
+                        ? "border-[color:var(--navy-700)] shadow-[0_12px_30px_-18px_rgba(11,38,83,0.35)]"
+                        : "border-[color:var(--ink-200)] hover:border-[color:var(--navy-500)]"
+                    )}
+                  >
+                    <button
+                      onClick={() => setOpen(isOpen ? null : i)}
+                      className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                    >
+                      <span className="font-[family-name:var(--font-montserrat)] font-bold text-[color:var(--navy-900)]">
+                        {item.q}
+                      </span>
+                      <span
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-full transition-colors shrink-0",
+                          isOpen
+                            ? "bg-[color:var(--red-500)] text-white"
+                            : "bg-[color:var(--navy-50)] text-[color:var(--navy-800)]"
+                        )}
+                      >
+                        {isOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      </span>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-5 pb-5 text-sm text-[color:var(--ink-700)] leading-relaxed">
+                            {item.a}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          </Reveal>
+        </div>
+
+        <Reveal delay={0.1}>
+          <div className="mt-10 lg:mt-14 rounded-2xl border border-[color:var(--ink-200)] bg-white p-5 md:p-6 flex flex-col md:flex-row md:items-center md:gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--navy-800)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--red-500)]" />
+                N-ai găsit răspunsul?
+              </div>
+              <div className="mt-2 text-sm text-[color:var(--ink-700)]">
+                Echipa noastră îți răspunde cât mai repede posibil — telefonic, pe email sau pe pagina de contact.
+              </div>
+            </div>
+            <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2 md:gap-3">
+              <a
+                href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}
+                className="group inline-flex items-center gap-2 rounded-lg bg-[color:var(--navy-50)] px-4 py-2.5 hover:bg-[color:var(--navy-100)] transition-colors"
+              >
+                <Phone className="h-4 w-4 text-[color:var(--red-500)]" />
+                <span className="text-sm font-semibold text-[color:var(--navy-900)]">
+                  {contactInfo.phone}
+                </span>
+              </a>
+              <a
+                href={`mailto:${contactInfo.email}`}
+                className="group inline-flex items-center gap-2 rounded-lg bg-[color:var(--navy-50)] px-4 py-2.5 hover:bg-[color:var(--navy-100)] transition-colors"
+              >
+                <Mail className="h-4 w-4 text-[color:var(--red-500)]" />
+                <span className="text-sm font-semibold text-[color:var(--navy-900)]">
+                  {contactInfo.email}
+                </span>
+              </a>
+              <Link
+                href="/contact"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--red-500)] px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-white hover:bg-[color:var(--red-600)] transition-colors"
+              >
+                Scrie-ne
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
