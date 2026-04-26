@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Bus, Users, Phone, AlertCircle, Check } from "lucide-react";
+import {
+  Bus,
+  Users,
+  Phone,
+  AlertCircle,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SeatLayout } from "@/lib/adminMock";
 import { SeatPicker } from "./SeatPicker";
@@ -29,36 +38,24 @@ type TripDetail = {
   occupiedSeats: number[];
 };
 
+const weekdayFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "long" });
+const dateFmt = new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "long" });
 const timeFmt = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" });
-const dayHeadingFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "long", day: "numeric", month: "long" });
+const arrivalDayFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "short", day: "numeric", month: "short" });
 
 function formatDuration(fromIso: string, toIso: string): string {
   const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
   if (ms <= 0) return "—";
   const totalMin = Math.round(ms / 60000);
   const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return `${h}h${m > 0 ? ` ${m}m` : ""}`;
+  return `~${h}h`;
 }
 
-function dayKey(iso: string) {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function groupByDay(trips: PublicTrip[]): { label: string; iso: string; trips: PublicTrip[] }[] {
-  const groups = new Map<string, { label: string; iso: string; trips: PublicTrip[] }>();
-  for (const t of trips) {
-    const k = dayKey(t.departureAt);
-    if (!groups.has(k)) {
-      const d = new Date(t.departureAt);
-      const label = dayHeadingFmt.format(d);
-      groups.set(k, { label, iso: t.departureAt, trips: [] });
-    }
-    groups.get(k)!.trips.push(t);
-  }
-  return Array.from(groups.values());
-}
+const VISIBLE_DESKTOP = 4;
 
 export function TripPicker({
   title,
@@ -87,6 +84,7 @@ export function TripPicker({
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<TripDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [pageStart, setPageStart] = useState(0);
 
   useEffect(() => {
     if (!originCityId || !destCityId) {
@@ -96,6 +94,7 @@ export function TripPicker({
     const controller = new AbortController();
     setLoading(true);
     setError(null);
+    setPageStart(0);
     const params = new URLSearchParams({ originCityId, destCityId });
     if (fromDate) params.set("from", fromDate);
     fetch(`/api/public/trips?${params.toString()}`, { signal: controller.signal })
@@ -130,7 +129,13 @@ export function TripPicker({
     return () => controller.abort();
   }, [selectedTripId]);
 
-  const grouped = useMemo(() => (trips ? groupByDay(trips) : []), [trips]);
+  const total = trips?.length ?? 0;
+  const canPrev = pageStart > 0;
+  const canNext = pageStart + VISIBLE_DESKTOP < total;
+  const visible = useMemo(
+    () => (trips ?? []).slice(pageStart, pageStart + VISIBLE_DESKTOP),
+    [trips, pageStart]
+  );
 
   const pickTrip = (trip: PublicTrip) => {
     if (selectedTripId === trip.id) {
@@ -158,7 +163,7 @@ export function TripPicker({
       {loading && (
         <div className="flex items-center justify-center py-10 text-sm text-[color:var(--ink-500)]">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--red-500)] border-t-transparent mr-2" />
-          Caut curse disponibile…
+          Caut datele disponibile…
         </div>
       )}
 
@@ -171,30 +176,61 @@ export function TripPicker({
 
       {!loading && !error && trips && trips.length === 0 && <NoTripsCard />}
 
-      {!loading && grouped.length > 0 && (
-        <div className="space-y-6">
-          {grouped.map((g) => (
-            <div key={g.iso}>
-              <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--ink-500)]">
-                {g.label}
-              </div>
-              <div className="space-y-2">
-                {g.trips.map((t) => {
-                  const active = selectedTripId === t.id;
-                  const sold = t.availableSeats === 0;
-                  return (
-                    <TripRow
-                      key={t.id}
-                      trip={t}
-                      active={active}
-                      disabled={sold && !active}
-                      onClick={() => !sold && pickTrip(t)}
-                    />
-                  );
-                })}
-              </div>
+      {!loading && total > 0 && (
+        <div>
+          {/* Hint + paginare */}
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="text-xs text-[color:var(--ink-500)]">
+              {total} {total === 1 ? "dată disponibilă" : "date disponibile"} · alege ziua plecării
             </div>
-          ))}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPageStart((s) => Math.max(0, s - VISIBLE_DESKTOP))}
+                disabled={!canPrev}
+                aria-label="Date anterioare"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPageStart((s) => Math.min(total - VISIBLE_DESKTOP, s + VISIBLE_DESKTOP))}
+                disabled={!canNext}
+                aria-label="Date următoare"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop: 4 carduri / Mobile: stivă verticală */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {visible.map((t) => (
+              <DateCard
+                key={t.id}
+                trip={t}
+                active={selectedTripId === t.id}
+                disabled={t.availableSeats === 0 && selectedTripId !== t.id}
+                onClick={() => t.availableSeats > 0 && pickTrip(t)}
+              />
+            ))}
+          </div>
+
+          {/* Indicator paginare mobile */}
+          {total > VISIBLE_DESKTOP && (
+            <div className="mt-4 flex justify-center md:hidden">
+              <button
+                type="button"
+                onClick={() => setPageStart((s) => Math.min(total - VISIBLE_DESKTOP, s + VISIBLE_DESKTOP))}
+                disabled={!canNext}
+                className="text-xs font-semibold text-[color:var(--navy-700)] underline decoration-[color:var(--red-500)] underline-offset-4 disabled:opacity-30"
+              >
+                Vezi mai multe date →
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -230,7 +266,7 @@ export function TripPicker({
   );
 }
 
-function TripRow({
+function DateCard({
   trip,
   active,
   disabled,
@@ -241,59 +277,89 @@ function TripRow({
   disabled: boolean;
   onClick: () => void;
 }) {
-  const dep = timeFmt.format(new Date(trip.departureAt));
-  const arr = timeFmt.format(new Date(trip.arrivalAt));
+  const dep = new Date(trip.departureAt);
+  const arr = new Date(trip.arrivalAt);
+  const weekday = capitalize(weekdayFmt.format(dep));
+  const dateStr = dateFmt.format(dep);
+  const depTime = timeFmt.format(dep);
+  const arrTime = timeFmt.format(arr);
+  const arrivesNextDay = arr.toDateString() !== dep.toDateString();
   const duration = formatDuration(trip.departureAt, trip.arrivalAt);
-  const arrivesNextDay =
-    new Date(trip.arrivalAt).getDate() !== new Date(trip.departureAt).getDate();
+  const currency = trip.currency === "GBP" ? "£" : "€";
+  const sold = trip.availableSeats === 0;
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group flex w-full items-center gap-5 rounded-xl border bg-white p-4 transition-colors text-left",
+        "group relative flex flex-col gap-3 rounded-2xl border p-4 text-left transition-all",
         active
-          ? "border-[color:var(--red-500)] shadow-[0_10px_30px_-18px_rgba(225,30,43,0.5)]"
-          : "border-[color:var(--ink-200)] hover:border-[color:var(--navy-500)]",
-        disabled && "opacity-50 cursor-not-allowed"
+          ? "border-[color:var(--red-500)] bg-white shadow-[0_18px_40px_-20px_rgba(225,30,43,0.55)] ring-1 ring-[color:var(--red-500)]"
+          : "border-[color:var(--ink-200)] bg-white hover:border-[color:var(--navy-500)] hover:shadow-[0_10px_30px_-22px_rgba(20,58,122,0.45)]",
+        disabled && "opacity-50 cursor-not-allowed hover:border-[color:var(--ink-200)] hover:shadow-none"
       )}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--navy-50)] text-[color:var(--navy-900)]">
-        <Clock className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="font-[family-name:var(--font-montserrat)] text-lg font-extrabold text-[color:var(--navy-900)]">
-          {dep} — {arr}
-          {arrivesNextDay && (
-            <span className="ml-1 text-xs font-semibold text-[color:var(--ink-500)]">(+1)</span>
-          )}
-        </div>
-        <div className="text-xs text-[color:var(--ink-500)] flex items-center gap-2 mt-0.5">
-          <Bus className="h-3 w-3" />
-          <span>{trip.busLabel}</span>
-          <span>·</span>
-          <span>{duration}</span>
-        </div>
-      </div>
-      <div className="hidden sm:flex flex-col items-end text-right mr-2">
-        <div className="flex items-center gap-1 text-xs text-[color:var(--ink-500)]">
-          <Users className="h-3 w-3" />
-          {trip.availableSeats} libere
-        </div>
-        <div className="text-base font-bold text-[color:var(--navy-900)] mt-0.5">
-          {trip.pricePerSeat} {trip.currency === "GBP" ? "£" : "€"}
-        </div>
-      </div>
+      {/* Selection bullet */}
       <div
         className={cn(
-          "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
+          "absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors",
           active
             ? "border-[color:var(--red-500)] bg-[color:var(--red-500)]"
             : "border-[color:var(--ink-200)]"
         )}
       >
         {active && <Check className="h-3 w-3 text-white" />}
+      </div>
+
+      {/* Header: weekday mare, dată mică */}
+      <div className="pr-7">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--red-500)]">
+          {weekday}
+        </div>
+        <div className="font-[family-name:var(--font-montserrat)] mt-0.5 text-2xl font-extrabold text-[color:var(--navy-900)] leading-none">
+          {dateStr}
+        </div>
+      </div>
+
+      {/* Ore */}
+      <div className="rounded-xl bg-[color:var(--ink-50)] px-3 py-2.5">
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-[color:var(--ink-500)]">
+          <Clock className="h-3 w-3 text-[color:var(--red-500)]" />
+          Plecare
+          <span className="ml-auto font-[family-name:var(--font-montserrat)] text-base font-extrabold tracking-tight text-[color:var(--navy-900)]">
+            {depTime}
+          </span>
+        </div>
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-[color:var(--ink-500)]">
+          <span>Sosire {arrivesNextDay ? arrivalDayFmt.format(arr) : ""}</span>
+          <span className="font-semibold text-[color:var(--navy-700)]">{arrTime}</span>
+        </div>
+        <div className="mt-1 text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-400)]">
+          Durată {duration}
+        </div>
+      </div>
+
+      {/* Footer: locuri + preț */}
+      <div className="flex items-end justify-between">
+        <div className="text-xs flex items-center gap-1.5">
+          <Bus className="h-3.5 w-3.5 text-[color:var(--ink-400)]" />
+          <span className="text-[color:var(--ink-700)]">{trip.busLabel}</span>
+        </div>
+        <div className="text-right">
+          <div className={cn(
+            "flex items-center gap-1 text-[11px] font-semibold",
+            sold ? "text-red-600" : "text-[color:var(--ink-500)]"
+          )}>
+            <Users className="h-3 w-3" />
+            {sold ? "Locuri epuizate" : `${trip.availableSeats} libere`}
+          </div>
+          <div className="font-[family-name:var(--font-montserrat)] mt-0.5 text-lg font-extrabold text-[color:var(--navy-900)]">
+            {trip.pricePerSeat}
+            {currency}
+          </div>
+        </div>
       </div>
     </button>
   );

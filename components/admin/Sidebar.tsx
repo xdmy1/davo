@@ -11,6 +11,7 @@ import {
   Users,
   Mail,
   Settings,
+  Globe,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "Configurare",
     items: [
+      { label: "Țări & program", href: "/admin/countries", icon: Globe },
       { label: "Rute", href: "/admin/routes", icon: RouteIcon },
       { label: "Autocare", href: "/admin/buses", icon: BusIcon },
       { label: "Clienți", href: "/admin/clients", icon: Users },

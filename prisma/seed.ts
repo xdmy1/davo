@@ -47,7 +47,7 @@ async function main() {
     });
   }
 
-  console.log("→ Seed: destination countries + cities");
+  console.log("→ Seed: destination countries + cities + program săptămânal");
   const flagMap: Record<string, string> = {
     anglia: "🇬🇧",
     germania: "🇩🇪",
@@ -56,14 +56,83 @@ async function main() {
     luxemburg: "🇱🇺",
   };
 
+  // Program fix dat de Adrian (operatorul):
+  // - Anglia: dus joi 10:00 / retur duminică 19:00, ~36h cursă
+  // - Belgia/Olanda/Germania: dus vineri 08:30 / retur duminică 12:00, ~28h cursă
+  // - Luxemburg: încă neconfirmat → câmpurile rămân null (țară inactivă pt generare).
+  // Weekday: 0=duminică, 4=joi, 5=vineri (JS Date.getDay()).
+  type CountrySchedule = {
+    outboundWeekday: number;
+    outboundTime: string;
+    outboundDurationHours: number;
+    returnWeekday: number;
+    returnTime: string;
+    returnDurationHours: number;
+  };
+  const scheduleMap: Record<string, CountrySchedule> = {
+    anglia: {
+      outboundWeekday: 4,
+      outboundTime: "10:00",
+      outboundDurationHours: 36,
+      returnWeekday: 0,
+      returnTime: "19:00",
+      returnDurationHours: 36,
+    },
+    belgia: {
+      outboundWeekday: 5,
+      outboundTime: "08:30",
+      outboundDurationHours: 28,
+      returnWeekday: 0,
+      returnTime: "12:00",
+      returnDurationHours: 28,
+    },
+    olanda: {
+      outboundWeekday: 5,
+      outboundTime: "08:30",
+      outboundDurationHours: 28,
+      returnWeekday: 0,
+      returnTime: "12:00",
+      returnDurationHours: 28,
+    },
+    germania: {
+      outboundWeekday: 5,
+      outboundTime: "08:30",
+      outboundDurationHours: 28,
+      returnWeekday: 0,
+      returnTime: "12:00",
+      returnDurationHours: 28,
+    },
+    luxemburg: {
+      outboundWeekday: 4, // joi
+      outboundTime: "10:00",
+      outboundDurationHours: 28,
+      returnWeekday: 1, // luni
+      returnTime: "07:00",
+      returnDurationHours: 28,
+    },
+  };
+
   for (const dest of destinations) {
+    const sched = scheduleMap[dest.slug] ?? {
+      outboundWeekday: null,
+      outboundTime: null,
+      outboundDurationHours: null,
+      returnWeekday: null,
+      returnTime: null,
+      returnDurationHours: null,
+    };
     const country = await prisma.country.upsert({
       where: { slug: dest.slug },
-      update: { name: dest.name, flag: flagMap[dest.slug] ?? null },
+      update: {
+        name: dest.name,
+        flag: flagMap[dest.slug] ?? null,
+        ...sched,
+      },
       create: {
         name: dest.name,
         slug: dest.slug,
         flag: flagMap[dest.slug] ?? null,
+        ...sched,
       },
     });
     for (const city of dest.cities) {

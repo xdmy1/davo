@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/send-reminders",
       "schedule": "7 5 * * *"
+    },
+    {
+      "path": "/api/cron/generate-trips",
+      "schedule": "23 4 * * *"
     }
   ]
 }
