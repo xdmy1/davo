@@ -17,12 +17,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (!process.env.SESSION_SECRET) {
-      return NextResponse.json(
-        { success: false, error: "SESSION_SECRET nu e configurat pe server" },
-        { status: 500 }
-      );
-    }
 
     const user = await prisma.adminUser.findUnique({ where: { email } });
     if (!user) {

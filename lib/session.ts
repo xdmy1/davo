@@ -1,8 +1,34 @@
 // Sesiune simplă HMAC-SHA256. Token = `${payloadBase64Url}.${signatureBase64Url}`.
-// Payload: `${email}|${expiresAtMs}`. Folosit în middleware (Edge) și în API routes (Node).
+// Payload: `${email}|${expiresAtMs}`. Folosit în proxy (Node) și în API routes (Node).
+// SESSION_SECRET se citește din tabela Settings (Supabase) — generat automat la prima cerere.
+
+import { randomBytes } from "crypto";
+import { prisma } from "@/lib/prisma";
 
 export const COOKIE_NAME = "davo_admin_session";
 const WEEK_MS = 7 * 24 * 3600 * 1000;
+const SETTINGS_KEY = "session_secret";
+
+let cachedSecret: string | null = null;
+
+async function getSessionSecret(): Promise<string> {
+  if (cachedSecret) return cachedSecret;
+  if (process.env.SESSION_SECRET) {
+    cachedSecret = process.env.SESSION_SECRET;
+    return cachedSecret;
+  }
+  const setting = await prisma.settings.upsert({
+    where: { key: SETTINGS_KEY },
+    update: {},
+    create: {
+      id: SETTINGS_KEY,
+      key: SETTINGS_KEY,
+      value: randomBytes(32).toString("hex"),
+    },
+  });
+  cachedSecret = setting.value;
+  return cachedSecret;
+}
 
 function toBase64Url(bytes: Uint8Array | ArrayBuffer): string {
   const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -30,8 +56,7 @@ async function hmac(message: string, secret: string): Promise<string> {
 }
 
 export async function createToken(email: string, ttlMs = WEEK_MS): Promise<string> {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) throw new Error("SESSION_SECRET not set");
+  const secret = await getSessionSecret();
   const expiresAt = Date.now() + ttlMs;
   const payload = `${email}|${expiresAt}`;
   const payloadB64 = toBase64Url(new TextEncoder().encode(payload));
@@ -40,13 +65,12 @@ export async function createToken(email: string, ttlMs = WEEK_MS): Promise<strin
 }
 
 export async function verifyToken(token: string): Promise<{ email: string } | null> {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || !token) return null;
+  if (!token) return null;
   const [payloadB64, sig] = token.split(".");
   if (!payloadB64 || !sig) return null;
 
+  const secret = await getSessionSecret();
   const expected = await hmac(payloadB64, secret);
-  // Constant-time compare nu e critic aici (un singur admin, brute force improbabil)
   if (sig !== expected) return null;
 
   try {
