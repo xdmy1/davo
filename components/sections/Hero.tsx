@@ -56,6 +56,43 @@ export default function Hero() {
         className="pointer-events-none absolute -left-40 top-1/3 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle,rgba(11,38,83,0.08),transparent_65%)] blur-2xl"
       />
 
+      {/* ============ DESKTOP-ONLY full-bleed bus (right edge) ============ */}
+      <motion.div
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.7, delay: 0.15 }}
+        className="hidden md:block pointer-events-none absolute right-0 top-[60px] lg:top-[80px] z-[1] aspect-[16/10] w-[62vw] max-w-[1100px]"
+      >
+        <motion.div
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          className="relative h-full w-full"
+        >
+          <Image
+            src="/images/bus-angle.png"
+            alt="DAVO Group tour bus"
+            fill
+            priority
+            unoptimized
+            sizes="62vw"
+            className="object-contain object-right drop-shadow-[0_30px_35px_rgba(11,38,83,0.18)]"
+          />
+        </motion.div>
+        {/* Live chip — positioned over the desktop bus */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+          className="pointer-events-auto absolute left-6 top-6 flex items-center gap-2 rounded-full bg-white text-[color:var(--navy-900)] px-4 py-2 text-[11px] font-bold uppercase tracking-wider shadow-[0_12px_30px_-12px_rgba(11,38,83,0.25)] ring-1 ring-[color:var(--ink-100)]"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inset-0 rounded-full bg-[color:var(--red-500)] animate-ping opacity-70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[color:var(--red-500)]" />
+          </span>
+          Curse astăzi
+        </motion.div>
+      </motion.div>
+
       {/* ============ HERO (light, photo on right) ============ */}
       <div className="relative">
         <div className="container-page relative pt-8 md:pt-12 lg:pt-16 pb-20 md:pb-28 lg:pb-32">
@@ -126,12 +163,12 @@ export default function Hero() {
               </div>
             </motion.div>
 
-            {/* RIGHT — bus (no frame, no plate) */}
+            {/* RIGHT — bus (mobile only; desktop uses the full-bleed overlay above) */}
             <motion.div
               initial={{ opacity: 0, x: 28 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.15 }}
-              className="relative order-2 w-full"
+              className="relative order-2 w-full md:hidden"
             >
               <motion.div
                 animate={{ y: [0, -10, 0] }}
@@ -144,12 +181,12 @@ export default function Hero() {
                   fill
                   priority
                   unoptimized
-                  sizes="(min-width: 1024px) 680px, 100vw"
+                  sizes="100vw"
                   className="object-contain drop-shadow-[0_30px_35px_rgba(11,38,83,0.18)]"
                 />
               </motion.div>
 
-              {/* Live chip */}
+              {/* Live chip — mobile/tablet only, on top of the inline bus */}
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}

@@ -254,8 +254,6 @@ export default function Footer() {
               >
                 {contactInfo.phone}
               </a>
-              <span className="text-white/20">•</span>
-              <PaymentBadges />
             </div>
           </div>
         </div>
@@ -285,21 +283,6 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
         {children}
       </Link>
     </li>
-  );
-}
-
-function PaymentBadges() {
-  return (
-    <div className="flex items-center gap-1.5" aria-label="Metode de plată acceptate">
-      {["VISA", "MC", "MAES"].map((b) => (
-        <span
-          key={b}
-          className="text-[9px] font-black tracking-wider px-1.5 py-1 rounded bg-white text-[color:var(--navy-900)]"
-        >
-          {b}
-        </span>
-      ))}
-    </div>
   );
 }
 
