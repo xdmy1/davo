@@ -29,7 +29,14 @@ type Booking = {
   currency: string;
   createdAt: string;
   emailSent: boolean;
+  passengerResponse: "confirmed" | "cancelled" | null;
+  passengerResponseAt: string | null;
 };
+
+const responseOptions = [
+  { value: "confirmed", label: "A confirmat", variant: "green" as const, icon: "✓" },
+  { value: "cancelled", label: "A anulat din email", variant: "red" as const, icon: "✗" },
+];
 
 const statusOptions = [
   { value: "pending", label: "În așteptare" },
@@ -44,6 +51,7 @@ export default function BookingsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [responseFilter, setResponseFilter] = useState<string>("all");
 
   async function fetchBookings() {
     setLoading(true);
@@ -97,7 +105,12 @@ export default function BookingsPage() {
       `${b.firstName} ${b.lastName}`.toLowerCase().includes(q);
     const matchesStatus = statusFilter === "all" || b.status === statusFilter;
     const matchesType = typeFilter === "all" || b.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    const matchesResponse =
+      responseFilter === "all" ||
+      (responseFilter === "none"
+        ? !b.passengerResponse
+        : b.passengerResponse === responseFilter);
+    return matchesSearch && matchesStatus && matchesType && matchesResponse;
   });
 
   return (
@@ -156,6 +169,17 @@ export default function BookingsPage() {
           <option value="passenger">Pasageri</option>
           <option value="parcel">Colete</option>
         </select>
+        <select
+          value={responseFilter}
+          onChange={(e) => setResponseFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
+          title="Filtrează după răspunsul pasagerului din email (V/X)"
+        >
+          <option value="all">Toate răspunsurile</option>
+          <option value="confirmed">A confirmat</option>
+          <option value="cancelled">A anulat din email</option>
+          <option value="none">Niciun răspuns</option>
+        </select>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -169,19 +193,20 @@ export default function BookingsPage() {
                 <th className="px-5 py-3 text-left">Dată</th>
                 <th className="px-5 py-3 text-left">Preț</th>
                 <th className="px-5 py-3 text-left">Status</th>
+                <th className="px-5 py-3 text-left">Răspuns pasager</th>
                 <th className="px-5 py-3 text-right">Acțiuni</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-14 text-center">
+                  <td colSpan={8} className="py-14 text-center">
                     <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-14 text-center text-slate-500">
+                  <td colSpan={8} className="py-14 text-center text-slate-500">
                     Nu s-au găsit rezervări cu filtrele curente.
                   </td>
                 </tr>
@@ -234,6 +259,36 @@ export default function BookingsPage() {
                         <div className="mt-1">
                           <Badge variant={meta.variant}>{meta.label}</Badge>
                         </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        {(() => {
+                          const opt = responseOptions.find((o) => o.value === b.passengerResponse);
+                          if (!opt) {
+                            return (
+                              <Badge variant="slate" className="text-slate-500">
+                                — Niciun răspuns
+                              </Badge>
+                            );
+                          }
+                          const at = b.passengerResponseAt
+                            ? new Date(b.passengerResponseAt).toLocaleString("ro-RO", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "";
+                          return (
+                            <span title={at ? `Răspuns la ${at}` : ""}>
+                              <Badge variant={opt.variant}>
+                                {opt.icon} {opt.label}
+                              </Badge>
+                              {at && (
+                                <div className="mt-0.5 text-[11px] text-slate-400">{at}</div>
+                              )}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">

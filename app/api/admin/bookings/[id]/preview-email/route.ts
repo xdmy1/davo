@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateBookingEmailHtml, type BookingConfirmationData } from "@/lib/email";
 import {
+  confirmationHtml,
   reminder24hHtml,
   reminder2hHtml,
   cancellationHtml,
+  type ConfirmationData,
 } from "@/lib/emailTemplates";
 import { createBookingToken, bookingResponseUrl } from "@/lib/bookingToken";
 
@@ -60,14 +61,11 @@ export async function GET(
   let html: string;
 
   if (type === "confirmation") {
-    const data: BookingConfirmationData = {
+    const data: ConfirmationData = {
       bookingNumber: booking.bookingNumber,
       type: booking.type as "passenger" | "parcel",
       tripType: (booking.tripType as "one-way" | "round-trip" | undefined) ?? undefined,
       firstName: booking.firstName,
-      lastName: booking.lastName,
-      email: booking.email,
-      phone: booking.phone,
       departureCity: booking.departureCity,
       arrivalCity: booking.arrivalCity,
       departureDate: booking.departureDate,
@@ -77,13 +75,9 @@ export async function GET(
       parcelDetails: booking.parcelDetails,
       price: booking.price,
       currency: booking.currency,
-      ticketUrl: booking.ticketUrl || `${appUrl}/bilet/${booking.bookingNumber}`,
       payMethod: booking.payMethod,
-      confirmUrl,
-      cancelUrl,
-      trackUrl,
     };
-    html = generateBookingEmailHtml(data);
+    html = confirmationHtml(data, { confirmUrl, cancelUrl });
   } else if (type === "reminder_24h") {
     html = reminder24hHtml(booking, { confirmUrl, cancelUrl });
   } else if (type === "reminder_2h") {
