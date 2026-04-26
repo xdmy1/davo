@@ -146,8 +146,8 @@ function RezervareContent() {
 
   const steps = mode === "bilet"
     ? (trip === "return"
-        ? ["Direcție", "Cursa dus", "Cursa retur", "Pasageri", "Plată"]
-        : ["Direcție", "Cursa dus", "Pasageri", "Plată"])
+        ? ["Călătorie", "Cursa retur", "Pasageri", "Plată"]
+        : ["Călătorie", "Pasageri", "Plată"])
     : coletSteps;
 
   const destinationCities = useMemo(
@@ -208,12 +208,15 @@ function RezervareContent() {
   const canContinue = (() => {
     if (mode !== "bilet") return true;
     if (step === 0) {
-      return !!from.trim() && !!to.trim();
+      // Pasul "Călătorie": from/to alese + cursă dus + minim 1 scaun.
+      return (
+        !!from.trim() &&
+        !!to.trim() &&
+        !!outboundTripId &&
+        outboundSeats.length >= 1
+      );
     }
-    if (step === 1) {
-      return !!outboundTripId && outboundSeats.length >= 1;
-    }
-    if (step === 2 && trip === "return") {
+    if (step === 1 && trip === "return") {
       return !!returnTripId && returnSeats.length === outboundSeats.length;
     }
     return true;
@@ -294,42 +297,43 @@ function RezervareContent() {
                 >
                   {mode === "bilet" ? (
                     <>
+                      {/* Pasul 0: Direcție + cursă dus + scaun (combinat) */}
                       {step === 0 && (
-                        <DirectionStep
-                          from={from}
-                          to={to}
-                          trip={trip}
-                          onFrom={setFrom}
-                          onTo={setTo}
-                          onTrip={setTrip}
-                          fromOptions={moldovanCities.map((c) => c.name)}
-                          toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
-                        />
+                        <div className="space-y-4">
+                          <DirectionStep
+                            from={from}
+                            to={to}
+                            trip={trip}
+                            onFrom={setFrom}
+                            onTo={setTo}
+                            onTrip={setTrip}
+                            fromOptions={moldovanCities.map((c) => c.name)}
+                            toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
+                          />
+                          {originCityId && destCityId && (
+                            <TripPicker
+                              title="Alege ziua plecării"
+                              subtitle="Cursa dus"
+                              originCityId={originCityId}
+                              destCityId={destCityId}
+                              maxSeats={4}
+                              selectedTripId={outboundTripId}
+                              selectedSeats={outboundSeats}
+                              onSelect={(tripId, seats, tripInfo) => {
+                                setOutboundTripId(tripId);
+                                setOutboundSeats(seats);
+                                if (tripInfo !== undefined) setOutboundTripInfo(tripInfo ?? null);
+                              }}
+                            />
+                          )}
+                        </div>
                       )}
 
-                      {/* Pasul 1: Cursa dus + scaun */}
-                      {step === 1 && (
+                      {/* Pasul 1 (round-trip): Cursa retur + scaun (filtrat după dus) */}
+                      {step === 1 && trip === "return" && (
                         <TripPicker
-                          title="Pasul 2"
-                          subtitle="Alege cursa și scaunul — dus"
-                          originCityId={originCityId}
-                          destCityId={destCityId}
-                          maxSeats={4}
-                          selectedTripId={outboundTripId}
-                          selectedSeats={outboundSeats}
-                          onSelect={(tripId, seats, tripInfo) => {
-                            setOutboundTripId(tripId);
-                            setOutboundSeats(seats);
-                            if (tripInfo !== undefined) setOutboundTripInfo(tripInfo ?? null);
-                          }}
-                        />
-                      )}
-
-                      {/* Pasul 2 (doar round-trip): Cursa retur + scaun (filtrat după dus) */}
-                      {step === 2 && trip === "return" && (
-                        <TripPicker
-                          title="Pasul 3"
-                          subtitle="Alege cursa și scaunul — retur"
+                          title="Cursa retur"
+                          subtitle="Alege ziua întoarcerii"
                           originCityId={destCityId}
                           destCityId={originCityId}
                           fromDate={outboundTripInfo?.arrivalAt ?? null}
@@ -345,12 +349,12 @@ function RezervareContent() {
                       )}
 
                       {/* Pasul Pasageri */}
-                      {((step === 2 && trip === "one") || (step === 3 && trip === "return")) && (
+                      {((step === 1 && trip === "one") || (step === 2 && trip === "return")) && (
                         <PersonalForm person={person} onChange={setPerson} />
                       )}
 
                       {/* Pasul Plată */}
-                      {((step === 3 && trip === "one") || (step === 4 && trip === "return")) && (
+                      {((step === 2 && trip === "one") || (step === 3 && trip === "return")) && (
                         <PaymentStep
                           mode={mode}
                           payMethod={payMethod}
