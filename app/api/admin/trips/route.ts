@@ -1,26 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = req.nextUrl;
+    // Default: viitoare + ultimele 30 zile. Cu 1500+ curse generate în orizont
+    // de 8 săpt și retururile lor, fără filtru încărcam tot la fiecare deschidere
+    // de pagină. Admin poate cere `scope=all` explicit dacă vrea.
+    const scope = searchParams.get("scope") || "default";
+
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const where = scope === "all" ? {} : { departureAt: { gte: since } };
+
     const trips = await prisma.trip.findMany({
+      where,
       orderBy: { departureAt: "asc" },
-      include: {
+      take: 500,
+      select: {
+        id: true,
+        routeId: true,
+        busId: true,
+        departureAt: true,
+        arrivalAt: true,
+        status: true,
+        capacity: true,
         route: {
-          include: {
-            originCity: true,
-            destinationCity: true,
+          select: {
+            originCity: { select: { name: true } },
+            destinationCity: { select: { name: true } },
           },
         },
-        bus: true,
-        bookings: { select: { price: true, status: true } },
+        bus: { select: { label: true } },
+        // Agregate de booking: numărăm doar cele confirmate, plus suma prețului.
+        // Folosim _count + un al doilea aggregate, în loc să tragem rândurile.
       },
     });
+
+    // Aggregate revenue/booked per-trip într-un singur query groupBy.
+    const tripIds = trips.map((t) => t.id);
+    const aggregates = tripIds.length
+      ? await prisma.booking.groupBy({
+          by: ["tripId"],
+          where: { tripId: { in: tripIds }, status: "confirmed" },
+          _count: { _all: true },
+          _sum: { price: true },
+        })
+      : [];
+    const byTrip = new Map(
+      aggregates.map((a) => [
+        a.tripId,
+        { booked: a._count._all, revenue: a._sum.price ?? 0 },
+      ])
+    );
 
     return NextResponse.json({
       success: true,
       trips: trips.map((t) => {
-        const confirmed = t.bookings.filter((b) => b.status === "confirmed");
+        const agg = byTrip.get(t.id) ?? { booked: 0, revenue: 0 };
         return {
           id: t.id,
           routeId: t.routeId,
@@ -31,8 +68,8 @@ export async function GET() {
           arrivalAt: t.arrivalAt.toISOString(),
           status: t.status,
           capacity: t.capacity,
-          booked: confirmed.length,
-          revenue: confirmed.reduce((s, b) => s + b.price, 0),
+          booked: agg.booked,
+          revenue: agg.revenue,
         };
       }),
     });

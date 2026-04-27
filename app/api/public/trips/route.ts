@@ -4,6 +4,12 @@ import { prisma } from "@/lib/prisma";
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
 
+// Cache scurt — 30s fresh, 60s stale. Disponibilitatea locurilor se schimbă
+// dinamic, dar cache-ul de 30s scoate sute de hituri DB la trafic mare.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+};
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
@@ -27,10 +33,14 @@ export async function GET(req: NextRequest) {
           destinationCityId: destCityId,
         },
       },
+      select: { id: true, active: true, basePrice: true, currency: true },
     });
 
     if (!route || !route.active) {
-      return NextResponse.json({ success: true, route: null, trips: [] });
+      return NextResponse.json(
+        { success: true, route: null, trips: [] },
+        { headers: CACHE_HEADERS }
+      );
     }
 
     let dateRange: { gte: Date; lt?: Date };
@@ -71,33 +81,46 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { departureAt: "asc" },
       take: date ? undefined : limit,
-      include: {
-        bus: { select: { id: true, label: true, totalSeats: true } },
-        seatBookings: { select: { id: true } },
+      select: {
+        id: true,
+        departureAt: true,
+        arrivalAt: true,
+        status: true,
+        busId: true,
+        bus: { select: { label: true, totalSeats: true } },
+        // _count returnează un singur INT din DB, evită deserializarea miilor
+        // de SeatBooking rows doar ca să le numărăm.
+        _count: { select: { seatBookings: true } },
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      route: {
-        id: route.id,
-        basePrice: route.basePrice,
-        currency: route.currency,
+    return NextResponse.json(
+      {
+        success: true,
+        route: {
+          id: route.id,
+          basePrice: route.basePrice,
+          currency: route.currency,
+        },
+        trips: trips.map((t) => {
+          const booked = t._count.seatBookings;
+          return {
+            id: t.id,
+            departureAt: t.departureAt.toISOString(),
+            arrivalAt: t.arrivalAt.toISOString(),
+            status: t.status,
+            busId: t.busId,
+            busLabel: t.bus.label,
+            totalSeats: t.bus.totalSeats,
+            bookedSeats: booked,
+            availableSeats: t.bus.totalSeats - booked,
+            pricePerSeat: route.basePrice,
+            currency: route.currency,
+          };
+        }),
       },
-      trips: trips.map((t) => ({
-        id: t.id,
-        departureAt: t.departureAt.toISOString(),
-        arrivalAt: t.arrivalAt.toISOString(),
-        status: t.status,
-        busId: t.bus.id,
-        busLabel: t.bus.label,
-        totalSeats: t.bus.totalSeats,
-        bookedSeats: t.seatBookings.length,
-        availableSeats: t.bus.totalSeats - t.seatBookings.length,
-        pricePerSeat: route.basePrice,
-        currency: route.currency,
-      })),
-    });
+      { headers: CACHE_HEADERS }
+    );
   } catch (error) {
     console.error("public/trips GET", error);
     return NextResponse.json(

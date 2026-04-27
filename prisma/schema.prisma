@@ -115,6 +115,10 @@ model Trip {
   @@index([departureAt])
   @@index([status])
   @@index([routeId])
+  // Acoperă query-ul principal /api/public/trips: filter pe (routeId, status)
+  // + range scan pe departureAt + sortare. PostgreSQL poate folosi indexul
+  // pentru tot, fără sort suplimentar.
+  @@index([routeId, status, departureAt])
 }
 
 model SeatBooking {

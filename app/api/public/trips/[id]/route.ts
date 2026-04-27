@@ -10,6 +10,13 @@ function safeLayout(raw: string): SeatLayout {
   return { rows: 1, cols: 1, cells: ["empty"] };
 }
 
+// Cache foarte scurt — disponibilitatea scaunelor se schimbă când cineva
+// rezervă. 5s la edge ține bursa de cereri când mulți utilizatori se uită
+// la aceeași cursă, dar nu lasă un loc rezervat să apară liber prea mult.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=5, stale-while-revalidate=15",
+};
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,14 +25,23 @@ export async function GET(
     const { id } = await params;
     const trip = await prisma.trip.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        departureAt: true,
+        arrivalAt: true,
+        status: true,
         route: {
-          include: {
-            originCity: true,
-            destinationCity: true,
+          select: {
+            id: true,
+            basePrice: true,
+            currency: true,
+            originCity: { select: { name: true } },
+            destinationCity: { select: { name: true } },
           },
         },
-        bus: true,
+        bus: {
+          select: { id: true, label: true, totalSeats: true, layoutJson: true },
+        },
         seatBookings: { select: { seatNumber: true } },
       },
     });
@@ -39,29 +55,32 @@ export async function GET(
 
     const layout = safeLayout(trip.bus.layoutJson);
 
-    return NextResponse.json({
-      success: true,
-      trip: {
-        id: trip.id,
-        departureAt: trip.departureAt.toISOString(),
-        arrivalAt: trip.arrivalAt.toISOString(),
-        status: trip.status,
-        route: {
-          id: trip.route.id,
-          origin: trip.route.originCity.name,
-          destination: trip.route.destinationCity.name,
-          basePrice: trip.route.basePrice,
-          currency: trip.route.currency,
+    return NextResponse.json(
+      {
+        success: true,
+        trip: {
+          id: trip.id,
+          departureAt: trip.departureAt.toISOString(),
+          arrivalAt: trip.arrivalAt.toISOString(),
+          status: trip.status,
+          route: {
+            id: trip.route.id,
+            origin: trip.route.originCity.name,
+            destination: trip.route.destinationCity.name,
+            basePrice: trip.route.basePrice,
+            currency: trip.route.currency,
+          },
+          bus: {
+            id: trip.bus.id,
+            label: trip.bus.label,
+            totalSeats: trip.bus.totalSeats,
+            layout,
+          },
+          occupiedSeats: trip.seatBookings.map((sb) => sb.seatNumber),
         },
-        bus: {
-          id: trip.bus.id,
-          label: trip.bus.label,
-          totalSeats: trip.bus.totalSeats,
-          layout,
-        },
-        occupiedSeats: trip.seatBookings.map((sb) => sb.seatNumber),
       },
-    });
+      { headers: CACHE_HEADERS }
+    );
   } catch (error) {
     console.error("public/trips/[id] GET", error);
     return NextResponse.json(
