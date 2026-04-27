@@ -6,6 +6,7 @@ import { calculatePrice, calculatePriceFromRoute } from '@/lib/pricing'
 import { autoLinkTripAndClient } from '@/lib/bookingLink'
 import { enqueueRemindersOnly } from '@/lib/emailQueue'
 import { createBookingToken, bookingResponseUrl } from '@/lib/bookingToken'
+import { appUrl as resolveAppUrl } from '@/lib/appUrl'
 import type { SeatLayout } from '@/lib/adminMock'
 
 function generateBookingNumber(): string {
@@ -205,8 +206,8 @@ export async function POST(request: NextRequest) {
       throw error
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const ticketUrl = `${appUrl.replace(/\/$/, '')}/bilet/${booking.bookingNumber}`
+    const appUrl = resolveAppUrl()
+    const ticketUrl = `${appUrl}/bilet/${booking.bookingNumber}`
 
     await prisma.booking.update({
       where: { id: booking.id },

@@ -1,13 +1,12 @@
 import QRCode from "qrcode";
+import { appUrl } from "@/lib/appUrl";
 
 export function ticketUrl(bookingNumber: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/bilet/${bookingNumber}`;
+  return `${appUrl()}/bilet/${bookingNumber}`;
 }
 
 export function qrPngUrl(bookingNumber: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/api/tickets/${bookingNumber}/qr.png`;
+  return `${appUrl()}/api/tickets/${bookingNumber}/qr.png`;
 }
 
 export async function generateQrPng(bookingNumber: string): Promise<Buffer> {

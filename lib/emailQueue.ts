@@ -8,9 +8,10 @@ import {
   subjectForType,
 } from "@/lib/emailTemplates";
 import { createBookingToken, bookingResponseUrl } from "@/lib/bookingToken";
+import { appUrl as resolveAppUrl } from "@/lib/appUrl";
 
 async function buildResponseUrls(bookingNumber: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = resolveAppUrl();
   try {
     const [confirmToken, cancelToken] = await Promise.all([
       createBookingToken(bookingNumber, "confirm"),

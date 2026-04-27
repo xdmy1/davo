@@ -8,6 +8,7 @@ import {
   type ConfirmationData,
 } from "@/lib/emailTemplates";
 import { createBookingToken, bookingResponseUrl } from "@/lib/bookingToken";
+import { appUrl as resolveAppUrl } from "@/lib/appUrl";
 
 export const dynamic = "force-dynamic";
 
@@ -49,14 +50,14 @@ export async function GET(
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = resolveAppUrl();
   const [confirmToken, cancelToken] = await Promise.all([
     createBookingToken(booking.bookingNumber, "confirm"),
     createBookingToken(booking.bookingNumber, "cancel"),
   ]);
   const confirmUrl = bookingResponseUrl(appUrl, booking.bookingNumber, "confirm", confirmToken);
   const cancelUrl = bookingResponseUrl(appUrl, booking.bookingNumber, "cancel", cancelToken);
-  const trackUrl = `${appUrl.replace(/\/$/, "")}/livrare?nr=${booking.bookingNumber}`;
+  const trackUrl = `${appUrl}/livrare?nr=${booking.bookingNumber}`;
 
   let html: string;
 
