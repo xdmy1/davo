@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendBookingConfirmation, BookingConfirmationData } from "@/lib/email";
+import { appUrl as resolveAppUrl } from "@/lib/appUrl";
 
 export async function POST(
   _request: NextRequest,
@@ -17,10 +18,10 @@ export async function POST(
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = resolveAppUrl();
     const ticketUrl =
       booking.ticketUrl ||
-      `${appUrl.replace(/\/$/, "")}/bilet/${booking.bookingNumber}`;
+      `${appUrl}/bilet/${booking.bookingNumber}`;
 
     const data: BookingConfirmationData = {
       bookingNumber: booking.bookingNumber,

@@ -1,4 +1,5 @@
 import type { Booking } from "@prisma/client";
+import { appUrl } from "@/lib/appUrl";
 
 const dateFmt = new Intl.DateTimeFormat("ro-RO", {
   weekday: "long",
@@ -11,16 +12,6 @@ const timeFmt = new Intl.DateTimeFormat("ro-RO", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-function appUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (explicit && !explicit.includes("localhost")) return explicit;
-  const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  if (prodHost) return `https://${prodHost}`;
-  const deployHost = process.env.VERCEL_URL;
-  if (deployHost) return `https://${deployHost}`;
-  return explicit || "http://localhost:3000";
-}
 
 function logoUrl(): string {
   return `${appUrl()}/images/logo-davo.png`;
