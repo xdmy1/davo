@@ -21,7 +21,8 @@ import {
   countryLandingUrl,
 } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
-import FAQ, { defaultFAQs } from "@/components/sections/FAQ";
+import FAQ from "@/components/sections/FAQ";
+import { defaultFAQs } from "@/lib/faqs";
 import { Reveal } from "@/components/ui/Reveal";
 import { getCountrySchedule } from "@/lib/countrySchedule";
 import type { City, Destination } from "@/types";

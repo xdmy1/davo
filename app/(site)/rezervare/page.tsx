@@ -71,6 +71,7 @@ function RezervareContent() {
   const [from, setFrom] = useState(params.get("from") || "Chișinău");
   const [to, setTo] = useState(params.get("to") || "London");
   const [trip, setTrip] = useState<"one" | "return">("one");
+  const [passengers, setPassengers] = useState(1);
 
   // Noi: selecții de Trip + scaune din DB
   const [cityIndex, setCityIndex] = useState<Record<string, CityLookup> | null>(null);
@@ -205,19 +206,29 @@ function RezervareContent() {
   const next = () => setStep((s) => Math.min(steps.length - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
 
+  // Schimb numărul de pasageri → resetează scaunele alese (s-ar putea să nu mai
+  // fie suficiente / corecte ca număr).
+  const updatePassengers = (n: number) => {
+    const next = Math.max(1, Math.min(4, n));
+    if (next === passengers) return;
+    setPassengers(next);
+    setOutboundSeats([]);
+    setReturnSeats([]);
+  };
+
   const canContinue = (() => {
     if (mode !== "bilet") return true;
     if (step === 0) {
-      // Pasul "Călătorie": from/to alese + cursă dus + minim 1 scaun.
+      // Pasul "Călătorie": from/to alese + cursă dus + scaune = pasageri.
       return (
         !!from.trim() &&
         !!to.trim() &&
         !!outboundTripId &&
-        outboundSeats.length >= 1
+        outboundSeats.length === passengers
       );
     }
     if (step === 1 && trip === "return") {
-      return !!returnTripId && returnSeats.length === outboundSeats.length;
+      return !!returnTripId && returnSeats.length === passengers;
     }
     return true;
   })();
@@ -304,9 +315,11 @@ function RezervareContent() {
                             from={from}
                             to={to}
                             trip={trip}
+                            passengers={passengers}
                             onFrom={setFrom}
                             onTo={setTo}
                             onTrip={setTrip}
+                            onPassengers={updatePassengers}
                             fromOptions={moldovanCities.map((c) => c.name)}
                             toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
                           />
@@ -316,7 +329,7 @@ function RezervareContent() {
                               subtitle="Cursa dus"
                               originCityId={originCityId}
                               destCityId={destCityId}
-                              maxSeats={4}
+                              maxSeats={passengers}
                               selectedTripId={outboundTripId}
                               selectedSeats={outboundSeats}
                               onSelect={(tripId, seats, tripInfo) => {
@@ -337,7 +350,7 @@ function RezervareContent() {
                           originCityId={destCityId}
                           destCityId={originCityId}
                           fromDate={outboundTripInfo?.arrivalAt ?? null}
-                          maxSeats={Math.max(1, outboundSeats.length)}
+                          maxSeats={passengers}
                           selectedTripId={returnTripId}
                           selectedSeats={returnSeats}
                           onSelect={(tripId, seats, tripInfo) => {
@@ -510,9 +523,11 @@ function DirectionStep({
   from,
   to,
   trip,
+  passengers,
   onFrom,
   onTo,
   onTrip,
+  onPassengers,
   fromOptions,
   toOptions,
   hideTrip = false,
@@ -520,9 +535,11 @@ function DirectionStep({
   from: string;
   to: string;
   trip: "one" | "return";
+  passengers?: number;
   onFrom: (v: string) => void;
   onTo: (v: string) => void;
   onTrip: (v: "one" | "return") => void;
+  onPassengers?: (n: number) => void;
   fromOptions: string[];
   toOptions: string[];
   hideTrip?: boolean;
@@ -559,13 +576,42 @@ function DirectionStep({
       </div>
 
       {!hideTrip && (
-        <div className="mt-4 inline-flex items-center gap-1 rounded-full bg-[color:var(--ink-50)] p-1">
-          <TripTypeTab active={trip === "one"} onClick={() => onTrip("one")}>
-            O direcție
-          </TripTypeTab>
-          <TripTypeTab active={trip === "return"} onClick={() => onTrip("return")}>
-            Tur-retur
-          </TripTypeTab>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center gap-1 rounded-full bg-[color:var(--ink-50)] p-1">
+            <TripTypeTab active={trip === "one"} onClick={() => onTrip("one")}>
+              O direcție
+            </TripTypeTab>
+            <TripTypeTab active={trip === "return"} onClick={() => onTrip("return")}>
+              Tur-retur
+            </TripTypeTab>
+          </div>
+          {onPassengers && passengers !== undefined && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--ink-50)] px-3 py-1">
+              <Users className="h-3.5 w-3.5 text-[color:var(--ink-500)]" />
+              <span className="text-xs font-semibold text-[color:var(--ink-700)] mr-1">Pasageri</span>
+              <button
+                type="button"
+                onClick={() => onPassengers(passengers - 1)}
+                disabled={passengers <= 1}
+                aria-label="Scade număr pasageri"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white border border-[color:var(--ink-200)] text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                −
+              </button>
+              <span className="font-bold text-sm text-[color:var(--navy-900)] min-w-[1ch] text-center">
+                {passengers}
+              </span>
+              <button
+                type="button"
+                onClick={() => onPassengers(passengers + 1)}
+                disabled={passengers >= 4}
+                aria-label="Crește număr pasageri"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white border border-[color:var(--ink-200)] text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                +
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Users, Package, Key, Boxes } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, Boxes } from "lucide-react";
 import PageHero from "@/components/sections/PageHero";
 import CountryCityTabs from "@/components/sections/CountryCityTabs";
 import SocialDavo from "@/components/sections/SocialDavo";
@@ -14,7 +15,7 @@ const cards = [
     cta: "Rezervă loc",
     href: "/rezervare",
     tone: "navy" as const,
-    icon: Users,
+    image: "/images/bus-angle.png",
   },
   {
     slug: "transport-de-colete",
@@ -24,7 +25,7 @@ const cards = [
     cta: "Trimite colet",
     href: "/rezervare?mode=colet",
     tone: "red" as const,
-    icon: Package,
+    image: "/images/parcel-boxes.png",
   },
   {
     slug: "colet-la-cheie",
@@ -34,7 +35,7 @@ const cards = [
     cta: "Comandă online",
     href: "/rezervare?mode=colet",
     tone: "navy" as const,
-    icon: Key,
+    image: "/images/parcel-boxes.png",
   },
 ];
 
@@ -72,7 +73,11 @@ export default function ServiciiPage() {
                     : "bg-[color:var(--navy-900)] border-[color:var(--navy-900)] text-white"
                 }`}
               >
-                <div className="bg-noise absolute inset-0 opacity-20" />
+                <div className="bg-noise absolute inset-0 opacity-15" />
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -right-20 top-1/2 -translate-y-1/2 hidden md:block h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),transparent_65%)] blur-3xl"
+                />
                 <div className="relative p-8 md:p-10 flex flex-col justify-center">
                   <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/70 mb-3">
                     SERVICIU {c.eyebrow}
@@ -90,12 +95,18 @@ export default function ServiciiPage() {
                   </div>
                 </div>
 
-                <div className="relative min-h-[260px] md:min-h-0 flex items-center justify-center p-8">
-                  <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-white/10 to-transparent border border-white/15 backdrop-blur-sm flex items-center justify-center">
-                    <c.icon className="h-36 w-36 text-white/30 transition-transform group-hover:scale-110 duration-500" />
-                    <div className="absolute bottom-4 right-4 rounded-full bg-white/10 backdrop-blur-md px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-white/90 border border-white/20">
-                      DAVO GROUP
-                    </div>
+                <div className="relative min-h-[240px] md:min-h-[300px] flex items-center justify-center px-6 pb-8 md:px-8 md:py-10">
+                  <Image
+                    src={c.image}
+                    alt={c.title}
+                    width={520}
+                    height={390}
+                    unoptimized
+                    sizes="(min-width: 768px) 50vw, 100vw"
+                    className="relative h-auto w-full max-w-[460px] object-contain transition-transform duration-500 group-hover:scale-[1.04] drop-shadow-[0_28px_40px_rgba(0,0,0,0.35)]"
+                  />
+                  <div className="absolute bottom-4 right-4 md:bottom-5 md:right-5 rounded-full bg-white/10 backdrop-blur-md px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-white/90 border border-white/20">
+                    DAVO Group
                   </div>
                 </div>
               </div>

@@ -184,6 +184,7 @@ export const services: Service[] = [
     slug: "transport-de-persoane",
     description: "Transportul internațional de persoane este principala activitate a companiei noastre. Oferim cele mai bune prețuri și autobuze confortabile!",
     icon: "users",
+    image: "/images/bus-angle.png",
     features: [
       "Curse regulate în Anglia, Germania, Belgia, Olanda, Luxemburg",
       "Internet Starlink nelimitat pe toată ruta",
@@ -199,6 +200,7 @@ export const services: Service[] = [
     slug: "transport-de-colete",
     description: "Transport rapid și sigur de colete în toată Europa. Remorcă frigorifică separată pentru produse perisabile (carne, lactate, brânzeturi, fructe, legume) la temperatură controlată.",
     icon: "package",
+    image: "/images/parcel-boxes.png",
     features: [
       "Remorcă frigorifică separată pentru produse alterabile",
       "Colectare colete din toată Moldova (vezi grafic)",
@@ -214,6 +216,7 @@ export const services: Service[] = [
     slug: "transport-de-marfa-pana-la-5-tone",
     description: "Transport de mărfuri și marfă generală cu vehicule de până la 5 tone capacitate.",
     icon: "boxes",
+    image: "/images/bus-front.png",
     features: [
       "Capacitate până la 5 tone",
       "Livrare rapidă",
