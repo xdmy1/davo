@@ -316,7 +316,7 @@ function RezervareContent() {
                               subtitle="Cursa dus"
                               originCityId={originCityId}
                               destCityId={destCityId}
-                              maxSeats={4}
+                              maxSeats={1}
                               selectedTripId={outboundTripId}
                               selectedSeats={outboundSeats}
                               onSelect={(tripId, seats, tripInfo) => {
@@ -529,37 +529,31 @@ function DirectionStep({
 }) {
   return (
     <div className="card-elevated p-6 md:p-8">
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--red-500)]">
-          Pasul 1
-        </span>
-        <h2 className="display-hero text-2xl md:text-3xl text-[color:var(--navy-900)]">Direcția deplasării</h2>
-      </div>
+      <h2 className="display-hero text-2xl md:text-3xl text-[color:var(--navy-900)] mb-5">
+        Unde vrei să mergi?
+      </h2>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <FancyField label="Plecare din" icon={<MapPin className="h-4 w-4" />}>
-          <FieldInput value={from} onChange={onFrom} options={fromOptions} placeholder="Alege oraș plecare" />
-        </FancyField>
-        <FancyField label="Destinația" icon={<MapPin className="h-4 w-4" />}>
-          <FieldInput value={to} onChange={onTo} options={toOptions} placeholder="Alege oraș destinație" />
-        </FancyField>
-        <div className="md:col-span-2 -mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-[color:var(--navy-50)] border border-[color:var(--navy-200,rgba(20,58,122,0.18))] px-4 py-2.5 text-xs text-[color:var(--ink-700)]">
-          <Info className="h-3.5 w-3.5 text-[color:var(--red-500)] shrink-0" />
-          <span>
-            Nu găsești orașul în listă? Aranjăm transport personalizat —
-          </span>
-          <a
-            href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}
-            className="inline-flex items-center gap-1 font-semibold text-[color:var(--navy-900)] hover:text-[color:var(--red-500)]"
-          >
-            <Phone className="h-3 w-3" />
-            sună la {contactInfo.phone}
-          </a>
-        </div>
+        <FieldSelect
+          label="De unde pleci"
+          icon={<MapPin className="h-4 w-4" />}
+          value={from}
+          onChange={onFrom}
+          options={fromOptions}
+          placeholder="Alege orașul de plecare"
+        />
+        <FieldSelect
+          label="Unde mergi"
+          icon={<MapPin className="h-4 w-4" />}
+          value={to}
+          onChange={onTo}
+          options={toOptions}
+          placeholder="Alege orașul de destinație"
+        />
       </div>
 
       {!hideTrip && (
-        <div className="mt-4 inline-flex items-center gap-1 rounded-full bg-[color:var(--ink-50)] p-1">
+        <div className="mt-5 inline-flex items-center gap-1 rounded-full bg-[color:var(--ink-50)] p-1">
           <TripTypeTab active={trip === "one"} onClick={() => onTrip("one")}>
             O direcție
           </TripTypeTab>
@@ -1036,26 +1030,6 @@ function Row({ icon, label, children }: { icon: React.ReactNode; label: string; 
 
 /* ---------- Small shared ---------- */
 
-function FancyField({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="group flex flex-col gap-1.5 rounded-xl border border-[color:var(--ink-200)] bg-white px-4 py-3 transition-colors hover:border-[color:var(--navy-500)] focus-within:border-[color:var(--navy-700)]">
-      <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-[color:var(--ink-500)]">
-        <span className="text-[color:var(--red-500)]">{icon}</span>
-        {label}
-      </span>
-      <div>{children}</div>
-    </label>
-  );
-}
-
 function SimpleField({
   label,
   icon,
@@ -1076,33 +1050,40 @@ function SimpleField({
   );
 }
 
-function FieldInput({
+function FieldSelect({
+  label,
+  icon,
   value,
   onChange,
   options,
   placeholder,
 }: {
+  label: string;
+  icon: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   options: string[];
   placeholder?: string;
 }) {
-  const id = "inp-" + Math.random().toString(36).slice(2, 8);
   return (
-    <>
-      <input
-        list={id}
+    <label className="group flex flex-col gap-1.5 rounded-xl border border-[color:var(--ink-200)] bg-white px-4 py-3 transition-colors hover:border-[color:var(--navy-500)] focus-within:border-[color:var(--navy-700)] cursor-pointer">
+      <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-[color:var(--ink-500)]">
+        <span className="text-[color:var(--red-500)]">{icon}</span>
+        {label}
+      </span>
+      <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent text-[0.95rem] font-semibold text-[color:var(--navy-900)] outline-none"
-        placeholder={placeholder}
-      />
-      <datalist id={id}>
+        className="w-full bg-transparent text-[0.95rem] font-semibold text-[color:var(--navy-900)] outline-none cursor-pointer appearance-none"
+      >
+        {!value && <option value="">{placeholder ?? "—"}</option>}
         {options.map((o) => (
-          <option key={o} value={o} />
+          <option key={o} value={o}>
+            {o}
+          </option>
         ))}
-      </datalist>
-    </>
+      </select>
+    </label>
   );
 }
 
