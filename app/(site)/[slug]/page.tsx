@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Bus,
   Package,
+  CalendarDays,
+  RotateCcw,
 } from "lucide-react";
 import { contactInfo, destinations, moldovanCities } from "@/lib/data";
 import {
@@ -20,8 +22,13 @@ import {
 } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
 import FAQ from "@/components/sections/FAQ";
+import { defaultFAQs } from "@/lib/faqs";
 import { Reveal } from "@/components/ui/Reveal";
+import { getCountrySchedule } from "@/lib/countrySchedule";
 import type { City, Destination } from "@/types";
+
+// Pre-render la build, refresh la 1h dacă admin schimbă programul în DB.
+export const revalidate = 3600;
 
 // ============================================
 // Static params — pre-render every country & city page at build time
@@ -89,8 +96,10 @@ export async function generateMetadata({
 
   if (route.kind === "country") {
     const { destination } = route;
-    const title = `Transport Moldova - ${destination.name} pentru pasageri și colete`;
-    const description = `${destination.description}. ${destination.cities.length} orașe disponibile. Plecări regulate din toată Moldova (Chișinău, Bălți, Cahul, Comrat, Ungheni, Orhei, Soroca). Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Rezervă online la DAVO Group.`;
+    const sched = getCountrySchedule(destination.slug);
+    const schedSnippet = sched ? ` Plecare ${sched.outboundLabel}, retur ${sched.returnLabel}.` : "";
+    const title = `Transport Moldova ⇋ ${destination.name} | Curse săptămânale${sched ? ` ${sched.outboundLabel}` : ""}`;
+    const description = `${destination.description}.${schedSnippet} ${destination.cities.length} orașe disponibile. Plecări din toată Moldova (Chișinău, Bălți, Cahul, Comrat, Ungheni, Orhei, Soroca). Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Preț de la ${destination.price || "120"}${destination.currency}. Rezervă online.`;
     const keywords = [
       `transport Moldova ${destination.name}`,
       `autocar Moldova ${destination.name}`,
@@ -116,8 +125,10 @@ export async function generateMetadata({
   }
 
   const { city, destination } = route;
-  const title = `Autocar Chișinău ⇋ ${city.name}, ${destination.name}`;
-  const description = `Transport regulat Chișinău - ${city.name}, ${destination.name} de la ${destination.price || "120"}${destination.currency}. Internet Starlink nelimitat, prânz gratuit, însoțitoare de bord 24/24, remorcă frigorifică pentru colete perisabile. Rezervă online la DAVO Group.`;
+  const sched = getCountrySchedule(destination.slug);
+  const schedSnippet = sched ? ` Plecare ${sched.outboundLabel} din Chișinău, retur ${sched.returnLabel} din ${destination.name}.` : "";
+  const title = `Autocar Chișinău ⇋ ${city.name}, ${destination.name} | Bilet de la ${destination.price || "120"}${destination.currency}`;
+  const description = `Transport regulat Chișinău → ${city.name}, ${destination.name} de la ${destination.price || "120"}${destination.currency}.${schedSnippet} Internet Starlink nelimitat, prânz gratuit, însoțitoare 24/24, remorcă frigorifică pentru colete perisabile. Rezervă online.`;
   const keywords = [
     `autocar Chișinău ${city.name}`,
     `transport Moldova ${city.name}`,
@@ -170,12 +181,15 @@ export default async function SeoSlugPage({
 function CountryLanding({ destination }: { destination: Destination }) {
   const code = destinationSlugToCode[destination.slug];
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://davo.md").replace(/\/$/, "");
+  const sched = getCountrySchedule(destination.slug);
+  const countryUrl = `${baseUrl}${countryLandingUrl(destination)}`;
 
-  const ldJson = {
+  const travelAgencyLd = {
     "@context": "https://schema.org",
     "@type": "TravelAgency",
+    "@id": `${countryUrl}#travelagency`,
     name: `DAVO Group — Transport Moldova ${destination.name}`,
-    url: `${baseUrl}${countryLandingUrl(destination)}`,
+    url: countryUrl,
     telephone: contactInfo.phone,
     email: contactInfo.email,
     address: {
@@ -198,11 +212,40 @@ function CountryLanding({ destination }: { destination: Destination }) {
     },
   };
 
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Acasă", item: baseUrl },
+      { "@type": "ListItem", position: 2, name: "Destinații", item: `${baseUrl}/destinatii` },
+      { "@type": "ListItem", position: 3, name: destination.name, item: countryUrl },
+    ],
+  };
+
+  const faqItems = buildCountryFaq(destination, sched);
+  const faqPageLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqItems.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(travelAgencyLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageLd) }}
       />
       <section className="relative overflow-hidden bg-hero-navy text-white">
         <div className="bg-noise absolute inset-0 opacity-30" />
@@ -295,11 +338,13 @@ function CountryLanding({ destination }: { destination: Destination }) {
         </div>
       </section>
 
+      {sched && <ScheduleSection destination={destination} sched={sched} />}
+
       <section className="py-16">
         <div className="container-page grid gap-5 md:grid-cols-3">
           {[
-            { icon: Calendar, k: "Curse regulate", v: "De mai multe ori pe săptămână" },
-            { icon: Clock, k: "Durată călătorie", v: "Între 20h și 40h" },
+            { icon: Calendar, k: "Curse regulate", v: sched ? `Săptămânal — ${sched.outboundLabel}` : "De mai multe ori pe săptămână" },
+            { icon: Clock, k: "Durată călătorie", v: sched ? sched.outboundDuration : "Între 20h și 40h" },
             {
               icon: ShieldCheck,
               k: "100% siguranță",
@@ -324,7 +369,7 @@ function CountryLanding({ destination }: { destination: Destination }) {
         </div>
       </section>
 
-      <FAQ />
+      <FAQ items={faqItems} />
     </>
   );
 }
@@ -343,12 +388,15 @@ function CityPage({
   const code = destinationSlugToCode[destination.slug];
   const otherCities = destination.cities.filter((c) => c.id !== city.id);
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://davo.md").replace(/\/$/, "");
+  const sched = getCountrySchedule(destination.slug);
+  const cityUrl = `${baseUrl}${cityPageUrl(city, destination)}`;
+  const countryUrl = `${baseUrl}${countryLandingUrl(destination)}`;
 
-  const ldJson = {
+  const busTripLd = {
     "@context": "https://schema.org",
     "@type": "BusTrip",
     name: `Autocar Chișinău - ${city.name}, ${destination.name}`,
-    description: `Cursă regulată din Chișinău către ${city.name}. Autocare moderne cu Internet Starlink nelimitat, prânz gratuit, însoțitoare 24/24.`,
+    description: `Cursă săptămânală din Chișinău către ${city.name}${sched ? `. Plecare ${sched.outboundLabel}, retur ${sched.returnLabel}` : ""}. Autocare moderne cu Internet Starlink nelimitat, prânz gratuit, însoțitoare 24/24.`,
     departureBusStop: {
       "@type": "BusStation",
       name: "Chișinău (Calea Ieșilor 11/3)",
@@ -370,6 +418,7 @@ function CityPage({
     },
     provider: {
       "@type": "Organization",
+      "@id": `${baseUrl}/#organization`,
       name: "DAVO Group",
       telephone: contactInfo.phone,
       url: baseUrl,
@@ -383,11 +432,41 @@ function CityPage({
     },
   };
 
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Acasă", item: baseUrl },
+      { "@type": "ListItem", position: 2, name: "Destinații", item: `${baseUrl}/destinatii` },
+      { "@type": "ListItem", position: 3, name: destination.name, item: countryUrl },
+      { "@type": "ListItem", position: 4, name: city.name, item: cityUrl },
+    ],
+  };
+
+  const faqItems = buildCityFaq(city, destination, sched);
+  const faqPageLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqItems.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(busTripLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageLd) }}
       />
       <section className="relative overflow-hidden bg-hero-navy text-white">
         <div className="bg-noise absolute inset-0 opacity-30" />
@@ -488,11 +567,13 @@ function CityPage({
         </div>
       </section>
 
+      {sched && <ScheduleSection destination={destination} sched={sched} cityName={city.name} />}
+
       <section className="py-16">
         <div className="container-page grid gap-5 md:grid-cols-3">
           {[
-            { icon: Calendar, k: "Curse regulate", v: "Plecări de mai multe ori pe săptămână" },
-            { icon: Clock, k: "Durată estimativă", v: "Între 20h și 40h în funcție de rută" },
+            { icon: Calendar, k: "Curse regulate", v: sched ? `Săptămânal — ${sched.outboundLabel}` : "Plecări de mai multe ori pe săptămână" },
+            { icon: Clock, k: "Durată estimativă", v: sched ? sched.outboundDuration : "Între 20h și 40h" },
             {
               icon: ShieldCheck,
               k: "De la ușă la ușă",
@@ -556,7 +637,7 @@ function CityPage({
         </section>
       )}
 
-      <FAQ />
+      <FAQ items={faqItems} />
     </>
   );
 }
@@ -627,4 +708,168 @@ function JourneyStat({
       </div>
     </div>
   );
+}
+
+// ============================================
+// Schedule section — programul săptămânal pe pagina de țară/oraș
+// Cel mai important block SEO: răspunde direct la "când pleacă autocarul".
+// ============================================
+
+function ScheduleSection({
+  destination,
+  sched,
+  cityName,
+}: {
+  destination: Destination;
+  sched: NonNullable<ReturnType<typeof getCountrySchedule>>;
+  cityName?: string;
+}) {
+  const fromLabel = cityName ? `Chișinău → ${cityName}` : `Moldova → ${destination.name}`;
+  const backLabel = cityName ? `${cityName} → Chișinău` : `${destination.name} → Moldova`;
+  const flagCode = destinationSlugToCode[destination.slug];
+
+  return (
+    <section className="py-16 bg-white">
+      <div className="container-page">
+        <Reveal>
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--red-500)]">
+            <span className="h-1.5 w-6 rounded-full bg-[color:var(--red-500)]" />
+            Program săptămânal
+          </div>
+          <h2 className="display-hero display-md text-[color:var(--navy-900)] mt-3">
+            Plecări fixe în fiecare săptămână
+          </h2>
+          <p className="mt-3 text-[color:var(--ink-700)] max-w-2xl">
+            {sched.fullSentence} Bagaj 35 kg gratuit, Wi-Fi Starlink la bord, prânz inclus.
+          </p>
+        </Reveal>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <Reveal>
+            <div className="rounded-2xl border-2 border-[color:var(--red-500)] bg-white p-6 shadow-[0_18px_40px_-22px_rgba(225,30,43,0.4)]">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--red-500)] text-white">
+                  <CalendarDays className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--red-500)]">
+                    Plecare dus
+                  </div>
+                  <div className="text-sm text-[color:var(--ink-500)]">{fromLabel}</div>
+                </div>
+              </div>
+              <div className="font-[family-name:var(--font-montserrat)] text-3xl md:text-4xl font-extrabold text-[color:var(--navy-900)] leading-tight">
+                {sched.outboundLabel}
+              </div>
+              <div className="mt-2 inline-flex items-center gap-1 text-xs text-[color:var(--ink-500)]">
+                <Clock className="h-3.5 w-3.5" />
+                Durată {sched.outboundDuration}
+              </div>
+              <Link
+                href={`/rezervare?to=${encodeURIComponent(cityName || destination.cities[0]?.name || "")}`}
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[color:var(--red-500)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[color:var(--red-600)] transition-colors"
+              >
+                Rezervă cursă <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.05}>
+            <div className="rounded-2xl border border-[color:var(--ink-200)] bg-[color:var(--ink-50)] p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--navy-900)] text-white">
+                  <RotateCcw className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--navy-700)]">
+                    Plecare retur
+                  </div>
+                  <div className="text-sm text-[color:var(--ink-500)]">{backLabel}</div>
+                </div>
+              </div>
+              <div className="font-[family-name:var(--font-montserrat)] text-3xl md:text-4xl font-extrabold text-[color:var(--navy-900)] leading-tight">
+                {sched.returnLabel}
+              </div>
+              <div className="mt-2 inline-flex items-center gap-1 text-xs text-[color:var(--ink-500)]">
+                <Clock className="h-3.5 w-3.5" />
+                Durată {sched.returnDuration}
+              </div>
+              {flagCode && (
+                <div className="mt-5 flex items-center gap-2 text-xs text-[color:var(--ink-500)]">
+                  Plecare din <CountryFlag code={flagCode} className="h-4 w-6 inline-block" /> {destination.name}
+                </div>
+              )}
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================
+// FAQ items per țară / oraș (cu schema FAQPage atașat în render)
+// ============================================
+
+type FaqItem = { q: string; a: string };
+type Sched = ReturnType<typeof getCountrySchedule>;
+
+function buildCountryFaq(destination: Destination, sched: Sched): FaqItem[] {
+  const items: FaqItem[] = [];
+  if (sched) {
+    items.push({
+      q: `Când pleacă autocarul din Moldova spre ${destination.name}?`,
+      a: `${sched.fullSentence} Plecarea e săptămânală, ora exactă rămâne aceeași — îți confirmăm punctul de îmbarcare prin telefon/SMS cu o zi înainte.`,
+    });
+    items.push({
+      q: `Când e returul din ${destination.name} spre Moldova?`,
+      a: `Returul pleacă ${sched.returnLabel.toLowerCase()} din ${destination.name}. Durată ${sched.returnDuration}. Locul de îmbarcare se confirmă cu pasagerii înainte de plecare.`,
+    });
+  }
+  items.push({
+    q: `Cât costă un bilet Moldova - ${destination.name}?`,
+    a: `Prețul de pornire e ${destination.price || "120"}${destination.currency} pe sens, în funcție de oraș și sezon. Verifici prețul exact pentru ruta ta direct în formularul de rezervare.`,
+  });
+  items.push({
+    q: `Din ce orașe din Moldova pot pleca?`,
+    a: `Autocarul DAVO Group preia pasageri din toate orașele Moldovei: Chișinău (sediu Calea Ieșilor 11/3), Bălți, Cahul, Comrat, Ungheni, Orhei, Soroca, Edineț, Drochia, Hîncești, Ialoveni, Strășeni, Căușeni, Cimișlia, Fălești. La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
+  });
+  items.push({
+    q: `Pot trimite un colet în ${destination.name}?`,
+    a: `Da. Avem remorcă frigorifică separată pentru colete perisabile (mâncare, dulciuri, plăcinte) și remorcă obișnuită pentru pachete normale. Preluare de la ușa expeditorului din toată Moldova, livrare la ușa destinatarului din ${destination.name}.`,
+  });
+  items.push({
+    q: `Ce facilități am la bord?`,
+    a: `Wi-Fi Starlink nelimitat (chiar și pe autostradă), prize USB la fiecare scaun, prânz cald gratuit, ceai și cafea naturală, scaune reclinabile, aer condiționat, însoțitoare de bord pe toată cursa, oprire pentru pauze.`,
+  });
+  items.push(...defaultFAQs.slice(0, 3));
+  return items;
+}
+
+function buildCityFaq(city: City, destination: Destination, sched: Sched): FaqItem[] {
+  const items: FaqItem[] = [];
+  items.push({
+    q: `Cum ajung de la Chișinău la ${city.name}?`,
+    a: `DAVO Group operează cursă regulată Chișinău → ${city.name} (${destination.name})${sched ? `, plecare ${sched.outboundLabel.toLowerCase()} și retur ${sched.returnLabel.toLowerCase()}` : ""}. Călătoria durează ${sched?.outboundDuration ?? "20-40h"}, cu autocar modern dotat cu Wi-Fi Starlink, prânz inclus și însoțitoare 24/24.`,
+  });
+  items.push({
+    q: `Cât costă biletul Chișinău - ${city.name}?`,
+    a: `Prețul de pornire e ${destination.price || "120"}${destination.currency} pe sens, dus simplu. Pentru tur-retur ai reducere — cere ofertă exactă în formularul de rezervare.`,
+  });
+  if (sched) {
+    items.push({
+      q: `Când pleacă autocarul în ${city.name}?`,
+      a: `Plecare săptămânală: ${sched.outboundLabel} din Chișinău. Returul din ${city.name}: ${sched.returnLabel}. Confirmăm cu fiecare pasager punctul exact de îmbarcare prin telefon înainte de cursă.`,
+    });
+  }
+  items.push({
+    q: `Pot să trimit un colet la ${city.name}?`,
+    a: `Da, livrăm colete în ${city.name} la ușa destinatarului. Pentru perisabile (mâncare, plăcinte, dulciuri) avem remorcă frigorifică separată. Detalii și tarife la rezervarea coletului.`,
+  });
+  items.push({
+    q: `Bagajul meu e inclus?`,
+    a: `Da — 35 kg de cală + 5 kg bagaj de mână gratuit pentru fiecare pasager. Pentru bagaj suplimentar ne înțelegem prealabil la preț redus.`,
+  });
+  items.push(...defaultFAQs.slice(0, 3));
+  return items;
 }
