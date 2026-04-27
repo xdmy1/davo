@@ -4,21 +4,59 @@ import { prisma } from "@/lib/prisma";
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
 
+/**
+ * Cache simplu cu ID-ul Chișinăului. Nu se schimbă niciodată — îl rezolvăm
+ * o dată per instanță de funcție.
+ */
+let chisinauIdCache: string | null = null;
+async function getChisinauId(): Promise<string | null> {
+  if (chisinauIdCache) return chisinauIdCache;
+  const c = await prisma.city.findUnique({
+    where: { slug: "chisinau" },
+    select: { id: true },
+  });
+  chisinauIdCache = c?.id ?? null;
+  return chisinauIdCache;
+}
+
+/**
+ * Toate cursele pleacă/sosesc la Chișinău (un singur autocar fizic). Dacă
+ * userul caută cu un alt oraș moldovenesc ca origine sau destinație, alias-ăm
+ * la Chișinău: aceleași curse apar, capacitatea e partajată corect, iar
+ * autocarul oprește la celelalte orașe pe drum (pickup negociat cu operatorul
+ * la rezervare).
+ */
+async function aliasMoldovaToChisinau(cityId: string): Promise<string> {
+  const c = await prisma.city.findUnique({
+    where: { id: cityId },
+    select: { country: { select: { slug: true } } },
+  });
+  if (c?.country.slug !== "moldova") return cityId;
+  const chisinauId = await getChisinauId();
+  return chisinauId ?? cityId;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
-    const originCityId = searchParams.get("originCityId");
-    const destCityId = searchParams.get("destCityId");
+    const rawOriginCityId = searchParams.get("originCityId");
+    const rawDestCityId = searchParams.get("destCityId");
     const date = searchParams.get("date");
     const fromParam = searchParams.get("from");
     const limitParam = searchParams.get("limit");
 
-    if (!originCityId || !destCityId) {
+    if (!rawOriginCityId || !rawDestCityId) {
       return NextResponse.json(
         { success: false, error: "originCityId, destCityId required" },
         { status: 400 }
       );
     }
+
+    // Alias: orice oraș MD → Chișinău, în ambele direcții (dus + retur).
+    const [originCityId, destCityId] = await Promise.all([
+      aliasMoldovaToChisinau(rawOriginCityId),
+      aliasMoldovaToChisinau(rawDestCityId),
+    ]);
 
     const route = await prisma.route.findUnique({
       where: {
