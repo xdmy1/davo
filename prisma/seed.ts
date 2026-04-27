@@ -149,44 +149,55 @@ async function main() {
     }
   }
 
-  console.log("→ Seed: Routes (Chișinău → fiecare destinație primară)");
+  console.log("→ Seed: Routes (Chișinău → fiecare oraș destinație)");
   const chisinau = await prisma.city.findUnique({ where: { slug: "chisinau" } });
   if (!chisinau) throw new Error("Chișinău origin city missing");
 
   for (const dest of destinations) {
-    const primaryCity = dest.cities[0];
-    if (!primaryCity) continue;
-    const destCity = await prisma.city.findUnique({ where: { slug: primaryCity.slug } });
-    if (!destCity) continue;
-
     const currency = dest.currency === "£" ? "GBP" : "EUR";
     const price = Number(dest.price) || 100;
 
-    await prisma.route.upsert({
-      where: {
-        originCityId_destinationCityId: {
+    for (let i = 0; i < dest.cities.length; i++) {
+      const cityRow = dest.cities[i];
+      const destCity = await prisma.city.findUnique({ where: { slug: cityRow.slug } });
+      if (!destCity) continue;
+
+      const isPrimary = i === 0;
+
+      await prisma.route.upsert({
+        where: {
+          originCityId_destinationCityId: {
+            originCityId: chisinau.id,
+            destinationCityId: destCity.id,
+          },
+        },
+        // Pentru orașul primar păstrăm description/seoSlug (sunt despre țara în general).
+        // Pentru celelalte orașe le lăsăm null — nu le suprascriem la fiecare seed.
+        update: isPrimary
+          ? {
+              basePrice: price,
+              currency,
+              description: dest.description,
+              seoSlug: dest.seoSlug,
+              active: true,
+            }
+          : {
+              basePrice: price,
+              currency,
+              active: true,
+            },
+        create: {
           originCityId: chisinau.id,
           destinationCityId: destCity.id,
+          basePrice: price,
+          currency,
+          description: isPrimary ? dest.description : null,
+          seoSlug: isPrimary ? dest.seoSlug : null,
+          active: true,
+          weeklyDepartures: 2,
         },
-      },
-      update: {
-        basePrice: price,
-        currency,
-        description: dest.description,
-        seoSlug: dest.seoSlug,
-        active: true,
-      },
-      create: {
-        originCityId: chisinau.id,
-        destinationCityId: destCity.id,
-        basePrice: price,
-        currency,
-        description: dest.description,
-        seoSlug: dest.seoSlug,
-        active: true,
-        weeklyDepartures: 2,
-      },
-    });
+      });
+    }
   }
 
   console.log("→ Seed: Autocare demo");
