@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Montserrat } from "next/font/google";
-import { destinations, moldovanCities } from "@/lib/data";
+import Script from "next/script";
+import { contactInfo, destinations, moldovanCities } from "@/lib/data";
 import "./globals.css";
 
 const inter = Inter({
@@ -87,12 +88,21 @@ export const metadata: Metadata = {
     locale: "ro_MD",
     siteName: "DAVO Group",
     url: SITE_URL,
+    images: [
+      {
+        url: "/images/bus-highway.png",
+        width: 1200,
+        height: 630,
+        alt: "DAVO Group — Transport Moldova → Europa",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "DAVO Group — Transport Moldova → Europa",
     description:
       "Autocare cu Starlink, prânz gratuit, însoțitoare 24/7. Colete în remorcă frigorifică. Colectare din toată Moldova.",
+    images: ["/images/bus-highway.png"],
   },
   robots: {
     index: true,
@@ -106,6 +116,57 @@ export const metadata: Metadata = {
   },
 };
 
+// Organization JSON-LD — singura schema globală, rulează pe toate paginile.
+// Rich result eligibility pentru sitelinks searchbox + brand panel.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": `${SITE_URL}/#organization`,
+  name: "DAVO Group",
+  alternateName: "DAVO Grup",
+  url: SITE_URL,
+  logo: `${SITE_URL}/images/logo-davo.png`,
+  image: `${SITE_URL}/images/bus-highway.png`,
+  description:
+    "Operator de transport pasageri și colete din Moldova către Anglia, Belgia, Olanda, Germania și Luxemburg. Curse săptămânale cu autocare moderne, Starlink la bord, prânz gratuit și însoțitoare.",
+  telephone: contactInfo.phone,
+  email: contactInfo.email,
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Calea Ieșilor 11/3",
+    addressLocality: "Chișinău",
+    addressCountry: "MD",
+    postalCode: "MD-2069",
+  },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 47.0260,
+    longitude: 28.8060,
+  },
+  sameAs: [
+    "https://www.facebook.com/davogroup",
+    "https://www.instagram.com/davogroup",
+  ],
+  areaServed: ["MD", "GB", "BE", "NL", "DE", "LU"],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${SITE_URL}/#website`,
+  url: SITE_URL,
+  name: "DAVO Group",
+  inLanguage: "ro-MD",
+  publisher: { "@id": `${SITE_URL}/#organization` },
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/rezervare?to={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
+const PLAUSIBLE_DOMAIN = "davo.md";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -113,7 +174,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ro" className={`${inter.variable} ${montserrat.variable}`}>
-      <body className="bg-white text-slate-900 antialiased">{children}</body>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
+      <body className="bg-white text-slate-900 antialiased">
+        {children}
+        {/* Plausible analytics — privacy-friendly, fără cookies, fără GDPR banner. */}
+        <Script
+          defer
+          data-domain={PLAUSIBLE_DOMAIN}
+          src="https://plausible.io/js/script.js"
+          strategy="afterInteractive"
+        />
+      </body>
     </html>
   );
 }
