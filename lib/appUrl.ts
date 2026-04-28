@@ -16,6 +16,29 @@
  */
 export function appUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  // În dev local respectăm valoarea explicită chiar dacă e localhost — altfel
+  // tokenul de confirmare semnat cu secretul local nu mai e verificabil când
+  // browserul deschide link-ul pe https://davo.md.
+  if (explicit && process.env.NODE_ENV !== "production") return explicit;
+  if (explicit && !explicit.includes("localhost")) return explicit;
+
+  const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (prodHost) return `https://${prodHost}`;
+
+  const deployHost = process.env.VERCEL_URL;
+  if (deployHost) return `https://${deployHost}`;
+
+  return "https://davo.md";
+}
+
+/**
+ * Variantă strict publică a URL-ului aplicației — folosită pentru link-uri
+ * scanate sau partajate cu lumea de afară (QR pe bilet, share link), unde
+ * `localhost` n-are sens. Sare peste valoarea explicită dacă e localhost,
+ * indiferent de NODE_ENV.
+ */
+export function publicAppUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
   if (explicit && !explicit.includes("localhost")) return explicit;
 
   const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;

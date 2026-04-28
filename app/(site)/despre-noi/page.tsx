@@ -121,7 +121,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <DiscoverDavo />
+      <DiscoverDavo hideCta />
     </>
   );
 }

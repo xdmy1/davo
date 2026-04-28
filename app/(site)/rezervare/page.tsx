@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ArrowRight,
   Calendar,
   Clock,
@@ -17,7 +18,6 @@ import {
   User,
   Mail,
   Phone,
-  Search,
   Info,
 } from "lucide-react";
 import { destinations, moldovanCities, contactInfo } from "@/lib/data";
@@ -26,6 +26,7 @@ import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag"
 import RouteHero from "@/components/booking/RouteHero";
 import { StepBar } from "@/components/booking/StepBar";
 import { TripPicker, type PublicTrip } from "@/components/booking/TripPicker";
+import { CityCombobox } from "@/components/booking/CityCombobox";
 import SuccessCard from "@/components/ui/SuccessCard";
 
 type Mode = "bilet" | "colet";
@@ -68,8 +69,21 @@ function RezervareContent() {
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [step, setStep] = useState(0);
-  const [from, setFrom] = useState(params.get("from") || "Chișinău");
-  const [to, setTo] = useState(params.get("to") || "London");
+  const initialFrom = params.get("from") || "Chișinău";
+  const initialTo = params.get("to") || "London";
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
+  // Direcția determină ce listă apare la "Plecare din" vs "Destinația".
+  // Userul o inversează cu butonul swap din DirectionStep — atât tur, cât și
+  // retur sunt valide (există rute Europa → Moldova în DB).
+  // Detectăm direcția inițială din `from` ca să gestionăm corect cazul când
+  // userul vine de pe Hero cu un oraș european (după ce a făcut swap acolo).
+  const [direction, setDirection] = useState<"md-to-eu" | "eu-to-md">(() => {
+    const f = initialFrom.split(",")[0].trim().toLowerCase();
+    return moldovanCities.some((c) => c.name.toLowerCase() === f)
+      ? "md-to-eu"
+      : "eu-to-md";
+  });
   const [trip, setTrip] = useState<"one" | "return">("one");
   const [passengers, setPassengers] = useState(1);
 
@@ -120,7 +134,6 @@ function RezervareContent() {
     width: "",
     height: "",
     contents: "",
-    insurance: "",
   });
 
   useEffect(() => {
@@ -159,10 +172,14 @@ function RezervareContent() {
     []
   );
 
+  // Țara/steagul se derivă din câmpul european — la EU→MD, asta e `from`.
+  const europeanField = direction === "md-to-eu" ? to : from;
   const matchedCountry = useMemo(() => {
-    const hit = destinationCities.find((c) => to.toLowerCase().startsWith(c.name.toLowerCase()));
+    const hit = destinationCities.find((c) =>
+      europeanField.toLowerCase().startsWith(c.name.toLowerCase())
+    );
     return hit ? destinations.find((d) => d.slug === hit.slug) : null;
-  }, [to, destinationCities]);
+  }, [europeanField, destinationCities]);
 
   const flagCode = matchedCountry ? destinationSlugToCode[matchedCountry.slug] : undefined;
 
@@ -178,12 +195,14 @@ function RezervareContent() {
     return matchedCountry?.currency || "€";
   }, [outboundTripInfo, matchedCountry]);
 
-  // Rezolvare nume oraș → City ID din DB
+  // Rezolvare nume oraș → City ID din DB. Strip-uiesc sufixul ", Țară" din
+  // ambele câmpuri fiindcă la direcția EU→MD `from` poate fi "London, Anglia".
+  const fromCityName = from.split(",")[0].trim();
   const toCityName = to.split(",")[0].trim();
   const originCityId = useMemo(() => {
     if (!cityIndex) return null;
-    return cityIndex[from.trim().toLowerCase()]?.id ?? null;
-  }, [cityIndex, from]);
+    return cityIndex[fromCityName.toLowerCase()]?.id ?? null;
+  }, [cityIndex, fromCityName]);
   const destCityId = useMemo(() => {
     if (!cityIndex) return null;
     return cityIndex[toCityName.toLowerCase()]?.id ?? null;
@@ -216,6 +235,20 @@ function RezervareContent() {
     setReturnSeats([]);
   };
 
+  // Inversează direcția (Moldova ↔ Europa). Reset cursele alese fiindcă ruta
+  // s-a schimbat și ID-urile vechi nu mai sunt valide.
+  const swapDirection = () => {
+    setDirection((d) => (d === "md-to-eu" ? "eu-to-md" : "md-to-eu"));
+    setFrom(to);
+    setTo(from);
+    setOutboundTripId(null);
+    setOutboundSeats([]);
+    setOutboundTripInfo(null);
+    setReturnTripId(null);
+    setReturnSeats([]);
+    setReturnTripInfo(null);
+  };
+
   const canContinue = (() => {
     if (mode !== "bilet") return true;
     if (step === 0) {
@@ -243,7 +276,7 @@ function RezervareContent() {
           ? {
               type: "passenger",
               tripType: trip === "return" ? "round-trip" : "one-way",
-              departureCity: from,
+              departureCity: fromCityName,
               arrivalCity: toCityName,
               departureDate: date,
               returnDate: trip === "return" ? returnDate : undefined,
@@ -290,7 +323,7 @@ function RezervareContent() {
 
   return (
     <>
-      <RouteHero mode={mode} from={from} to={to.split(",")[0]} />
+      <RouteHero mode={mode} from={fromCityName} to={toCityName} />
 
       <section className="relative pt-8 pb-20 bg-[color:var(--ink-50)]">
         <div className="container-page">
@@ -320,8 +353,17 @@ function RezervareContent() {
                             onTo={setTo}
                             onTrip={setTrip}
                             onPassengers={updatePassengers}
-                            fromOptions={moldovanCities.map((c) => c.name)}
-                            toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
+                            onSwap={swapDirection}
+                            fromOptions={
+                              direction === "md-to-eu"
+                                ? moldovanCities.map((c) => c.name)
+                                : destinationCities.map((c) => `${c.name}, ${c.country}`)
+                            }
+                            toOptions={
+                              direction === "md-to-eu"
+                                ? destinationCities.map((c) => `${c.name}, ${c.country}`)
+                                : moldovanCities.map((c) => c.name)
+                            }
                           />
                           {originCityId && destCityId && (
                             <TripPicker
@@ -373,7 +415,7 @@ function RezervareContent() {
                           payMethod={payMethod}
                           onPayMethod={setPayMethod}
                           lines={[
-                            { label: `${from} → ${toCityName}`, value: `${basePrice}${currency}` },
+                            { label: `${fromCityName} → ${toCityName}`, value: `${basePrice}${currency}` },
                             { label: `Locuri: ${outboundSeats.length || 1}`, value: `×${outboundSeats.length || 1}` },
                             {
                               label: trip === "return" ? "Tur-retur" : "O direcție",
@@ -410,7 +452,6 @@ function RezervareContent() {
                           lines={[
                             { label: "Livrare colet", value: "standard" },
                             { label: `Greutate: ${parcel.weight || 0} kg`, value: `×${parcel.weight || 0}` },
-                            { label: "Asigurare", value: parcel.insurance || "de bază" },
                           ]}
                           total={`${total}${currency}`}
                         />
@@ -491,8 +532,8 @@ function RezervareContent() {
 
             <SummaryCard
               mode={mode}
-              from={from}
-              to={to}
+              from={fromCityName}
+              to={toCityName}
               date={date}
               returnDate={trip === "return" ? returnDate : undefined}
               flagCode={flagCode}
@@ -528,6 +569,7 @@ function DirectionStep({
   onTo,
   onTrip,
   onPassengers,
+  onSwap,
   fromOptions,
   toOptions,
   hideTrip = false,
@@ -540,6 +582,7 @@ function DirectionStep({
   onTo: (v: string) => void;
   onTrip: (v: "one" | "return") => void;
   onPassengers?: (n: number) => void;
+  onSwap?: () => void;
   fromOptions: string[];
   toOptions: string[];
   hideTrip?: boolean;
@@ -553,13 +596,24 @@ function DirectionStep({
         <h2 className="display-hero text-2xl md:text-3xl text-[color:var(--navy-900)]">Direcția deplasării</h2>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="relative grid md:grid-cols-2 gap-4">
         <FancyField label="Plecare din" icon={<MapPin className="h-4 w-4" />}>
-          <FieldInput value={from} onChange={onFrom} options={fromOptions} placeholder="Alege oraș plecare" />
+          <CityCombobox value={from} onChange={onFrom} options={fromOptions} placeholder="Alege oraș plecare" />
         </FancyField>
         <FancyField label="Destinația" icon={<MapPin className="h-4 w-4" />}>
-          <FieldInput value={to} onChange={onTo} options={toOptions} placeholder="Alege oraș destinație" />
+          <CityCombobox value={to} onChange={onTo} options={toOptions} placeholder="Alege oraș destinație" />
         </FancyField>
+        {onSwap && (
+          <button
+            type="button"
+            onClick={onSwap}
+            aria-label="Inversează direcția"
+            title="Inversează direcția"
+            className="absolute left-1/2 top-1/2 z-10 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] shadow-md transition-all hover:scale-105 hover:border-[color:var(--red-500)] hover:text-[color:var(--red-500)]"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+          </button>
+        )}
         <div className="md:col-span-2 -mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-[color:var(--navy-50)] border border-[color:var(--navy-200,rgba(20,58,122,0.18))] px-4 py-2.5 text-xs text-[color:var(--ink-700)]">
           <Info className="h-3.5 w-3.5 text-[color:var(--red-500)] shrink-0" />
           <span>
@@ -790,7 +844,6 @@ function ParcelForm({
     width: string;
     height: string;
     contents: string;
-    insurance: string;
   };
   onChange: (p: typeof parcel) => void;
 }) {
@@ -850,19 +903,6 @@ function ParcelForm({
             placeholder="Haine, documente, cadouri…"
             className="simple-input"
           />
-        </SimpleField>
-      </div>
-      <div className="mt-4">
-        <SimpleField label="Asigurare">
-          <select
-            value={parcel.insurance}
-            onChange={(e) => setField("insurance", e.target.value)}
-            className="simple-input"
-          >
-            <option value="de bază">De bază (inclus)</option>
-            <option value="extinsă">Extinsă (+3€)</option>
-            <option value="premium">Premium (+8€)</option>
-          </select>
         </SimpleField>
       </div>
       <InputStyles />
@@ -1132,36 +1172,6 @@ function SimpleField({
   );
 }
 
-function FieldInput({
-  value,
-  onChange,
-  options,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  placeholder?: string;
-}) {
-  const id = "inp-" + Math.random().toString(36).slice(2, 8);
-  return (
-    <>
-      <input
-        list={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent text-[0.95rem] font-semibold text-[color:var(--navy-900)] outline-none"
-        placeholder={placeholder}
-      />
-      <datalist id={id}>
-        {options.map((o) => (
-          <option key={o} value={o} />
-        ))}
-      </datalist>
-    </>
-  );
-}
-
 function TripTypeTab({
   active,
   onClick,
@@ -1215,7 +1225,7 @@ function BenefitsStrip() {
     { icon: ShieldCheck, label: "Siguranță 100%" },
     { icon: Truck, label: "Curse zilnice" },
     { icon: Users, label: "Însoțitor la bord" },
-    { icon: Search, label: "Urmărire rezervare" },
+    { icon: Mail, label: "Confirmare pe email" },
   ];
   return (
     <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -7,7 +7,6 @@ import {
   Package,
   CheckCircle2,
   XCircle,
-  Truck,
   CalendarClock,
   MapPin,
   CreditCard,
@@ -92,9 +91,9 @@ function LivrareContent() {
   return (
     <>
       <PageHero
-        eyebrow="Tracking"
-        title="Urmărește coletul sau biletul"
-        description="Introdu numărul rezervării (ex. DAVO-2026-XXXXXX) ca să vezi statusul curent. Dacă e colet, telefonul tău (ultimele 4 cifre) e folosit pentru verificare suplimentară."
+        eyebrow="Rezervarea ta"
+        title="Vezi rezervarea"
+        description="Introdu numărul rezervării (ex. DAVO-2026-XXXXXX) ca să vezi detaliile rezervării tale. Dacă e colet, telefonul tău (ultimele 4 cifre) e folosit pentru verificare suplimentară."
         tone="dark"
       />
 
@@ -151,7 +150,7 @@ function LivrareContent() {
                   ) : (
                     <>
                       <Search className="h-4 w-4" />
-                      Verifică status
+                      Caută rezervarea
                     </>
                   )}
                 </button>
@@ -182,12 +181,12 @@ function LivrareContent() {
           <Reveal delay={0.1}>
             <div className="mt-12 grid gap-3 sm:grid-cols-3">
               {[
-                { icon: Truck, title: "Tracking colete", body: "Vezi unde se află coletul tău în drum spre Europa" },
-                { icon: CheckCircle2, title: "Confirmare bilet", body: "Pentru pasageri — verifică statusul cursei" },
+                { icon: Package, title: "Detalii colet", body: "Vezi datele rezervării coletului — destinație, plată, instrucțiuni" },
+                { icon: CheckCircle2, title: "Confirmare bilet", body: "Pentru pasageri — verifică datele rezervării și ruta" },
                 {
                   icon: Phone,
                   title: "Asistență 24/7",
-                  body: "Nu găsești coletul? Sună dispeceratul: " + contactInfo.phone,
+                  body: "Întrebări despre cursă sau colet? Sună dispeceratul: " + contactInfo.phone,
                 },
               ].map((b) => (
                 <div

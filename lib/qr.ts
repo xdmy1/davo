@@ -1,8 +1,11 @@
 import QRCode from "qrcode";
-import { appUrl } from "@/lib/appUrl";
+import { appUrl, publicAppUrl } from "@/lib/appUrl";
 
+// QR-ul de pe bilet e scanat de telefoane externe — trebuie să fie întotdeauna
+// URL public canonic (davo.md), nu localhost, indiferent de mediul în care e
+// generat.
 export function ticketUrl(bookingNumber: string): string {
-  return `${appUrl()}/bilet/${bookingNumber}`;
+  return `${publicAppUrl()}/bilet/${bookingNumber}`;
 }
 
 export function qrPngUrl(bookingNumber: string): string {

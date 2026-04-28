@@ -100,7 +100,7 @@ function CompanyTab() {
 function BankTab() {
   return (
     <div className="space-y-5">
-      <Title label="Rechizite bancare" desc="Afișate pe pagina publică /rechizite-bancare și pe facturi" />
+      <Title label="Rechizite bancare" desc="Afișate pe pagina publică /rechizitele-bancare și pe facturi" />
       <Grid>
         <Field label="Bancă">
           <input defaultValue={bankDetails.bank} className={inputCls} />

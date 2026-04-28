@@ -217,7 +217,7 @@ export default function InformatiiUtile() {
             {
               icon: Route,
               title: "Livrarea coletelor",
-              body: "Colete livrate rapid și în siguranță, cu urmărire și asigurare inclusă. Servim toate destinațiile noastre.",
+              body: "Colete livrate rapid și în siguranță, preluate din toată Moldova și livrate la adresa destinatarului. Servim toate destinațiile noastre.",
             },
             {
               icon: HeartHandshake,

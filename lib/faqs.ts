@@ -13,7 +13,7 @@ export const defaultFAQs = [
   },
   {
     q: "Pot trimite un colet?",
-    a: "Da. Poți expedia colete pe oricare din destinațiile noastre — de la plicuri la colete mari. Oferim preluare de la adresă și livrare la ușa destinatarului, cu asigurare.",
+    a: "Da. Poți expedia colete pe oricare din destinațiile noastre — de la plicuri la colete mari. Preluăm din toată Moldova și livrăm la ușa destinatarului.",
   },
   {
     q: "Este nevoie să imprim biletul?",

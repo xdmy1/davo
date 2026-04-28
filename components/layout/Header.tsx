@@ -11,17 +11,15 @@ import { cn } from "@/lib/utils";
 import {
   FacebookIcon,
   InstagramIcon,
-  YoutubeIcon,
-  TelegramIcon,
+  TikTokIcon,
   WhatsAppIcon,
 } from "@/components/ui/SocialIcons";
 
 const socials = [
   { href: `https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, "")}`, icon: WhatsAppIcon, label: "WhatsApp" },
-  { href: `https://t.me/${contactInfo.telegram.replace(/[^0-9]/g, "")}`, icon: TelegramIcon, label: "Telegram" },
-  { href: "https://facebook.com", icon: FacebookIcon, label: "Facebook" },
-  { href: "https://instagram.com", icon: InstagramIcon, label: "Instagram" },
-  { href: "https://youtube.com", icon: YoutubeIcon, label: "YouTube" },
+  { href: contactInfo.social.facebook, icon: FacebookIcon, label: "Facebook" },
+  { href: contactInfo.social.instagram, icon: InstagramIcon, label: "Instagram" },
+  { href: contactInfo.social.tiktok, icon: TikTokIcon, label: "TikTok" },
 ];
 
 const languages = [
@@ -54,7 +52,7 @@ export default function Header() {
   return (
     <>
       {/* Top contact strip */}
-      <div className="hidden lg:block bg-[color:var(--navy-950)] text-white">
+      <div className="hidden lg:block print:!hidden bg-[color:var(--navy-950)] text-white">
         <div className="container-page flex items-center justify-between py-2 text-[13px]">
           <a
             href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}
@@ -128,7 +126,7 @@ export default function Header() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.35 }}
         className={cn(
-          "sticky top-0 z-50 border-b border-transparent transition-all duration-300",
+          "print:hidden sticky top-0 z-50 border-b border-transparent transition-all duration-300",
           scrolled
             ? "bg-white/90 backdrop-blur-md border-[color:var(--ink-100)] shadow-sm"
             : "bg-white"

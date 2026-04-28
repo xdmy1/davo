@@ -160,21 +160,12 @@ export const destinations: Destination[] = [
 ];
 
 export const moldovanCities: City[] = [
-  { id: "m1", name: "Chișinău", slug: "chisinau" },
-  { id: "m2", name: "Bălți", slug: "balti" },
-  { id: "m3", name: "Cahul", slug: "cahul" },
+  { id: "m1", name: "Ialoveni", slug: "ialoveni" },
+  { id: "m2", name: "Hîncești", slug: "hincesti" },
+  { id: "m3", name: "Cimișlia", slug: "cimislia" },
   { id: "m4", name: "Comrat", slug: "comrat" },
-  { id: "m5", name: "Hîncești", slug: "hincesti" },
-  { id: "m6", name: "Ialoveni", slug: "ialoveni" },
-  { id: "m7", name: "Orhei", slug: "orhei" },
-  { id: "m8", name: "Soroca", slug: "soroca" },
-  { id: "m9", name: "Ungheni", slug: "ungheni" },
-  { id: "m10", name: "Edineț", slug: "edinet" },
-  { id: "m11", name: "Căușeni", slug: "causeni" },
-  { id: "m12", name: "Strășeni", slug: "straseni" },
-  { id: "m13", name: "Cimișlia", slug: "cimislia" },
-  { id: "m14", name: "Drochia", slug: "drochia" },
-  { id: "m15", name: "Fălești", slug: "falesti" },
+  { id: "m5", name: "Balabanu", slug: "balabanu" },
+  { id: "m6", name: "Cahul", slug: "cahul" },
 ];
 
 export const services: Service[] = [
@@ -205,9 +196,7 @@ export const services: Service[] = [
       "Remorcă frigorifică separată pentru produse alterabile",
       "Colectare colete din toată Moldova (vezi grafic)",
       "Integritate garantată — sigilare la preluare",
-      "Tracking colet online prin /livrare",
       "Plată cash sau card la livrare",
-      "Asigurare extinsă disponibilă la cerere",
     ],
   },
   {
@@ -265,7 +254,7 @@ export const contactInfo = {
   phoneBelgium: "+32 484 47 64 46",
   phoneBelgium2: "+32 470 27 59 22",
   phoneUK: "+44 744 748 0276",
-  whatsapp: "+373 76 041 855",
+  whatsapp: "+373 68 065 699",
   viber: "+373 68 065 699",
   telegram: "+373 68 065 699",
   email: "info@davo.md",
@@ -274,6 +263,13 @@ export const contactInfo = {
   mapsUrl: "https://maps.google.com/?q=Calea+Ie%C8%99ilor+11%2F3+Chi%C8%99in%C4%83u",
   mapsEmbedSrc:
     "https://www.google.com/maps?q=Calea+Ie%C8%99ilor+11%2F3+Chi%C8%99in%C4%83u&output=embed",
+  social: {
+    facebook: "https://www.facebook.com/davotrans",
+    instagram: "https://www.instagram.com/davotrans/",
+    tiktok: "https://www.tiktok.com/@davo.trans",
+    handle: "@davotrans",
+    handleTikTok: "@davo.trans",
+  },
 };
 
 // Orar punct de colectare colete + îmbarcare la sediul DAVO (Calea Ieșilor 11/3, Chișinău)
@@ -342,7 +338,7 @@ export const navItems: NavItem[] = [
     href: "/informatii-utile",
     children: [
       { label: "Despre noi", href: "/despre-noi" },
-      { label: "Rechizite bancare", href: "/rechizite-bancare" },
+      { label: "Rechizite bancare", href: "/rechizitele-bancare" },
     ],
   },
   { label: "Contacte", href: "/contact" },

@@ -144,8 +144,34 @@ export default function ContactPage() {
                   <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/70 mb-3">
                     Rețele sociale
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-white/85">
-                    @davogroup · Facebook · Instagram · YouTube
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-white/85">
+                    <a
+                      href={contactInfo.social.facebook}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-[color:var(--red-400)] transition-colors"
+                    >
+                      Facebook
+                    </a>
+                    <span className="text-white/30">·</span>
+                    <a
+                      href={contactInfo.social.instagram}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-[color:var(--red-400)] transition-colors"
+                    >
+                      Instagram
+                    </a>
+                    <span className="text-white/30">·</span>
+                    <a
+                      href={contactInfo.social.tiktok}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-[color:var(--red-400)] transition-colors"
+                    >
+                      TikTok
+                    </a>
+                    <span className="text-white/50 ml-1">{contactInfo.social.handle}</span>
                   </div>
                 </div>
 

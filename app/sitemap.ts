@@ -17,7 +17,7 @@ const STATIC_ROUTES: { path: string; priority: number; changeFreq: MetadataRoute
   { path: "/contact", priority: 0.6, changeFreq: "monthly" },
   { path: "/livrare", priority: 0.5, changeFreq: "monthly" },
   { path: "/colet-la-cheie", priority: 0.6, changeFreq: "monthly" },
-  { path: "/rechizite-bancare", priority: 0.3, changeFreq: "yearly" },
+  { path: "/rechizitele-bancare", priority: 0.3, changeFreq: "yearly" },
   { path: "/termeni-pasageri", priority: 0.3, changeFreq: "yearly" },
   { path: "/termeni-colete", priority: 0.3, changeFreq: "yearly" },
 ];

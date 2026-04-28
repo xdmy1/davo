@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Play, Bus, MapPin, Users } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
+import { contactInfo } from "@/lib/data";
 
 const cards = [
   {
@@ -41,11 +42,12 @@ export default function SocialDavo() {
               </h2>
             </div>
             <Link
-              href="https://youtube.com"
+              href={contactInfo.social.tiktok}
               target="_blank"
+              rel="noreferrer"
               className="text-sm font-semibold text-[color:var(--navy-900)] hover:text-[color:var(--red-500)] transition-colors"
             >
-              Vezi toate videourile →
+              Vezi toate videourile pe TikTok →
             </Link>
           </div>
         </Reveal>
@@ -74,7 +76,7 @@ export default function SocialDavo() {
                   <div className="font-[family-name:var(--font-montserrat)] font-extrabold uppercase text-lg leading-tight tracking-wider">
                     {c.title}
                   </div>
-                  <div className="mt-1 text-xs text-white/70">DAVO Group · YouTube</div>
+                  <div className="mt-1 text-xs text-white/70">DAVO Group · TikTok {contactInfo.social.handleTikTok}</div>
                 </div>
 
                 {/* hover play pulse */}

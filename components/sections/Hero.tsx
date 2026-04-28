@@ -1,10 +1,11 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowLeftRight,
   ArrowRight,
   Bus,
   MapPin,
@@ -16,6 +17,7 @@ import {
 import { cn, countryLandingUrl } from "@/lib/utils";
 import { destinations, moldovanCities } from "@/lib/data";
 import { CountryFlag, countryMeta, type CountryCode } from "@/components/ui/CountryFlag";
+import { CityCombobox } from "@/components/booking/CityCombobox";
 
 type Tab = "transport" | "colete";
 const flagOrder: CountryCode[] = ["gb", "de", "be", "nl", "lu"];
@@ -25,11 +27,34 @@ export default function Hero() {
   const [serviceType, setServiceType] = useState("regular");
   const [from, setFrom] = useState("Chișinău");
   const [to, setTo] = useState("");
+  const [direction, setDirection] = useState<"md-to-eu" | "eu-to-md">("md-to-eu");
 
   const destinationCities = useMemo(
     () => destinations.flatMap((d) => d.cities.map((c) => ({ name: c.name, country: d.name }))),
     []
   );
+
+  const fromOptions = useMemo(
+    () =>
+      direction === "md-to-eu"
+        ? moldovanCities.map((c) => c.name)
+        : destinationCities.map((c) => `${c.name}, ${c.country}`),
+    [direction, destinationCities]
+  );
+
+  const toOptions = useMemo(
+    () =>
+      direction === "md-to-eu"
+        ? destinationCities.map((c) => `${c.name}, ${c.country}`)
+        : moldovanCities.map((c) => c.name),
+    [direction, destinationCities]
+  );
+
+  const swapDirection = () => {
+    setDirection((d) => (d === "md-to-eu" ? "eu-to-md" : "md-to-eu"));
+    setFrom(to);
+    setTo(from);
+  };
 
   const searchHref = useMemo(() => {
     const params = new URLSearchParams({
@@ -233,7 +258,7 @@ export default function Hero() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.22 }}
-                  className="grid gap-2.5 md:grid-cols-[1.1fr,1fr,1fr,auto] items-stretch"
+                  className="grid gap-2.5 md:grid-cols-[1.1fr,2fr,auto] items-stretch"
                 >
                   <Field label="Tipul serviciului">
                     <select
@@ -247,23 +272,35 @@ export default function Hero() {
                     </select>
                   </Field>
 
-                  <Field label="Plecare din" icon={<MapPin className="h-3.5 w-3.5" />}>
-                    <CityInput
-                      value={from}
-                      onChange={setFrom}
-                      options={moldovanCities.map((c) => c.name)}
-                      placeholder="Chișinău"
-                    />
-                  </Field>
+                  <div className="relative grid gap-2.5 md:grid-cols-2 items-stretch">
+                    <Field label="Plecare din" icon={<MapPin className="h-3.5 w-3.5" />}>
+                      <CityCombobox
+                        value={from}
+                        onChange={setFrom}
+                        options={fromOptions}
+                        placeholder="Chișinău"
+                      />
+                    </Field>
 
-                  <Field label="Destinația" icon={<MapPin className="h-3.5 w-3.5" />}>
-                    <CityInput
-                      value={to}
-                      onChange={setTo}
-                      options={destinationCities.map((c) => `${c.name}, ${c.country}`)}
-                      placeholder="Alege orașul"
-                    />
-                  </Field>
+                    <Field label="Destinația" icon={<MapPin className="h-3.5 w-3.5" />}>
+                      <CityCombobox
+                        value={to}
+                        onChange={setTo}
+                        options={toOptions}
+                        placeholder="Alege orașul"
+                      />
+                    </Field>
+
+                    <button
+                      type="button"
+                      onClick={swapDirection}
+                      aria-label="Inversează direcția"
+                      title="Inversează direcția"
+                      className="absolute left-1/2 top-1/2 z-10 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] shadow-md transition-all hover:scale-105 hover:border-[color:var(--red-500)] hover:text-[color:var(--red-500)]"
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
 
                   <Link
                     href={searchHref}
@@ -365,32 +402,3 @@ function TabButton({
   );
 }
 
-function CityInput({
-  value,
-  onChange,
-  options,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  placeholder?: string;
-}) {
-  const id = useId();
-  return (
-    <>
-      <input
-        list={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent text-[0.95rem] font-semibold text-[color:var(--navy-900)] outline-none placeholder:text-[color:var(--ink-400)] placeholder:font-medium"
-        placeholder={placeholder}
-      />
-      <datalist id={id}>
-        {options.map((o) => (
-          <option key={o} value={o} />
-        ))}
-      </datalist>
-    </>
-  );
-}

@@ -36,7 +36,6 @@ export default function ColetBand() {
                 { icon: MapPin, title: "Colectăm din toată Moldova", body: "Bălți, Cahul, Comrat, Ungheni, Orhei și restul țării" },
                 { icon: Snowflake, title: "Remorcă frigorifică", body: "Pentru produse perisabile, temperatură controlată" },
                 { icon: Truck, title: "De la ușă la ușă", body: "Preluare și livrare la adresă" },
-                { icon: ShieldCheck, title: "Asigurare inclusă", body: "Transport securizat, tracked" },
                 { icon: Clock, title: "Cursă zilnică", body: "Plecări regulate, la timp" },
                 { icon: Package, title: "Orice dimensiune", body: "De la plicuri la 200+ kg" },
               ].map((b) => (

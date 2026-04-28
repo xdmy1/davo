@@ -9,24 +9,22 @@ import { Reveal } from "@/components/ui/Reveal";
 import {
   FacebookIcon,
   InstagramIcon,
-  YoutubeIcon,
-  TelegramIcon,
+  TikTokIcon,
   WhatsAppIcon,
 } from "@/components/ui/SocialIcons";
 
 const socials = [
   { href: `https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, "")}`, icon: WhatsAppIcon, label: "WhatsApp" },
-  { href: `https://t.me/${contactInfo.telegram.replace(/[^0-9]/g, "")}`, icon: TelegramIcon, label: "Telegram" },
-  { href: "https://facebook.com", icon: FacebookIcon, label: "Facebook" },
-  { href: "https://instagram.com", icon: InstagramIcon, label: "Instagram" },
-  { href: "https://youtube.com", icon: YoutubeIcon, label: "YouTube" },
+  { href: contactInfo.social.facebook, icon: FacebookIcon, label: "Facebook" },
+  { href: contactInfo.social.instagram, icon: InstagramIcon, label: "Instagram" },
+  { href: contactInfo.social.tiktok, icon: TikTokIcon, label: "TikTok" },
 ];
 
 export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative bg-[color:var(--navy-950)] text-white overflow-hidden">
+    <footer className="relative print:hidden bg-[color:var(--navy-950)] text-white overflow-hidden">
       {/* CTA band — rich end-of-page call to action */}
       <div className="relative bg-gradient-to-br from-[color:var(--ink-50)] via-white to-[color:var(--navy-50)] border-b border-[color:var(--ink-100)]">
         <div
@@ -208,12 +206,12 @@ export default function Footer() {
 
             <Reveal delay={0.15} className="md:col-span-3">
               <FooterColumn title="Informații utile">
-                <FooterLink href="/livrare">Urmărește colet / bilet</FooterLink>
+                <FooterLink href="/livrare">Caută rezervare</FooterLink>
                 <FooterLink href="/informatii-utile">Social DAVO Group</FooterLink>
                 <FooterLink href="/rezervare">Rezervări</FooterLink>
                 <FooterLink href="/despre-noi">Despre noi</FooterLink>
                 <FooterLink href="/contact">Contacte</FooterLink>
-                <FooterLink href="/rechizite-bancare">Rechizite bancare</FooterLink>
+                <FooterLink href="/rechizitele-bancare">Rechizite bancare</FooterLink>
                 <FooterLink href="/termeni-pasageri">T&amp;C pasageri</FooterLink>
                 <FooterLink href="/termeni-colete">T&amp;C colete</FooterLink>
               </FooterColumn>

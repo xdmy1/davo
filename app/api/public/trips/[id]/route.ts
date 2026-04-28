@@ -18,14 +18,28 @@ export async function GET(
     const { id } = await params;
     const trip = await prisma.trip.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        departureAt: true,
+        arrivalAt: true,
+        status: true,
         route: {
-          include: {
-            originCity: true,
-            destinationCity: true,
+          select: {
+            id: true,
+            basePrice: true,
+            currency: true,
+            originCity: { select: { name: true } },
+            destinationCity: { select: { name: true } },
           },
         },
-        bus: true,
+        bus: {
+          select: {
+            id: true,
+            label: true,
+            totalSeats: true,
+            layoutJson: true,
+          },
+        },
         seatBookings: { select: { seatNumber: true } },
       },
     });

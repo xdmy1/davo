@@ -144,8 +144,9 @@ const organizationJsonLd = {
     longitude: 28.8060,
   },
   sameAs: [
-    "https://www.facebook.com/davogroup",
-    "https://www.instagram.com/davogroup",
+    contactInfo.social.facebook,
+    contactInfo.social.instagram,
+    contactInfo.social.tiktok,
   ],
   areaServed: ["MD", "GB", "BE", "NL", "DE", "LU"],
 };

@@ -144,7 +144,7 @@ export default function TicketPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/livrare">
-              <Button variant="primary">Încearcă /livrare</Button>
+              <Button variant="primary">Caută rezervare</Button>
             </Link>
             <Link href="/">
               <Button variant="outline">Acasă</Button>
@@ -414,25 +414,31 @@ export default function TicketPage() {
           html,
           body {
             background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           @page {
             size: A4 portrait;
-            margin: 0.6cm;
+            margin: 0.4cm;
           }
 
-          /* Whole ticket stays on one page */
+          /* HARD COMPRESSION — guarantees ticket fits one A4 page in Chrome/Safari */
           .ticket-print {
+            zoom: 0.78;
             page-break-inside: avoid;
             break-inside: avoid;
-            max-width: 17cm !important;
+            max-width: 18cm !important;
             margin: 0 auto !important;
+            box-shadow: none !important;
+            overflow: hidden !important;
           }
 
-          /* Compact every section so the card fits A4 */
+          /* Compact every section */
           .ticket-print > header,
-          .ticket-print > div {
+          .ticket-print > div,
+          .ticket-print > footer {
             padding-top: 10px !important;
             padding-bottom: 10px !important;
             padding-left: 18px !important;
@@ -443,30 +449,25 @@ export default function TicketPage() {
             padding-bottom: 12px !important;
           }
 
-          /* Big route headline in hero */
-          .ticket-print header .text-2xl {
-            font-size: 16px !important;
-          }
-          /* Booking number */
-          .ticket-print .font-mono.text-2xl {
-            font-size: 18px !important;
-          }
-          /* City names in route block */
-          .ticket-print .text-xl {
-            font-size: 15px !important;
-          }
-          /* Price */
-          .ticket-print .text-3xl {
-            font-size: 22px !important;
-          }
-          /* DAVO chip in header */
-          .ticket-print header .text-2xl.font-extrabold.leading-none {
-            font-size: 18px !important;
-          }
-          /* Generic font shrink */
+          /* Typography */
           .ticket-print {
             font-size: 12px !important;
             line-height: 1.4 !important;
+          }
+          .ticket-print header .text-2xl {
+            font-size: 17px !important;
+          }
+          .ticket-print header .text-2xl.font-extrabold.leading-none {
+            font-size: 18px !important;
+          }
+          .ticket-print .font-mono.text-2xl {
+            font-size: 18px !important;
+          }
+          .ticket-print .text-xl {
+            font-size: 15px !important;
+          }
+          .ticket-print .text-3xl {
+            font-size: 22px !important;
           }
           .ticket-print .text-sm {
             font-size: 12px !important;
@@ -478,10 +479,10 @@ export default function TicketPage() {
             font-size: 9px !important;
           }
 
-          /* QR slot smaller so price+QR row hugs */
+          /* QR slot */
           .ticket-print .h-24.w-24 {
-            height: 70px !important;
-            width: 70px !important;
+            height: 76px !important;
+            width: 76px !important;
             padding: 4px !important;
           }
 
@@ -490,7 +491,8 @@ export default function TicketPage() {
           .ticket-print .py-6,
           .ticket-print .pb-6,
           .ticket-print .pt-5,
-          .ticket-print .pt-6 {
+          .ticket-print .pt-6,
+          .ticket-print .pt-4 {
             padding-top: 8px !important;
             padding-bottom: 8px !important;
           }
@@ -505,6 +507,19 @@ export default function TicketPage() {
           }
           .ticket-print .gap-4 {
             gap: 10px !important;
+          }
+
+          /* Firefox fallback — doesn't support zoom; use transform scale.
+             Negative margins compensate for the scale to keep the ticket centered. */
+          @supports (-moz-appearance: none) {
+            .ticket-print {
+              zoom: 1;
+              transform: scale(0.78);
+              transform-origin: top center;
+              width: 128% !important;
+              margin-left: -14% !important;
+              margin-right: -14% !important;
+            }
           }
         }
       `}</style>

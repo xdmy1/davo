@@ -5,18 +5,35 @@ const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
 
 /**
- * Cache simplu cu ID-ul Chișinăului. Nu se schimbă niciodată — îl rezolvăm
- * o dată per instanță de funcție.
+ * Cache la nivel de modul cu toate ID-urile orașelor moldovenești + Chișinău.
+ * Setul nu se schimbă în runtime; îl populăm o singură dată pe instanța de
+ * funcție și apoi alias-ul devine sincron, fără round-trip la DB.
+ *
+ * Față de DB-ul Supabase din eu-west-1 (care e la ~50 ms RTT minim), fiecare
+ * query salvat înseamnă vizibil mai puțin timp de încărcare a ofertelor.
  */
-let chisinauIdCache: string | null = null;
-async function getChisinauId(): Promise<string | null> {
-  if (chisinauIdCache) return chisinauIdCache;
-  const c = await prisma.city.findUnique({
-    where: { slug: "chisinau" },
-    select: { id: true },
-  });
-  chisinauIdCache = c?.id ?? null;
-  return chisinauIdCache;
+let moldovaCachePromise: Promise<{
+  ids: Set<string>;
+  chisinauId: string | null;
+}> | null = null;
+
+function ensureMoldovaCache() {
+  if (moldovaCachePromise) return moldovaCachePromise;
+  moldovaCachePromise = prisma.city
+    .findMany({
+      where: { country: { slug: "moldova" } },
+      select: { id: true, slug: true },
+    })
+    .then((cities) => ({
+      ids: new Set(cities.map((c) => c.id)),
+      chisinauId: cities.find((c) => c.slug === "chisinau")?.id ?? null,
+    }))
+    .catch((err) => {
+      // Pe eroare resetăm cache-ul ca să încercăm din nou la următorul request.
+      moldovaCachePromise = null;
+      throw err;
+    });
+  return moldovaCachePromise;
 }
 
 /**
@@ -26,14 +43,11 @@ async function getChisinauId(): Promise<string | null> {
  * autocarul oprește la celelalte orașe pe drum (pickup negociat cu operatorul
  * la rezervare).
  */
-async function aliasMoldovaToChisinau(cityId: string): Promise<string> {
-  const c = await prisma.city.findUnique({
-    where: { id: cityId },
-    select: { country: { select: { slug: true } } },
-  });
-  if (c?.country.slug !== "moldova") return cityId;
-  const chisinauId = await getChisinauId();
-  return chisinauId ?? cityId;
+async function aliasBothToChisinau(originId: string, destId: string) {
+  const { ids, chisinauId } = await ensureMoldovaCache();
+  const alias = (id: string) =>
+    ids.has(id) && chisinauId ? chisinauId : id;
+  return { originCityId: alias(originId), destCityId: alias(destId) };
 }
 
 export async function GET(req: NextRequest) {
@@ -50,25 +64,6 @@ export async function GET(req: NextRequest) {
         { success: false, error: "originCityId, destCityId required" },
         { status: 400 }
       );
-    }
-
-    // Alias: orice oraș MD → Chișinău, în ambele direcții (dus + retur).
-    const [originCityId, destCityId] = await Promise.all([
-      aliasMoldovaToChisinau(rawOriginCityId),
-      aliasMoldovaToChisinau(rawDestCityId),
-    ]);
-
-    const route = await prisma.route.findUnique({
-      where: {
-        originCityId_destinationCityId: {
-          originCityId,
-          destinationCityId: destCityId,
-        },
-      },
-    });
-
-    if (!route || !route.active) {
-      return NextResponse.json({ success: true, route: null, trips: [] });
     }
 
     let dateRange: { gte: Date; lt?: Date };
@@ -101,19 +96,49 @@ export async function GET(req: NextRequest) {
       Math.max(1, Number(limitParam) || DEFAULT_LIMIT)
     );
 
-    const trips = await prisma.trip.findMany({
+    // Alias: orice oraș MD → Chișinău, în ambele direcții (dus + retur).
+    const { originCityId, destCityId } = await aliasBothToChisinau(
+      rawOriginCityId,
+      rawDestCityId
+    );
+
+    // Un singur round-trip: rută + curse + locuri rezervate, totul împreună.
+    // Față de DB-ul Supabase din eu-west-1 fiecare query are latență de rețea,
+    // așa că aici evităm round-trip-ul separat pentru `trips`.
+    const route = await prisma.route.findUnique({
       where: {
-        routeId: route.id,
-        departureAt: dateRange,
-        status: { in: ["scheduled", "boarding"] },
+        originCityId_destinationCityId: {
+          originCityId,
+          destinationCityId: destCityId,
+        },
       },
-      orderBy: { departureAt: "asc" },
-      take: date ? undefined : limit,
-      include: {
-        bus: { select: { id: true, label: true, totalSeats: true } },
-        seatBookings: { select: { id: true } },
+      select: {
+        id: true,
+        active: true,
+        basePrice: true,
+        currency: true,
+        trips: {
+          where: {
+            departureAt: dateRange,
+            status: { in: ["scheduled", "boarding"] },
+          },
+          orderBy: { departureAt: "asc" },
+          take: date ? undefined : limit,
+          select: {
+            id: true,
+            departureAt: true,
+            arrivalAt: true,
+            status: true,
+            bus: { select: { id: true, label: true, totalSeats: true } },
+            _count: { select: { seatBookings: true } },
+          },
+        },
       },
     });
+
+    if (!route || !route.active) {
+      return NextResponse.json({ success: true, route: null, trips: [] });
+    }
 
     return NextResponse.json({
       success: true,
@@ -122,19 +147,22 @@ export async function GET(req: NextRequest) {
         basePrice: route.basePrice,
         currency: route.currency,
       },
-      trips: trips.map((t) => ({
-        id: t.id,
-        departureAt: t.departureAt.toISOString(),
-        arrivalAt: t.arrivalAt.toISOString(),
-        status: t.status,
-        busId: t.bus.id,
-        busLabel: t.bus.label,
-        totalSeats: t.bus.totalSeats,
-        bookedSeats: t.seatBookings.length,
-        availableSeats: t.bus.totalSeats - t.seatBookings.length,
-        pricePerSeat: route.basePrice,
-        currency: route.currency,
-      })),
+      trips: route.trips.map((t) => {
+        const booked = t._count.seatBookings;
+        return {
+          id: t.id,
+          departureAt: t.departureAt.toISOString(),
+          arrivalAt: t.arrivalAt.toISOString(),
+          status: t.status,
+          busId: t.bus.id,
+          busLabel: t.bus.label,
+          totalSeats: t.bus.totalSeats,
+          bookedSeats: booked,
+          availableSeats: t.bus.totalSeats - booked,
+          pricePerSeat: route.basePrice,
+          currency: route.currency,
+        };
+      }),
     });
   } catch (error) {
     console.error("public/trips GET", error);

@@ -69,17 +69,16 @@ const sections = [
     ],
   },
   {
-    title: "8. Răspundere și asigurare",
+    title: "8. Răspundere",
     body: [
       "Transportatorul răspunde pentru integritatea coletului pe durata transportului. Despăgubirea maximă în caz de pierdere sau deteriorare totală este de 200 EUR per colet, fără declarație de valoare.",
-      "Pentru colete cu valoare mai mare, Expeditorul poate solicita o asigurare extinsă, contra cost, declarând valoarea reală a conținutului la predare.",
       "Transportatorul NU răspunde pentru: daune cauzate de ambalare necorespunzătoare, conținut nedeclarat sau ascuns, produse perisabile expediate fără opțiunea frigorifică, daune indirecte sau pierderi comerciale, întârzieri datorate forței majore (vamă, condiții meteo, restricții guvernamentale).",
     ],
   },
   {
     title: "9. Reclamații",
     body: [
-      "Reclamațiile se depun în scris la info@davo.md în termen de maxim 7 zile de la primirea coletului, însoțite de: numărul de tracking, fotografii ale coletului deteriorat, copie act de identitate, descrierea problemei.",
+      "Reclamațiile se depun în scris la info@davo.md în termen de maxim 7 zile de la primirea coletului, însoțite de: numărul rezervării, fotografii ale coletului deteriorat, copie act de identitate, descrierea problemei.",
       "Transportatorul va răspunde în maxim 14 zile lucrătoare de la primirea reclamației.",
     ],
   },

@@ -79,8 +79,12 @@ export function TripPicker({
   selectedSeats: number[];
   onSelect: (tripId: string | null, seats: number[], trip?: PublicTrip | null) => void;
 }) {
+  const hasRoute = Boolean(originCityId && destCityId);
   const [trips, setTrips] = useState<PublicTrip[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Pornim direct pe loading=true dacă deja avem origine+destinație la mount —
+  // altfel primul paint era gol până când useEffect setează loading=true, iar
+  // userul vedea un card alb înainte să apară skeleton-ul.
+  const [loading, setLoading] = useState(hasRoute);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<TripDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -89,6 +93,7 @@ export function TripPicker({
   useEffect(() => {
     if (!originCityId || !destCityId) {
       setTrips([]);
+      setLoading(false);
       return;
     }
     const controller = new AbortController();
@@ -160,12 +165,7 @@ export function TripPicker({
         )}
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-10 text-sm text-[color:var(--ink-500)]">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--red-500)] border-t-transparent mr-2" />
-          Caut datele disponibile…
-        </div>
-      )}
+      {loading && <TripsSkeleton />}
 
       {error && !loading && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -244,12 +244,7 @@ export function TripPicker({
             transition={{ duration: 0.25 }}
             className="mt-6 overflow-hidden"
           >
-            {detailLoading && (
-              <div className="flex items-center justify-center py-10 text-sm text-[color:var(--ink-500)]">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--red-500)] border-t-transparent mr-2" />
-                Încărc layoutul autocarului…
-              </div>
-            )}
+            {detailLoading && <SeatLayoutSkeleton />}
             {!detailLoading && detail && (
               <SeatPicker
                 layout={detail.bus.layout}
@@ -362,6 +357,110 @@ function DateCard({
         </div>
       </div>
     </button>
+  );
+}
+
+function TripsSkeleton() {
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-3 rounded-xl bg-[color:var(--navy-50)] border border-[color:var(--navy-200,rgba(20,58,122,0.18))] px-4 py-3">
+        <div className="relative flex h-7 w-7 shrink-0 items-center justify-center">
+          <span className="absolute inset-0 animate-ping rounded-full bg-[color:var(--red-500)]/30" />
+          <span className="relative h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--red-500)] border-t-transparent" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-[color:var(--navy-900)]">
+            Caut cursele disponibile pe ruta ta…
+          </div>
+          <div className="text-[11px] text-[color:var(--ink-500)] mt-0.5">
+            Durează câteva secunde — verificăm orarul, autocarele și locurile libere.
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" aria-hidden>
+        {[0, 1, 2, 3].map((i) => (
+          <DateCardSkeleton key={i} delay={i * 120} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DateCardSkeleton({ delay = 0 }: { delay?: number }) {
+  return (
+    <div
+      className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-[color:var(--ink-200)] bg-white p-4"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      {/* shimmer layer */}
+      <div
+        className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-[color:var(--ink-100)]/60 to-transparent"
+        style={{ animation: `tripShimmer 1.6s linear ${delay}ms infinite` }}
+      />
+
+      <div className="absolute right-3 top-3 h-5 w-5 rounded-full border-2 border-[color:var(--ink-100)] bg-[color:var(--ink-50)]" />
+
+      <div className="pr-7 space-y-2">
+        <div className="h-2.5 w-16 rounded bg-[color:var(--ink-100)]" />
+        <div className="h-6 w-28 rounded-md bg-[color:var(--ink-100)]" />
+      </div>
+
+      <div className="rounded-xl bg-[color:var(--ink-50)] px-3 py-2.5 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="h-2.5 w-14 rounded bg-[color:var(--ink-100)]" />
+          <div className="h-3.5 w-12 rounded bg-[color:var(--ink-100)]" />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="h-2.5 w-20 rounded bg-[color:var(--ink-100)]" />
+          <div className="h-2.5 w-10 rounded bg-[color:var(--ink-100)]" />
+        </div>
+        <div className="h-2 w-16 rounded bg-[color:var(--ink-100)]" />
+      </div>
+
+      <div className="flex items-end justify-between">
+        <div className="h-3 w-20 rounded bg-[color:var(--ink-100)]" />
+        <div className="space-y-1.5 text-right">
+          <div className="ml-auto h-2.5 w-14 rounded bg-[color:var(--ink-100)]" />
+          <div className="ml-auto h-4 w-12 rounded bg-[color:var(--ink-100)]" />
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes tripShimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function SeatLayoutSkeleton() {
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-3 rounded-xl bg-[color:var(--navy-50)] border border-[color:var(--navy-200,rgba(20,58,122,0.18))] px-4 py-3">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--red-500)] border-t-transparent" />
+        <div className="text-sm font-semibold text-[color:var(--navy-900)]">
+          Pregătesc planul autocarului…
+        </div>
+      </div>
+      <div className="rounded-2xl border border-[color:var(--ink-200)] bg-white p-5">
+        <div className="grid grid-cols-5 gap-2 max-w-xs mx-auto">
+          {Array.from({ length: 25 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-square rounded-md bg-[color:var(--ink-100)] animate-pulse"
+              style={{ animationDelay: `${(i % 5) * 80}ms` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -80,7 +80,7 @@ export default function SuccessCard({
                 className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-white px-6 py-3.5 font-semibold text-[color:var(--navy-900)] hover:border-[color:var(--navy-700)] transition-colors"
               >
                 <Search className="h-4 w-4" />
-                Urmărește status
+                Vezi rezervarea
               </Link>
             )}
             <Link

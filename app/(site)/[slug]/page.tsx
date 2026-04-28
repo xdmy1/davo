@@ -99,7 +99,7 @@ export async function generateMetadata({
     const sched = getCountrySchedule(destination.slug);
     const schedSnippet = sched ? ` Plecare ${sched.outboundLabel}, retur ${sched.returnLabel}.` : "";
     const title = `Transport Moldova ⇋ ${destination.name} | Curse săptămânale${sched ? ` ${sched.outboundLabel}` : ""}`;
-    const description = `${destination.description}.${schedSnippet} ${destination.cities.length} orașe disponibile. Plecări din toată Moldova (Chișinău, Bălți, Cahul, Comrat, Ungheni, Orhei, Soroca). Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Preț de la ${destination.price || "120"}${destination.currency}. Rezervă online.`;
+    const description = `${destination.description}.${schedSnippet} ${destination.cities.length} orașe disponibile. Plecare din Chișinău, cu preluare pasageri din Ialoveni, Hîncești, Cimișlia, Comrat, Balabanu și Cahul. Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Preț de la ${destination.price || "120"}${destination.currency}. Rezervă online.`;
     const keywords = [
       `transport Moldova ${destination.name}`,
       `autocar Moldova ${destination.name}`,
@@ -832,11 +832,11 @@ function buildCountryFaq(destination: Destination, sched: Sched): FaqItem[] {
   });
   items.push({
     q: `Din ce orașe din Moldova pot pleca?`,
-    a: `Autocarul DAVO Group preia pasageri din toate orașele Moldovei: Chișinău (sediu Calea Ieșilor 11/3), Bălți, Cahul, Comrat, Ungheni, Orhei, Soroca, Edineț, Drochia, Hîncești, Ialoveni, Strășeni, Căușeni, Cimișlia, Fălești. La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
+    a: `Autocarul DAVO Group preia pasageri din: Ialoveni, Hîncești, Cimișlia, Comrat, Balabanu și Cahul. Plecarea se face de la sediul DAVO din Chișinău (Calea Ieșilor 11/3). La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
   });
   items.push({
     q: `Pot trimite un colet în ${destination.name}?`,
-    a: `Da. Avem remorcă frigorifică separată pentru colete perisabile (mâncare, dulciuri, plăcinte) și remorcă obișnuită pentru pachete normale. Preluare de la ușa expeditorului din toată Moldova, livrare la ușa destinatarului din ${destination.name}.`,
+    a: `Da. Avem remorcă frigorifică separată pentru colete perisabile (mâncare, dulciuri, plăcinte) și remorcă obișnuită pentru pachete normale. Preluare din toată Moldova, livrare la ușa destinatarului din ${destination.name}.`,
   });
   items.push({
     q: `Ce facilități am la bord?`,
