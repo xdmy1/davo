@@ -179,7 +179,7 @@ export default function TicketPage() {
         <motion.article
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-[0_40px_100px_-40px_rgba(11,38,83,0.35)] overflow-hidden print:shadow-none print:rounded-none border border-[color:var(--ink-200)] print:border-0"
+          className="ticket-print bg-white rounded-3xl shadow-[0_40px_100px_-40px_rgba(11,38,83,0.35)] overflow-hidden print:shadow-none print:rounded-lg border border-[color:var(--ink-200)] print:border print:border-[color:var(--ink-200)]"
         >
           {/* Header navy + bg-noise */}
           <header className="relative overflow-hidden bg-[color:var(--navy-900)] bg-hero-navy text-white p-7 print:p-6 print:bg-[#0b2653]">
@@ -411,12 +411,100 @@ export default function TicketPage() {
           .no-print {
             display: none !important;
           }
+          html,
           body {
-            background: white !important;
+            background: #fff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           @page {
-            size: A4;
-            margin: 1.2cm;
+            size: A4 portrait;
+            margin: 0.6cm;
+          }
+
+          /* Whole ticket stays on one page */
+          .ticket-print {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            max-width: 17cm !important;
+            margin: 0 auto !important;
+          }
+
+          /* Compact every section so the card fits A4 */
+          .ticket-print > header,
+          .ticket-print > div {
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+          }
+          .ticket-print > header {
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+          }
+
+          /* Big route headline in hero */
+          .ticket-print header .text-2xl {
+            font-size: 16px !important;
+          }
+          /* Booking number */
+          .ticket-print .font-mono.text-2xl {
+            font-size: 18px !important;
+          }
+          /* City names in route block */
+          .ticket-print .text-xl {
+            font-size: 15px !important;
+          }
+          /* Price */
+          .ticket-print .text-3xl {
+            font-size: 22px !important;
+          }
+          /* DAVO chip in header */
+          .ticket-print header .text-2xl.font-extrabold.leading-none {
+            font-size: 18px !important;
+          }
+          /* Generic font shrink */
+          .ticket-print {
+            font-size: 12px !important;
+            line-height: 1.4 !important;
+          }
+          .ticket-print .text-sm {
+            font-size: 12px !important;
+          }
+          .ticket-print .text-xs,
+          .ticket-print .text-\\[10px\\],
+          .ticket-print .text-\\[11px\\],
+          .ticket-print .text-\\[9px\\] {
+            font-size: 9px !important;
+          }
+
+          /* QR slot smaller so price+QR row hugs */
+          .ticket-print .h-24.w-24 {
+            height: 70px !important;
+            width: 70px !important;
+            padding: 4px !important;
+          }
+
+          /* Tighten vertical rhythm */
+          .ticket-print .py-5,
+          .ticket-print .py-6,
+          .ticket-print .pb-6,
+          .ticket-print .pt-5,
+          .ticket-print .pt-6 {
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+          }
+          .ticket-print .mb-3,
+          .ticket-print .mt-2,
+          .ticket-print .mt-1 {
+            margin-bottom: 4px !important;
+            margin-top: 2px !important;
+          }
+          .ticket-print .gap-3 {
+            gap: 8px !important;
+          }
+          .ticket-print .gap-4 {
+            gap: 10px !important;
           }
         }
       `}</style>
