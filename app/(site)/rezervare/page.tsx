@@ -708,29 +708,41 @@ function PartyForm({
   onChange: (d: typeof data) => void;
 }) {
   const setField = (k: keyof typeof data, v: string) => onChange({ ...data, [k]: v });
+  // Operatorul confirmă fiecare colet manual (verifică dacă autocarul oprește
+  // în orașul respectiv, stabilește ora de pickup sau drop-off la oficiu).
+  // Deci câmpurile detaliate sunt opționale — userul completează ce știe acum,
+  // restul se aliniază prin telefon.
+  // - Expeditor: nume + telefon obligatorii (ca să-l putem suna înapoi).
+  // - Destinatar: complet opțional (operatorul coordonează cu expeditorul).
+  const isSender = role === "Expeditor";
+  const helperText = isSender
+    ? "Operatorul te sună pentru confirmare și pentru a stabili ora de pickup sau de venire la oficiu (Calea Ieșilor 11/3). Completează ce știi acum."
+    : "Datele destinatarului sunt opționale — le poți lăsa goale și le clarificăm la confirmarea telefonică.";
+
   return (
     <div className="card-elevated p-6 md:p-8">
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-2">
         <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--red-500)]">
           {role}
         </span>
         <h2 className="display-hero text-2xl md:text-3xl text-[color:var(--navy-900)]">
-          Datele {role === "Expeditor" ? "expeditorului" : "destinatarului"}
+          Datele {isSender ? "expeditorului" : "destinatarului"}
         </h2>
       </div>
+      <p className="mb-5 text-sm text-[color:var(--ink-500)] leading-relaxed">{helperText}</p>
       <div className="grid md:grid-cols-2 gap-4">
-        <SimpleField label="Nume complet *" icon={<User className="h-4 w-4" />}>
+        <SimpleField label={isSender ? "Nume complet *" : "Nume complet"} icon={<User className="h-4 w-4" />}>
           <input
-            required
+            required={isSender}
             value={data.name}
             onChange={(e) => setField("name", e.target.value)}
             placeholder="Ion Popescu"
             className="simple-input"
           />
         </SimpleField>
-        <SimpleField label="Telefon *" icon={<Phone className="h-4 w-4" />}>
+        <SimpleField label={isSender ? "Telefon *" : "Telefon"} icon={<Phone className="h-4 w-4" />}>
           <input
-            required
+            required={isSender}
             type="tel"
             value={data.phone}
             onChange={(e) => setField("phone", e.target.value)}
@@ -745,9 +757,8 @@ function PartyForm({
             className="simple-input"
           />
         </SimpleField>
-        <SimpleField label="Oraș *" icon={<MapPin className="h-4 w-4" />}>
+        <SimpleField label="Oraș" icon={<MapPin className="h-4 w-4" />}>
           <input
-            required
             value={data.city}
             onChange={(e) => setField("city", e.target.value)}
             className="simple-input"
@@ -755,12 +766,11 @@ function PartyForm({
         </SimpleField>
       </div>
       <div className="mt-4">
-        <SimpleField label="Adresă completă *" icon={<MapPin className="h-4 w-4" />}>
+        <SimpleField label="Adresă completă" icon={<MapPin className="h-4 w-4" />}>
           <input
-            required
             value={data.address}
             onChange={(e) => setField("address", e.target.value)}
-            placeholder="Strada, număr, apartament"
+            placeholder="Strada, număr, apartament — opțional"
             className="simple-input"
           />
         </SimpleField>
