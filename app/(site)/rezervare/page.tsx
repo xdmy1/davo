@@ -159,10 +159,29 @@ function RezervareContent() {
     []
   );
 
+  // Listă combinată pentru ambele dropdown-uri (origine + destinație). Userul
+  // poate pleca/sosi din orice oraș — Moldova sau Europa de Vest. Backend-ul
+  // (alias MD→Chișinău + rute inverse) descoperă cursele corespunzătoare.
+  const allCityOptions = useMemo(() => {
+    const md = moldovanCities.map((c) => `${c.name}, Moldova`);
+    const eu = destinationCities.map((c) => `${c.name}, ${c.country}`);
+    return [...md, ...eu];
+  }, [destinationCities]);
+
+  // Parsare consistentă pentru "City, Country" sau doar "City".
+  const fromCityName = from.split(",")[0].trim();
+  const toCityName = to.split(",")[0].trim();
+
+  // Țara externă afișată în SummaryCard (steag) — verificăm ambele capete:
+  // dacă unul e MD, celălalt e țara externă pentru steag.
   const matchedCountry = useMemo(() => {
-    const hit = destinationCities.find((c) => to.toLowerCase().startsWith(c.name.toLowerCase()));
-    return hit ? destinations.find((d) => d.slug === hit.slug) : null;
-  }, [to, destinationCities]);
+    const norm = (s: string) => s.toLowerCase();
+    const fromHit = destinationCities.find((c) => norm(c.name) === norm(fromCityName));
+    if (fromHit) return destinations.find((d) => d.slug === fromHit.slug);
+    const toHit = destinationCities.find((c) => norm(c.name) === norm(toCityName));
+    if (toHit) return destinations.find((d) => d.slug === toHit.slug);
+    return null;
+  }, [fromCityName, toCityName, destinationCities]);
 
   const flagCode = matchedCountry ? destinationSlugToCode[matchedCountry.slug] : undefined;
 
@@ -178,12 +197,12 @@ function RezervareContent() {
     return matchedCountry?.currency || "€";
   }, [outboundTripInfo, matchedCountry]);
 
-  // Rezolvare nume oraș → City ID din DB
-  const toCityName = to.split(",")[0].trim();
+  // Rezolvare nume oraș → City ID din DB (folosim numele parsate, ca să
+  // accepte și formatul "City, Country" din dropdown).
   const originCityId = useMemo(() => {
     if (!cityIndex) return null;
-    return cityIndex[from.trim().toLowerCase()]?.id ?? null;
-  }, [cityIndex, from]);
+    return cityIndex[fromCityName.toLowerCase()]?.id ?? null;
+  }, [cityIndex, fromCityName]);
   const destCityId = useMemo(() => {
     if (!cityIndex) return null;
     return cityIndex[toCityName.toLowerCase()]?.id ?? null;
@@ -243,7 +262,7 @@ function RezervareContent() {
           ? {
               type: "passenger",
               tripType: trip === "return" ? "round-trip" : "one-way",
-              departureCity: from,
+              departureCity: fromCityName,
               arrivalCity: toCityName,
               departureDate: date,
               returnDate: trip === "return" ? returnDate : undefined,
@@ -261,7 +280,7 @@ function RezervareContent() {
             }
           : {
               type: "parcel",
-              departureCity: sender.city || from,
+              departureCity: sender.city || fromCityName,
               arrivalCity: recipient.city || toCityName,
               departureDate: date || new Date().toISOString().slice(0, 10),
               firstName: sender.name.split(" ")[0] || sender.name,
@@ -290,7 +309,7 @@ function RezervareContent() {
 
   return (
     <>
-      <RouteHero mode={mode} from={from} to={to.split(",")[0]} />
+      <RouteHero mode={mode} from={fromCityName} to={toCityName} />
 
       <section className="relative pt-8 pb-20 bg-[color:var(--ink-50)]">
         <div className="container-page">
@@ -320,8 +339,8 @@ function RezervareContent() {
                             onTo={setTo}
                             onTrip={setTrip}
                             onPassengers={updatePassengers}
-                            fromOptions={moldovanCities.map((c) => c.name)}
-                            toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
+                            fromOptions={allCityOptions}
+                            toOptions={allCityOptions}
                           />
                           {originCityId && destCityId && (
                             <TripPicker
@@ -373,7 +392,7 @@ function RezervareContent() {
                           payMethod={payMethod}
                           onPayMethod={setPayMethod}
                           lines={[
-                            { label: `${from} → ${toCityName}`, value: `${basePrice}${currency}` },
+                            { label: `${fromCityName} → ${toCityName}`, value: `${basePrice}${currency}` },
                             { label: `Locuri: ${outboundSeats.length || 1}`, value: `×${outboundSeats.length || 1}` },
                             {
                               label: trip === "return" ? "Tur-retur" : "O direcție",
@@ -394,8 +413,8 @@ function RezervareContent() {
                           onFrom={setFrom}
                           onTo={setTo}
                           onTrip={setTrip}
-                          fromOptions={moldovanCities.map((c) => c.name)}
-                          toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
+                          fromOptions={allCityOptions}
+                          toOptions={allCityOptions}
                           hideTrip
                         />
                       )}
@@ -491,8 +510,8 @@ function RezervareContent() {
 
             <SummaryCard
               mode={mode}
-              from={from}
-              to={to}
+              from={fromCityName}
+              to={toCityName}
               date={date}
               returnDate={trip === "return" ? returnDate : undefined}
               flagCode={flagCode}
