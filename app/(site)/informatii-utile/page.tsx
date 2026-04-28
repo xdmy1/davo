@@ -58,7 +58,7 @@ export default function InformatiiUtile() {
   return (
     <>
       <section className="relative bg-hero-navy text-white">
-        <div className="bg-noise absolute inset-0 opacity-30" />
+        <div className="bg-noise absolute inset-0 opacity-20" />
         <div className="container-page relative py-20 lg:py-28">
           <div className="grid gap-10 lg:grid-cols-[1.1fr,1fr] items-center">
             <Reveal>
@@ -173,7 +173,7 @@ export default function InformatiiUtile() {
         <div className="container-page">
           <Reveal>
             <div className="relative overflow-hidden rounded-3xl bg-[color:var(--navy-900)] p-8 md:p-12 text-white">
-              <div className="bg-noise absolute inset-0 opacity-30" />
+              <div className="bg-noise absolute inset-0 opacity-20" />
               <div className="relative grid gap-8 md:grid-cols-2 items-center">
                 <div>
                   <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--red-400)]">

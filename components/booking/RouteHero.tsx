@@ -16,7 +16,7 @@ export default function RouteHero({
 }) {
   return (
     <section className="relative overflow-hidden bg-hero-navy text-white">
-      <div className="bg-noise absolute inset-0 opacity-30" />
+      <div className="bg-noise absolute inset-0 opacity-20" />
       <div className="absolute -top-40 -right-20 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(225,30,43,0.2),transparent_60%)]" />
 
       <div className="container-page relative py-10 lg:py-14">

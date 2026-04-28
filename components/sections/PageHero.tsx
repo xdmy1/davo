@@ -19,7 +19,7 @@ export default function PageHero({
   if (tone === "dark") {
     return (
       <section className="relative overflow-hidden bg-hero-navy text-white">
-        <div className="bg-noise absolute inset-0 opacity-30" />
+        <div className="bg-noise absolute inset-0 opacity-20" />
         <div className="container-page relative py-20 lg:py-28">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

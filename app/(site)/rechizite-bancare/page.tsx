@@ -28,7 +28,7 @@ const companyRows: Row[] = [
   { label: "Denumire", value: "DAVO GROUP S.R.L.", icon: Building2 },
   {
     label: "Adresă",
-    value: "Republica Moldova, r. Strășeni, s. Sireți, MD-3731",
+    value: "str. Calea Ieșilor 11/3, MD-2069, mun. Chișinău, Republica Moldova",
     icon: MapPin,
   },
   {
@@ -39,9 +39,9 @@ const companyRows: Row[] = [
   },
   {
     label: "Email",
-    value: "davogroup@yahoo.com",
+    value: "info@davo.md",
     icon: Mail,
-    href: "mailto:davogroup@yahoo.com",
+    href: "mailto:info@davo.md",
   },
   { label: "IDNO", value: "1013600041329", icon: Hash, copy: true, mono: true },
   { label: "TVA", value: "8601124", icon: Receipt, copy: true, mono: true },
@@ -119,12 +119,12 @@ export default function RechiziteBancarePage() {
               </div>
               <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
                 <a
-                  href="mailto:davogroup@yahoo.com"
+                  href="mailto:info@davo.md"
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--navy-50)] px-4 py-2.5 hover:bg-[color:var(--navy-100)] transition-colors"
                 >
                   <Mail className="h-4 w-4 text-[color:var(--red-500)]" />
                   <span className="text-sm font-semibold text-[color:var(--navy-900)]">
-                    davogroup@yahoo.com
+                    info@davo.md
                   </span>
                 </a>
                 <a

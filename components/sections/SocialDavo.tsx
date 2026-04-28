@@ -55,7 +55,7 @@ export default function SocialDavo() {
             <Reveal key={c.title} delay={i * 0.08}>
               <button className="group relative block w-full overflow-hidden rounded-2xl aspect-[4/5] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--red-500)]">
                 <div className={`absolute inset-0 bg-gradient-to-br ${c.gradient}`} />
-                <div className="bg-noise absolute inset-0 opacity-30" />
+                <div className="bg-noise absolute inset-0 opacity-20" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <c.icon className="h-24 w-24 text-white/20 transition-transform group-hover:scale-110 duration-500" />
                 </div>

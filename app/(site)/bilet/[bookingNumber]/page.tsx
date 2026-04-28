@@ -183,7 +183,7 @@ export default function TicketPage() {
         >
           {/* Header navy + bg-noise */}
           <header className="relative overflow-hidden bg-[color:var(--navy-900)] bg-hero-navy text-white p-7 print:p-6 print:bg-[#0b2653]">
-            <div className="bg-noise absolute inset-0 opacity-30 print:hidden" />
+            <div className="bg-noise absolute inset-0 opacity-20 print:hidden" />
             <div className="relative flex items-start justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[color:var(--red-400)]">
@@ -327,7 +327,7 @@ export default function TicketPage() {
 
           {/* Price + QR — navy band */}
           <div className="bg-[color:var(--navy-900)] bg-hero-navy text-white p-7 relative overflow-hidden print:bg-[#0b2653]">
-            <div className="bg-noise absolute inset-0 opacity-30 print:hidden" />
+            <div className="bg-noise absolute inset-0 opacity-20 print:hidden" />
             <div className="relative flex items-center justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[color:var(--red-400)]">

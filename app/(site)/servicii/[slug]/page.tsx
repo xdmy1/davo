@@ -15,6 +15,13 @@ import { contactInfo, services } from "@/lib/data";
 import FAQ from "@/components/sections/FAQ";
 import CollectionSchedule from "@/components/sections/CollectionSchedule";
 import { Reveal } from "@/components/ui/Reveal";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { defaultFAQs } from "@/lib/faqs";
+import {
+  serviceSchema,
+  breadcrumbSchema,
+  faqPageSchema,
+} from "@/lib/jsonLd";
 
 const iconMap: Record<string, LucideIcon> = {
   users: Users,
@@ -40,6 +47,22 @@ export default async function ServiceDetailPage({
 
   return (
     <>
+      <JsonLd
+        data={[
+          serviceSchema({
+            slug: svc.slug,
+            name: svc.title,
+            description: svc.description,
+            image: svc.image,
+          }),
+          breadcrumbSchema([
+            { name: "Acasă", url: "/" },
+            { name: "Servicii", url: "/servicii" },
+            { name: svc.title, url: `/servicii/${svc.slug}` },
+          ]),
+          faqPageSchema(defaultFAQs),
+        ]}
+      />
       <section className="relative overflow-hidden bg-hero-navy text-white">
         <div className="bg-noise absolute inset-0 opacity-20" />
         <div

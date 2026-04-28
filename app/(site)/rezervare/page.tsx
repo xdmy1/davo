@@ -159,10 +159,28 @@ function RezervareContent() {
     []
   );
 
+  // Listă combinată pentru ambele dropdown-uri (origine + destinație). Userul
+  // poate plec/sosi dintr-orice oraș — Moldova și Europa de Vest. Backend-ul
+  // (alias MD→Chișinău + rute inverse auto-create) face restul.
+  const allCityOptions = useMemo(() => {
+    const moldova = moldovanCities.map((c) => `${c.name}, Moldova`);
+    const europe = destinationCities.map((c) => `${c.name}, ${c.country}`);
+    return [...moldova, ...europe];
+  }, [destinationCities]);
+
+  // Parsare consistentă pentru "City, Country" sau "City" simplu.
+  const fromCityName = from.split(",")[0].trim();
+  const toCityName = to.split(",")[0].trim();
+
+  // Țara afișată în SummaryCard (steag) — ne uităm la oricare capăt: dacă
+  // unul e MD, celălalt e țara externă pentru steag.
   const matchedCountry = useMemo(() => {
-    const hit = destinationCities.find((c) => to.toLowerCase().startsWith(c.name.toLowerCase()));
-    return hit ? destinations.find((d) => d.slug === hit.slug) : null;
-  }, [to, destinationCities]);
+    const fromHit = destinationCities.find((c) => c.name.toLowerCase() === fromCityName.toLowerCase());
+    if (fromHit) return destinations.find((d) => d.slug === fromHit.slug);
+    const toHit = destinationCities.find((c) => c.name.toLowerCase() === toCityName.toLowerCase());
+    if (toHit) return destinations.find((d) => d.slug === toHit.slug);
+    return null;
+  }, [fromCityName, toCityName, destinationCities]);
 
   const flagCode = matchedCountry ? destinationSlugToCode[matchedCountry.slug] : undefined;
 
@@ -178,12 +196,12 @@ function RezervareContent() {
     return matchedCountry?.currency || "€";
   }, [outboundTripInfo, matchedCountry]);
 
-  // Rezolvare nume oraș → City ID din DB
-  const toCityName = to.split(",")[0].trim();
+  // Rezolvare nume oraș → City ID din DB (folosim fromCityName/toCityName
+  // calculate mai sus, ca să acceptăm și formatul "City, Country" din dropdown).
   const originCityId = useMemo(() => {
     if (!cityIndex) return null;
-    return cityIndex[from.trim().toLowerCase()]?.id ?? null;
-  }, [cityIndex, from]);
+    return cityIndex[fromCityName.toLowerCase()]?.id ?? null;
+  }, [cityIndex, fromCityName]);
   const destCityId = useMemo(() => {
     if (!cityIndex) return null;
     return cityIndex[toCityName.toLowerCase()]?.id ?? null;
@@ -995,7 +1013,7 @@ function SummaryCard({
   return (
     <aside className="space-y-4">
       <div className="relative overflow-hidden rounded-2xl bg-[color:var(--navy-900)] bg-hero-navy text-white p-5">
-        <div className="bg-noise absolute inset-0 opacity-30" />
+        <div className="bg-noise absolute inset-0 opacity-20" />
         <div className="relative">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1229,7 +1247,7 @@ function ColetPromoBand() {
     <section className="py-16">
       <div className="container-page">
         <div className="relative overflow-hidden rounded-3xl bg-[color:var(--navy-900)] bg-hero-navy text-white">
-          <div className="bg-noise absolute inset-0 opacity-30" />
+          <div className="bg-noise absolute inset-0 opacity-20" />
           <div className="relative px-8 md:px-12 py-12 md:py-14 text-center">
             <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--red-400)]">
               Serviciu premium

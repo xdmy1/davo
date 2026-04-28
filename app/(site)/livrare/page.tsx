@@ -234,7 +234,7 @@ function ResultCard({ r }: { r: TrackResult }) {
     <Reveal>
       <article className="mt-8 rounded-3xl border border-[color:var(--ink-200)] bg-white overflow-hidden shadow-[0_30px_80px_-40px_rgba(11,38,83,0.25)]">
         <header className="bg-[color:var(--navy-900)] bg-hero-navy text-white p-6 md:p-7 relative">
-          <div className="bg-noise absolute inset-0 opacity-30" />
+          <div className="bg-noise absolute inset-0 opacity-20" />
           <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[color:var(--red-400)]">

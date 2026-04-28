@@ -76,7 +76,7 @@ function Storefront() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden bg-[color:var(--navy-900)] bg-hero-navy text-white">
-        <div className="bg-noise absolute inset-0 opacity-30" />
+        <div className="bg-noise absolute inset-0 opacity-20" />
         <div className="container-page relative py-12 lg:py-16">
           <div className="grid gap-8 lg:grid-cols-[1.4fr,1fr] items-center">
             <div>
@@ -240,7 +240,7 @@ function Storefront() {
               </div>
 
               <div className="mt-4 rounded-2xl bg-[color:var(--navy-900)] bg-hero-navy text-white p-5 relative overflow-hidden">
-                <div className="bg-noise absolute inset-0 opacity-30" />
+                <div className="bg-noise absolute inset-0 opacity-20" />
                 <div className="relative">
                   <Snowflake className="h-6 w-6 text-[color:var(--red-400)] mb-2" />
                   <div className="font-[family-name:var(--font-montserrat)] font-bold text-base leading-tight">

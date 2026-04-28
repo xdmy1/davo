@@ -248,7 +248,7 @@ function CountryLanding({ destination }: { destination: Destination }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageLd) }}
       />
       <section className="relative overflow-hidden bg-hero-navy text-white">
-        <div className="bg-noise absolute inset-0 opacity-30" />
+        <div className="bg-noise absolute inset-0 opacity-20" />
         <div className="container-page relative py-16 lg:py-24">
           <div className="grid gap-8 lg:grid-cols-[1.2fr,1fr] items-center">
             <Reveal>
@@ -469,7 +469,7 @@ function CityPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageLd) }}
       />
       <section className="relative overflow-hidden bg-hero-navy text-white">
-        <div className="bg-noise absolute inset-0 opacity-30" />
+        <div className="bg-noise absolute inset-0 opacity-20" />
         <div className="container-page relative py-16 lg:py-24">
           <div className="grid gap-8 lg:grid-cols-[1.25fr,1fr] items-center">
             <Reveal>
@@ -832,11 +832,11 @@ function buildCountryFaq(destination: Destination, sched: Sched): FaqItem[] {
   });
   items.push({
     q: `Din ce orașe din Moldova pot pleca?`,
-    a: `Autocarul DAVO Group preia pasageri din toate orașele Moldovei: Chișinău (sediu Calea Ieșilor 11/3), Bălți, Cahul, Comrat, Ungheni, Orhei, Soroca, Edineț, Drochia, Hîncești, Ialoveni, Strășeni, Căușeni, Cimișlia, Fălești. La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
+    a: `Autocarul DAVO Group preia pasageri din: Chișinău (sediu Calea Ieșilor 11/3), Ialoveni, Hîncești, Cimișlia, Comrat, Balabanu și Cahul. La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
   });
   items.push({
     q: `Pot trimite un colet în ${destination.name}?`,
-    a: `Da. Avem remorcă frigorifică separată pentru colete perisabile (mâncare, dulciuri, plăcinte) și remorcă obișnuită pentru pachete normale. Preluare de la ușa expeditorului din toată Moldova, livrare la ușa destinatarului din ${destination.name}.`,
+    a: `Da. Avem remorcă frigorifică separată pentru colete perisabile (mâncare, dulciuri, plăcinte) și remorcă obișnuită pentru pachete normale. Preluare din toată Moldova, livrare la ușa destinatarului din ${destination.name}.`,
   });
   items.push({
     q: `Ce facilități am la bord?`,
