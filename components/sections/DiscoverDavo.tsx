@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight, Bus, Award, Globe2 } from "lucide-react";
+import { Bus, Award, Globe2 } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 
 export default function DiscoverDavo() {
@@ -43,15 +42,6 @@ export default function DiscoverDavo() {
           ))}
         </div>
 
-        <Reveal delay={0.2} className="mt-10 flex justify-center">
-          <Link
-            href="/despre-noi"
-            className="group inline-flex items-center gap-2 rounded-full bg-[color:var(--navy-900)] px-7 py-3 text-white text-sm font-bold uppercase tracking-wider hover:bg-[color:var(--navy-800)] transition-colors"
-          >
-            Mai multe despre noi
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Link>
-        </Reveal>
       </div>
     </section>
   );

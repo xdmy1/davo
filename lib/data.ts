@@ -205,9 +205,7 @@ export const services: Service[] = [
       "Remorcă frigorifică separată pentru produse alterabile",
       "Colectare colete din toată Moldova (vezi grafic)",
       "Integritate garantată — sigilare la preluare",
-      "Tracking colet online prin /livrare",
       "Plată cash sau card la livrare",
-      "Asigurare extinsă disponibilă la cerere",
     ],
   },
   {
@@ -265,7 +263,7 @@ export const contactInfo = {
   phoneBelgium: "+32 484 47 64 46",
   phoneBelgium2: "+32 470 27 59 22",
   phoneUK: "+44 744 748 0276",
-  whatsapp: "+373 76 041 855",
+  whatsapp: "+373 68 065 699",
   viber: "+373 68 065 699",
   telegram: "+373 68 065 699",
   email: "info@davo.md",

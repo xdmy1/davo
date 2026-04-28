@@ -143,9 +143,9 @@ export default function TicketPage() {
             Nu am găsit biletul cu numărul <span className="font-mono font-bold">{bookingNumber}</span>. Verifică numărul rezervării din emailul de confirmare.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/livrare">
-              <Button variant="primary">Încearcă /livrare</Button>
-            </Link>
+            <a href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}>
+              <Button variant="primary">Sună-ne {contactInfo.phone}</Button>
+            </a>
             <Link href="/">
               <Button variant="outline">Acasă</Button>
             </Link>

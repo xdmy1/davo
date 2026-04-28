@@ -47,7 +47,6 @@ const baseKeywords = [
   "ceai cafea naturală autocar",
   "colectare colete Moldova",
   "punct colectare Calea Ieșilor",
-  "tracking colete Moldova",
 ];
 
 const moldovaCityKeywords = moldovanCities.flatMap((c) => [

@@ -21,7 +21,7 @@ const cards = [
     slug: "transport-de-colete",
     eyebrow: "02",
     title: "Transport de colete",
-    body: "Trimite colete în siguranță la ușa destinatarului. Urmărire pas cu pas, asigurare inclusă și livrare de la adresă la adresă, prin curse regulate. Preluăm de la tine și livrăm în toată Europa.",
+    body: "Trimite colete în siguranță la ușa destinatarului. Asigurare inclusă și livrare de la adresă la adresă, prin curse regulate. Preluăm de la tine și livrăm în toată Europa.",
     cta: "Trimite colet",
     href: "/rezervare?mode=colet",
     tone: "red" as const,

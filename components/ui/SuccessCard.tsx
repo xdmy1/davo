@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, Download, Home, Search, Ticket } from "lucide-react";
+import { Check, Download, Home, Ticket } from "lucide-react";
 
 export default function SuccessCard({
   bookingNumber,
@@ -73,15 +73,6 @@ export default function SuccessCard({
                 <Download className="h-4 w-4" />
                 Descarcă PDF
               </a>
-            )}
-            {bookingNumber && (
-              <Link
-                href={`/livrare?nr=${bookingNumber}`}
-                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-white px-6 py-3.5 font-semibold text-[color:var(--navy-900)] hover:border-[color:var(--navy-700)] transition-colors"
-              >
-                <Search className="h-4 w-4" />
-                Urmărește status
-              </Link>
             )}
             <Link
               href="/"

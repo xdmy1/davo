@@ -208,7 +208,6 @@ export default function Footer() {
 
             <Reveal delay={0.15} className="md:col-span-3">
               <FooterColumn title="Informații utile">
-                <FooterLink href="/livrare">Urmărește colet / bilet</FooterLink>
                 <FooterLink href="/informatii-utile">Social DAVO Group</FooterLink>
                 <FooterLink href="/rezervare">Rezervări</FooterLink>
                 <FooterLink href="/despre-noi">Despre noi</FooterLink>

@@ -9,7 +9,6 @@ function htmlPage({
   heading,
   body,
   tone,
-  bookingNumber,
 }: {
   title: string;
   heading: string;
@@ -20,9 +19,6 @@ function htmlPage({
   const accent =
     tone === "ok" ? "#10c49b" : tone === "cancel" ? "#e11e2b" : "#1f2937";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "/";
-  const trackUrl = bookingNumber
-    ? `${appUrl.replace(/\/$/, "")}/livrare?nr=${bookingNumber}`
-    : null;
 
   return `<!DOCTYPE html>
 <html lang="ro">
@@ -53,11 +49,6 @@ function htmlPage({
     </header>
     <div class="body">${body}</div>
     <div class="actions">
-      ${
-        trackUrl
-          ? `<a class="btn primary" href="${trackUrl}">Urmărește status →</a>`
-          : ""
-      }
       <a class="btn secondary" href="${appUrl}">Mergi la site</a>
     </div>
   </main>
