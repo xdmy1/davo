@@ -140,8 +140,8 @@ const organizationJsonLd = {
   },
   geo: {
     "@type": "GeoCoordinates",
-    latitude: 47.0260,
-    longitude: 28.8060,
+    latitude: 47.0380005,
+    longitude: 28.8060474,
   },
   sameAs: [
     contactInfo.social.facebook,

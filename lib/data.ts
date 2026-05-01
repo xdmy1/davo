@@ -260,9 +260,9 @@ export const contactInfo = {
   email: "info@davo.md",
   address: "Calea Ieșilor 11/3, Chișinău, Moldova",
   addressShort: "Calea Ieșilor 11/3, Chișinău",
-  mapsUrl: "https://maps.google.com/?q=Calea+Ie%C8%99ilor+11%2F3+Chi%C8%99in%C4%83u",
+  mapsUrl: "https://maps.app.goo.gl/sRjSL8mXkw1iHQ4c7",
   mapsEmbedSrc:
-    "https://www.google.com/maps?q=Calea+Ie%C8%99ilor+11%2F3+Chi%C8%99in%C4%83u&output=embed",
+    "https://maps.google.com/maps?cid=12291235672842961864&output=embed",
   social: {
     facebook: "https://www.facebook.com/davotrans",
     instagram: "https://www.instagram.com/davotrans/",
