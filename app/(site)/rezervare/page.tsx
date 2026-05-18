@@ -80,6 +80,9 @@ function RezervareContent() {
   // userul vine de pe Hero cu un oraș european (după ce a făcut swap acolo).
   const [direction, setDirection] = useState<"md-to-eu" | "eu-to-md">(() => {
     const f = initialFrom.split(",")[0].trim().toLowerCase();
+    // Chișinău e hub-ul implicit MD, dar nu e în `moldovanCities` (lista de
+    // opriri intermediare), așa că îl tratăm explicit ca origine MD.
+    if (f === "chișinău" || f === "chisinau") return "md-to-eu";
     return moldovanCities.some((c) => c.name.toLowerCase() === f)
       ? "md-to-eu"
       : "eu-to-md";
@@ -694,7 +697,7 @@ function PersonalForm({
             required
             value={person.firstName}
             onChange={(e) => setField("firstName", e.target.value)}
-            placeholder="Ion"
+            placeholder="Popescu"
             className="simple-input"
           />
         </SimpleField>
@@ -703,7 +706,7 @@ function PersonalForm({
             required
             value={person.lastName}
             onChange={(e) => setField("lastName", e.target.value)}
-            placeholder="Popescu"
+            placeholder="Ion"
             className="simple-input"
           />
         </SimpleField>
@@ -790,7 +793,7 @@ function PartyForm({
             required={isSender}
             value={data.name}
             onChange={(e) => setField("name", e.target.value)}
-            placeholder="Ion Popescu"
+            placeholder="Popescu Ion"
             className="simple-input"
           />
         </SimpleField>

@@ -62,7 +62,7 @@ export default function ContactPage() {
                     <input
                       type="text"
                       required
-                      placeholder="Ion"
+                      placeholder="Popescu"
                       className="field-input"
                     />
                   </FormField>
@@ -70,7 +70,7 @@ export default function ContactPage() {
                     <input
                       type="text"
                       required
-                      placeholder="Popescu"
+                      placeholder="Ion"
                       className="field-input"
                     />
                   </FormField>
