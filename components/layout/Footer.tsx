@@ -6,6 +6,13 @@ import { Phone, Mail, MapPin, ArrowRight, MessageCircle, Clock } from "lucide-re
 import { contactInfo, destinations, services } from "@/lib/data";
 import { countryLandingUrl } from "@/lib/utils";
 import { Reveal } from "@/components/ui/Reveal";
+import { useLocale } from "@/lib/i18n/client";
+import { dict } from "@/lib/i18n/dict";
+import { localePath } from "@/lib/i18n/config";
+import {
+  localizeDestinationName,
+  localizeServiceTitle,
+} from "@/lib/i18n/dataI18n";
 import {
   FacebookIcon,
   InstagramIcon,
@@ -21,11 +28,14 @@ const socials = [
 ];
 
 export default function Footer() {
+  const locale = useLocale();
+  const t = dict(locale);
   const year = new Date().getFullYear();
+  const lp = (p: string) => localePath(locale, p);
 
   return (
     <footer className="relative print:hidden bg-[color:var(--navy-950)] text-white overflow-hidden">
-      {/* CTA band — rich end-of-page call to action */}
+      {/* CTA band */}
       <div className="relative bg-gradient-to-br from-[color:var(--ink-50)] via-white to-[color:var(--navy-50)] border-b border-[color:var(--ink-100)]">
         <div
           aria-hidden
@@ -34,38 +44,35 @@ export default function Footer() {
         <div className="container-page relative">
           <Reveal>
             <div className="grid gap-8 py-12 md:py-16 lg:grid-cols-[1.1fr,1fr] lg:gap-12 items-center">
-              {/* Left — pitch */}
               <div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-white px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] font-bold text-[color:var(--navy-800)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--red-500)]" />
-                  Gata de drum
+                  {t.footer.ctaBadge}
                 </span>
                 <h2 className="mt-4 display-hero text-[color:var(--navy-900)] text-[clamp(1.5rem,3vw,2.25rem)] leading-tight">
-                  Planifică-ți călătoria <br className="hidden md:inline" />
-                  cu <span className="text-[color:var(--red-500)]">DAVO Group</span>
+                  {t.footer.ctaTitle1} <br className="hidden md:inline" />
+                  {t.footer.ctaTitle2} <span className="text-[color:var(--red-500)]">DAVO Group</span>
                 </h2>
                 <p className="mt-4 text-[color:var(--ink-700)] max-w-lg">
-                  Germania, Olanda, Anglia, Belgia, Luxemburg — plecări regulate, autocare
-                  confortabile, șoferi experimentați. Rezervă online sau sună-ne, răspundem 24/7.
+                  {t.footer.ctaDescription}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
-                    href="/rezervare"
+                    href={lp("/rezervare")}
                     className="group inline-flex items-center gap-2 rounded-lg bg-[color:var(--red-500)] px-6 py-3.5 font-bold uppercase tracking-wider text-white text-sm hover:bg-[color:var(--red-600)] transition-colors shadow-[0_14px_30px_-10px_rgba(225,30,43,0.5)]"
                   >
-                    Rezervă acum
+                    {t.common.bookNow}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Link>
                   <Link
-                    href="/contact"
+                    href={lp("/contact")}
                     className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--ink-200)] bg-white px-6 py-3.5 font-bold uppercase tracking-wider text-[color:var(--navy-900)] text-sm hover:border-[color:var(--navy-700)] transition-colors"
                   >
-                    Scrie-ne
+                    {t.common.writeUs}
                   </Link>
                 </div>
               </div>
 
-              {/* Right — contact channels */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <a
                   href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}
@@ -76,7 +83,7 @@ export default function Footer() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[10px] uppercase tracking-wider font-bold text-[color:var(--ink-500)]">
-                      Telefon
+                      {t.common.phone}
                     </span>
                     <span className="block mt-0.5 text-sm font-bold text-[color:var(--navy-900)] truncate">
                       {contactInfo.phone}
@@ -112,7 +119,7 @@ export default function Footer() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[10px] uppercase tracking-wider font-bold text-[color:var(--ink-500)]">
-                      Email
+                      {t.common.email}
                     </span>
                     <span className="block mt-0.5 text-sm font-bold text-[color:var(--navy-900)] truncate">
                       {contactInfo.email}
@@ -126,10 +133,10 @@ export default function Footer() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[10px] uppercase tracking-wider font-bold text-white/60">
-                      Dispecerat
+                      {t.common.dispatch}
                     </span>
                     <span className="block mt-0.5 text-sm font-bold truncate">
-                      24/7 · non-stop
+                      {t.common.nonstop24}
                     </span>
                   </span>
                 </div>
@@ -139,13 +146,12 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Main footer content */}
+      {/* Main footer */}
       <div className="relative pt-12 pb-10">
         <div className="container-page">
           <div className="grid gap-10 md:grid-cols-12">
-            {/* Brand + description */}
             <Reveal className="md:col-span-4">
-              <Link href="/" className="inline-flex mb-5" aria-label="DAVO Group home">
+              <Link href={lp("/")} className="inline-flex mb-5" aria-label="DAVO Group home">
                 <Image
                   src="/images/logo-davo.png"
                   alt="DAVO Group"
@@ -156,7 +162,7 @@ export default function Footer() {
                 />
               </Link>
               <p className="text-sm text-white/70 leading-relaxed max-w-sm mb-6">
-                Servicii de transport de pasageri și colete la cele mai avantajoase prețuri. Zilnic, sigur, confortabil.
+                {t.footer.description}
               </p>
               <div className="space-y-2.5 text-sm">
                 <a
@@ -176,52 +182,51 @@ export default function Footer() {
                   <span>
                     {contactInfo.address}
                     <span className="block text-[11px] text-white/45 mt-0.5">
-                      Deschide în Google Maps →
+                      {t.common.openInMaps}
                     </span>
                   </span>
                 </a>
               </div>
             </Reveal>
 
-            {/* Links columns */}
             <Reveal delay={0.05} className="md:col-span-2">
-              <FooterColumn title="Rezervă bilet">
+              <FooterColumn title={t.footer.cols.bookTicket}>
                 {destinations.slice(0, 5).map((d) => (
-                  <FooterLink key={d.id} href={countryLandingUrl(d)}>
-                    Transport Moldova - {d.name}
+                  <FooterLink key={d.id} href={lp(countryLandingUrl(d))}>
+                    {t.footer.transportMoldovaTo(localizeDestinationName(d.slug, locale, d.name))}
                   </FooterLink>
                 ))}
               </FooterColumn>
             </Reveal>
 
             <Reveal delay={0.1} className="md:col-span-3">
-              <FooterColumn title="Serviciile oferite">
+              <FooterColumn title={t.footer.cols.services}>
                 {services.slice(0, 4).map((s) => (
-                  <FooterLink key={s.id} href={`/servicii/${s.slug}`}>
-                    {s.title}
+                  <FooterLink key={s.id} href={lp(`/serviciile-noastre/${s.slug}`)}>
+                    {localizeServiceTitle(s.slug, locale, s.title)}
                   </FooterLink>
                 ))}
               </FooterColumn>
             </Reveal>
 
             <Reveal delay={0.15} className="md:col-span-3">
-              <FooterColumn title="Informații utile">
-                <FooterLink href="/livrare">Caută rezervare</FooterLink>
-                <FooterLink href="/informatii-utile">Social DAVO Group</FooterLink>
-                <FooterLink href="/rezervare">Rezervări</FooterLink>
-                <FooterLink href="/despre-noi">Despre noi</FooterLink>
-                <FooterLink href="/contact">Contacte</FooterLink>
-                <FooterLink href="/rechizitele-bancare">Rechizite bancare</FooterLink>
-                <FooterLink href="/termeni-pasageri">T&amp;C pasageri</FooterLink>
-                <FooterLink href="/termeni-colete">T&amp;C colete</FooterLink>
+              <FooterColumn title={t.footer.cols.useful}>
+                <FooterLink href={lp("/livrare")}>{t.footer.links.findBooking}</FooterLink>
+                <FooterLink href={lp("/informatii-utile")}>{t.footer.links.socialDavo}</FooterLink>
+                <FooterLink href={lp("/rezervare")}>{t.footer.links.bookings}</FooterLink>
+                <FooterLink href={lp("/despre-noi")}>{t.footer.links.about}</FooterLink>
+                <FooterLink href={lp("/contact")}>{t.footer.links.contacts}</FooterLink>
+                <FooterLink href={lp("/rechizitele-bancare")}>{t.footer.links.bankDetails}</FooterLink>
+                <FooterLink href={lp("/harta-site")}>{t.footer.links.sitemap}</FooterLink>
+                <FooterLink href={lp("/termeni-pasageri")}>{t.footer.links.tcPassengers}</FooterLink>
+                <FooterLink href={lp("/termeni-colete")}>{t.footer.links.tcParcels}</FooterLink>
               </FooterColumn>
             </Reveal>
           </div>
 
-          {/* Bottom bar */}
           <div className="mt-14 pt-8 border-t border-white/10 grid gap-6 md:grid-cols-3 items-center">
             <div className="text-[12px] text-white/50 justify-self-center md:justify-self-start">
-              © {year} DAVO GROUP SRL · developed by{" "}
+              © {year} DAVO GROUP SRL · {t.footer.developedBy}{" "}
               <a
                 href="https://landings.md"
                 target="_blank"
@@ -281,24 +286,5 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
         {children}
       </Link>
     </li>
-  );
-}
-
-function BusSilhouette({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 180 90" className={className} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <rect x="8" y="18" width="160" height="50" rx="10" fill="currentColor" opacity="0.18" />
-      <rect x="12" y="22" width="150" height="34" rx="6" fill="currentColor" opacity="0.08" />
-      <rect x="18" y="26" width="22" height="22" rx="3" fill="currentColor" opacity="0.35" />
-      <rect x="44" y="26" width="22" height="22" rx="3" fill="currentColor" opacity="0.35" />
-      <rect x="70" y="26" width="22" height="22" rx="3" fill="currentColor" opacity="0.35" />
-      <rect x="96" y="26" width="22" height="22" rx="3" fill="currentColor" opacity="0.35" />
-      <rect x="122" y="26" width="34" height="22" rx="3" fill="currentColor" opacity="0.35" />
-      <circle cx="38" cy="70" r="10" fill="currentColor" opacity="0.9" />
-      <circle cx="38" cy="70" r="4" fill="#0b2653" />
-      <circle cx="138" cy="70" r="10" fill="currentColor" opacity="0.9" />
-      <circle cx="138" cy="70" r="4" fill="#0b2653" />
-      <rect x="158" y="34" width="6" height="10" rx="1" fill="#e11e2b" />
-    </svg>
   );
 }

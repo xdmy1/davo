@@ -8,17 +8,23 @@ import { cn } from "@/lib/utils";
 import { contactInfo } from "@/lib/data";
 import { defaultFAQs } from "@/lib/faqs";
 import { Reveal } from "@/components/ui/Reveal";
+import { useLocale } from "@/lib/i18n/client";
+import { dict } from "@/lib/i18n/dict";
+import { localePath } from "@/lib/i18n/config";
 
-// Re-export pentru backwards-compat — locul canonic e acum @/lib/faqs.
 export { defaultFAQs };
 
 export default function FAQ({
-  title = "Întrebări frecvente",
-  items = defaultFAQs,
+  title,
+  items,
 }: {
   title?: string;
   items?: { q: string; a: string }[];
-}) {
+} = {}) {
+  const locale = useLocale();
+  const t = dict(locale);
+  const resolvedItems = items ?? (t.faq.questions as { q: string; a: string }[]);
+  const resolvedTitle = title ?? t.faq.title;
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -28,17 +34,17 @@ export default function FAQ({
           <Reveal>
             <span className="eyebrow">
               <span className="h-1.5 w-6 rounded-full bg-[color:var(--red-500)]" />
-              FAQ
+              {t.faq.eyebrow}
             </span>
-            <h2 className="display-hero display-lg text-[color:var(--navy-900)] mt-4">{title}</h2>
+            <h2 className="display-hero display-lg text-[color:var(--navy-900)] mt-4">{resolvedTitle}</h2>
             <p className="mt-4 text-[color:var(--ink-700)] max-w-md">
-              Răspundem la cele mai des întâlnite întrebări. Dacă n-ai găsit răspunsul — scrie-ne oricând.
+              {t.faq.sidebarText}
             </p>
           </Reveal>
 
           <Reveal delay={0.05}>
             <div className="space-y-3">
-              {items.map((item, i) => {
+              {resolvedItems.map((item, i) => {
                 const isOpen = open === i;
                 return (
                   <div
@@ -95,10 +101,10 @@ export default function FAQ({
             <div className="flex-1">
               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--navy-800)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--red-500)]" />
-                N-ai găsit răspunsul?
+                {t.faq.noAnswerTitle}
               </div>
               <div className="mt-2 text-sm text-[color:var(--ink-700)]">
-                Echipa noastră îți răspunde cât mai repede posibil — telefonic, pe email sau pe pagina de contact.
+                {t.faq.noAnswerText}
               </div>
             </div>
             <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2 md:gap-3">
@@ -121,10 +127,10 @@ export default function FAQ({
                 </span>
               </a>
               <Link
-                href="/contact"
+                href={localePath(locale, "/contact")}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--red-500)] px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-white hover:bg-[color:var(--red-600)] transition-colors"
               >
-                Scrie-ne
+                {t.faq.writeUs}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

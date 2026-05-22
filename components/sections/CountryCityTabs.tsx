@@ -6,10 +6,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin } from "lucide-react";
 import { destinations } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { CountryFlag, destinationSlugToCode, countryMeta } from "@/components/ui/CountryFlag";
+import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
 import { Reveal } from "@/components/ui/Reveal";
+import { useLocale } from "@/lib/i18n/client";
+import { dict } from "@/lib/i18n/dict";
+import { localePath } from "@/lib/i18n/config";
+import { localizeDestinationName, localizeCity } from "@/lib/i18n/dataI18n";
 
 export default function CountryCityTabs() {
+  const locale = useLocale();
+  const t = dict(locale);
   const [active, setActive] = useState(destinations[0].slug);
   const activeDest = destinations.find((d) => d.slug === active) ?? destinations[0];
 
@@ -35,10 +41,10 @@ export default function CountryCityTabs() {
                   {code && <CountryFlag code={code} className="h-12 w-16" />}
                   <div>
                     <div className="font-[family-name:var(--font-montserrat)] font-extrabold uppercase tracking-wider text-sm">
-                      {d.name}
+                      {localizeDestinationName(d.slug, locale, d.name)}
                     </div>
                     <div className={cn("text-[11px]", isActive ? "text-white/70" : "text-[color:var(--ink-500)]")}>
-                      {d.cities.length} orașe
+                      {t.destinationsPick.citiesCount(d.cities.length)}
                     </div>
                   </div>
                 </button>
@@ -60,11 +66,11 @@ export default function CountryCityTabs() {
               {activeDest.cities.map((c) => (
                 <Link
                   key={c.id}
-                  href={`/rezervare?to=${encodeURIComponent(c.name)}`}
+                  href={localePath(locale, `/rezervare?to=${encodeURIComponent(c.name)}`)}
                   className="group flex items-center gap-2 rounded-xl border border-[color:var(--ink-200)] bg-white px-3 py-2.5 text-sm text-[color:var(--ink-700)] hover:border-[color:var(--red-400)] hover:text-[color:var(--navy-900)] transition-all"
                 >
                   <MapPin className="h-3.5 w-3.5 text-[color:var(--red-500)] shrink-0" />
-                  <span className="truncate">{c.name}</span>
+                  <span className="truncate">{localizeCity(c.name, locale)}</span>
                 </Link>
               ))}
             </div>

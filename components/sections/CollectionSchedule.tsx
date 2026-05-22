@@ -4,6 +4,10 @@ import { Calendar, MapPin, Phone, Snowflake, Clock } from "lucide-react";
 import Link from "next/link";
 import { collectionPoints, contactInfo, pickupSchedule } from "@/lib/data";
 import { Reveal } from "@/components/ui/Reveal";
+import { useLocale } from "@/lib/i18n/client";
+import { dict } from "@/lib/i18n/dict";
+import { localizeDay } from "@/lib/i18n";
+import { localizeCity } from "@/lib/i18n/dataI18n";
 
 export default function CollectionSchedule({
   variant = "full",
@@ -12,21 +16,24 @@ export default function CollectionSchedule({
   variant?: "full" | "compact";
   showHQ?: boolean;
 }) {
+  const locale = useLocale();
+  const t = dict(locale);
+
   return (
     <section className="relative py-16 lg:py-20 bg-white">
       <div className="container-page">
         <Reveal className="text-center max-w-2xl mx-auto">
           <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-[color:var(--navy-50)] px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] font-bold text-[color:var(--navy-800)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--red-500)]" />
-            Colectare colete
+            {t.collectionSchedule.badge}
           </span>
           <h2 className="mt-4 display-hero text-[color:var(--navy-900)] text-[clamp(1.5rem,3vw,2.25rem)]">
-            Grafic de colectare în Moldova
+            {t.collectionSchedule.title}
           </h2>
           <p className="mt-4 text-[color:var(--ink-700)]">
-            Colectăm coletele direct din orașul tău. Vezi mai jos zilele și orele de
-            colectare per oraș. Pentru produsele alterabile (carne, lactate, brânzeturi,
-            fructe, legume) transportăm în <span className="font-semibold text-[color:var(--navy-900)]">remorcă frigorifică</span> separată.
+            {t.collectionSchedule.subtitle1}{" "}
+            <span className="font-semibold text-[color:var(--navy-900)]">{t.collectionSchedule.refTrailer}</span>{" "}
+            {t.collectionSchedule.subtitle2}
           </p>
         </Reveal>
 
@@ -40,10 +47,10 @@ export default function CollectionSchedule({
                   </span>
                   <div>
                     <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)]">
-                      Sediu și punct principal de colectare
+                      {t.collectionSchedule.hqEyebrow}
                     </div>
                     <div className="font-[family-name:var(--font-montserrat)] text-lg font-extrabold text-[color:var(--navy-900)] mt-0.5">
-                      DAVO Group · Calea Ieșilor 11/3, Chișinău
+                      {t.collectionSchedule.hqName}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-3 text-sm">
                       <Link
@@ -52,7 +59,7 @@ export default function CollectionSchedule({
                         rel="noreferrer"
                         className="inline-flex items-center gap-1.5 font-semibold text-[color:var(--navy-900)] underline decoration-[color:var(--red-500)] underline-offset-2 hover:text-[color:var(--red-500)]"
                       >
-                        Deschide în Google Maps →
+                        {t.collectionSchedule.openInMaps}
                       </Link>
                       <a
                         href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}
@@ -68,7 +75,7 @@ export default function CollectionSchedule({
 
               <div>
                 <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)] flex items-center gap-1.5">
-                  <Clock className="h-3 w-3" /> Orar punct colectare
+                  <Clock className="h-3 w-3" /> {t.collectionSchedule.pickupScheduleLabel}
                 </div>
                 <ul className="mt-2 space-y-1.5">
                   {pickupSchedule.map((s) => (
@@ -77,7 +84,7 @@ export default function CollectionSchedule({
                       className="flex items-center justify-between gap-3 text-sm"
                     >
                       <span className="font-semibold text-[color:var(--navy-900)]">
-                        {s.day}
+                        {localizeDay(s.day, locale)}
                       </span>
                       <span className="font-mono text-[13px] text-[color:var(--ink-700)]">
                         {s.hours}
@@ -99,10 +106,10 @@ export default function CollectionSchedule({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--red-500)]">
-                        Oraș
+                        {t.collectionSchedule.cityLabel}
                       </div>
                       <h3 className="font-[family-name:var(--font-montserrat)] text-xl font-extrabold text-[color:var(--navy-900)] mt-0.5">
-                        {p.city}
+                        {localizeCity(p.city, locale)}
                       </h3>
                     </div>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--navy-50)] text-[color:var(--navy-800)]">
@@ -117,7 +124,7 @@ export default function CollectionSchedule({
                         className="flex items-center justify-between gap-3 text-sm"
                       >
                         <span className="font-semibold text-[color:var(--ink-700)]">
-                          {s.day}
+                          {localizeDay(s.day, locale)}
                         </span>
                         <span className="font-mono text-[13px] text-[color:var(--navy-900)]">
                           {s.hours}
@@ -140,7 +147,7 @@ export default function CollectionSchedule({
                     </div>
                   ) : (
                     <div className="mt-4 text-[11px] text-[color:var(--ink-500)] border-t border-[color:var(--ink-100)] pt-3">
-                      Pentru confirmare șofer: {contactInfo.phone}
+                      {t.collectionSchedule.driverConfirm(contactInfo.phone)}
                     </div>
                   )}
 
@@ -160,12 +167,10 @@ export default function CollectionSchedule({
           </span>
           <div>
             <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[color:var(--red-400)]">
-              Produse alterabile
+              {t.collectionSchedule.perishableEyebrow}
             </div>
             <p className="mt-1 text-sm md:text-base text-white/85 leading-relaxed">
-              Pentru carne, lactate, brânzeturi, fructe sau legume — transportăm în
-              remorcă frigorifică separată, la temperatură controlată. Anunță-ne la
-              rezervare ca să-ți rezervăm spațiu în frigorifică.
+              {t.collectionSchedule.perishableText}
             </p>
           </div>
           <a

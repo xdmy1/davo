@@ -4,6 +4,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Package, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/lib/i18n/client";
+import { dict } from "@/lib/i18n/dict";
+import { localePath } from "@/lib/i18n/config";
 
 export default function RouteHero({
   mode,
@@ -14,6 +17,12 @@ export default function RouteHero({
   from: string;
   to: string;
 }) {
+  const locale = useLocale();
+  const t = dict(locale);
+  const bookTicket = t.common.bookTicket;
+  const transportParcels = locale === "ru" ? "Перевозка посылок" : "Transport colete";
+  const transport = locale === "ru" ? "Перевозка" : "Transport";
+
   return (
     <section className="relative overflow-hidden bg-hero-navy text-white">
       <div className="bg-noise absolute inset-0 opacity-30" />
@@ -28,10 +37,10 @@ export default function RouteHero({
         >
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--red-400)]">
-              {mode === "bilet" ? "Rezervă bilet" : "Transport colete"}
+              {mode === "bilet" ? bookTicket : transportParcels}
             </div>
             <h1 className="mt-3 display-hero text-3xl md:text-4xl lg:text-5xl text-white">
-              {mode === "bilet" ? "Transport" : "Transport colete"}{" "}
+              {mode === "bilet" ? transport : transportParcels}{" "}
               <span className="text-white/90">{from.toUpperCase()}</span>
               <span className="text-[color:var(--red-400)] mx-3">—</span>
               <span className="text-white/90">{to.toUpperCase()}</span>
@@ -39,15 +48,15 @@ export default function RouteHero({
           </div>
 
           <div className="flex items-center gap-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm p-1 self-start">
-            <ModeTab active={mode === "bilet"} href="/rezervare" icon={<Users className="h-4 w-4" />}>
-              Pasageri
+            <ModeTab active={mode === "bilet"} href={localePath(locale, "/rezervare")} icon={<Users className="h-4 w-4" />}>
+              {t.bookingPage.routeTab.passengers}
             </ModeTab>
             <ModeTab
               active={mode === "colet"}
-              href="/rezervare?mode=colet"
+              href={localePath(locale, "/rezervare?mode=colet")}
               icon={<Package className="h-4 w-4" />}
             >
-              Colete
+              {t.bookingPage.routeTab.parcels}
             </ModeTab>
           </div>
         </motion.div>

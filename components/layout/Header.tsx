@@ -6,8 +6,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Phone } from "lucide-react";
-import { navItems, contactInfo } from "@/lib/data";
+import { contactInfo } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { getNavItems } from "@/lib/nav";
+import { useLocale, usePathWithoutLocale } from "@/lib/i18n/client";
+import { dict } from "@/lib/i18n/dict";
+import { localePath, locales, type Locale } from "@/lib/i18n/config";
 import {
   FacebookIcon,
   InstagramIcon,
@@ -22,19 +26,19 @@ const socials = [
   { href: contactInfo.social.tiktok, icon: TikTokIcon, label: "TikTok" },
 ];
 
-const languages = [
-  { code: "ro", label: "RO" },
-  { code: "en", label: "EN" },
-  { code: "ru", label: "RU" },
-];
+const languageLabels: Record<Locale, string> = { ro: "RO", ru: "RU" };
 
 export default function Header() {
+  const locale = useLocale();
+  const t = dict(locale);
+  const navItems = getNavItems(locale);
+  const pathWithoutLocale = usePathWithoutLocale();
+  const pathname = usePathname();
+
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hoveredDropdown, setHoveredDropdown] = useState<string | null>(null);
   const [langOpen, setLangOpen] = useState(false);
-  const [lang, setLang] = useState("ro");
-  const pathname = usePathname();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -47,8 +51,6 @@ export default function Header() {
     setMobileOpen(false);
   }, [pathname]);
 
-  const activeLang = languages.find((l) => l.code === lang) ?? languages[0];
-
   return (
     <>
       {/* Top contact strip */}
@@ -59,7 +61,7 @@ export default function Header() {
             className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
           >
             <Phone className="h-3.5 w-3.5 text-[color:var(--red-400)]" />
-            <span className="font-medium tracking-wide">Contact: {contactInfo.phone}</span>
+            <span className="font-medium tracking-wide">{t.nav.contact} {contactInfo.phone}</span>
           </a>
 
           <div className="flex items-center gap-5">
@@ -70,7 +72,7 @@ export default function Header() {
                 onBlur={() => setTimeout(() => setLangOpen(false), 140)}
                 className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
               >
-                {activeLang.label}
+                {languageLabels[locale]}
                 <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", langOpen && "rotate-180")} />
               </button>
               <AnimatePresence>
@@ -79,22 +81,20 @@ export default function Header() {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 6 }}
-                    className="absolute right-0 top-full mt-2 min-w-[80px] rounded-lg bg-white py-1 text-slate-900 shadow-lg"
+                    className="absolute right-0 top-full mt-2 min-w-[80px] rounded-lg bg-white py-1 text-slate-900 shadow-lg z-50"
                   >
-                    {languages.map((l) => (
-                      <button
-                        key={l.code}
-                        onClick={() => {
-                          setLang(l.code);
-                          setLangOpen(false);
-                        }}
+                    {locales.map((l) => (
+                      <Link
+                        key={l}
+                        href={localePath(l, pathWithoutLocale)}
+                        onClick={() => setLangOpen(false)}
                         className={cn(
                           "block w-full px-3 py-1.5 text-left text-sm hover:bg-[color:var(--navy-50)]",
-                          l.code === lang && "text-[color:var(--red-500)] font-semibold"
+                          l === locale && "text-[color:var(--red-500)] font-semibold"
                         )}
                       >
-                        {l.label}
-                      </button>
+                        {languageLabels[l]}
+                      </Link>
                     ))}
                   </motion.div>
                 )}
@@ -133,7 +133,7 @@ export default function Header() {
         )}
       >
         <div className="container-page flex items-center justify-between py-3 lg:py-4">
-          <Logo />
+          <Logo locale={locale} />
 
           <nav className="hidden xl:flex items-center gap-1">
             {navItems.map((item) => (
@@ -192,16 +192,16 @@ export default function Header() {
 
           <div className="hidden xl:flex items-center gap-3">
             <Link
-              href="/rezervare"
+              href={localePath(locale, "/rezervare")}
               className="inline-flex items-center gap-2 rounded-lg bg-[color:var(--red-500)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(225,30,43,0.55)] hover:bg-[color:var(--red-600)] transition-colors"
             >
-              Rezervă acum
+              {t.common.bookNow}
             </Link>
           </div>
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Meniu"
+            aria-label={t.nav.menu}
             className="xl:hidden p-2 -mr-2 text-[color:var(--navy-900)] hover:bg-[color:var(--navy-50)] rounded-md transition-colors"
           >
             {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -218,7 +218,12 @@ export default function Header() {
               className="xl:hidden border-t border-[color:var(--ink-100)] overflow-hidden"
             >
               <div className="container-page py-4">
-                <MobileNav onNavigate={() => setMobileOpen(false)} />
+                <MobileNav
+                  locale={locale}
+                  navItems={navItems}
+                  pathWithoutLocale={pathWithoutLocale}
+                  onNavigate={() => setMobileOpen(false)}
+                />
               </div>
             </motion.div>
           )}
@@ -228,9 +233,9 @@ export default function Header() {
   );
 }
 
-function Logo() {
+function Logo({ locale }: { locale: Locale }) {
   return (
-    <Link href="/" className="shrink-0" aria-label="DAVO Group home">
+    <Link href={localePath(locale, "/")} className="shrink-0" aria-label="DAVO Group home">
       <Image
         src="/images/logo-davo.png"
         alt="DAVO Group"
@@ -244,7 +249,18 @@ function Logo() {
   );
 }
 
-function MobileNav({ onNavigate }: { onNavigate: () => void }) {
+function MobileNav({
+  locale,
+  navItems,
+  pathWithoutLocale,
+  onNavigate,
+}: {
+  locale: Locale;
+  navItems: ReturnType<typeof getNavItems>;
+  pathWithoutLocale: string;
+  onNavigate: () => void;
+}) {
+  const t = dict(locale);
   const [open, setOpen] = useState<string | null>(null);
   return (
     <nav className="flex flex-col">
@@ -299,6 +315,22 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
           )}
         </div>
       ))}
+
+      {/* Language switcher (mobile) */}
+      <div className="mt-4 flex items-center gap-2 border-t border-[color:var(--ink-100)] pt-4 text-sm">
+        <span className="text-[color:var(--ink-500)]">{languageLabels[locale]} →</span>
+        {locales.filter((l) => l !== locale).map((l) => (
+          <Link
+            key={l}
+            href={localePath(l, pathWithoutLocale)}
+            onClick={onNavigate}
+            className="rounded-md border border-[color:var(--ink-200)] px-3 py-1.5 font-semibold text-[color:var(--navy-900)] hover:border-[color:var(--red-500)] hover:text-[color:var(--red-500)]"
+          >
+            {languageLabels[l]}
+          </Link>
+        ))}
+      </div>
+
       <div className="mt-4 flex flex-col gap-2">
         <a
           href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}
@@ -307,11 +339,11 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
           <Phone className="h-4 w-4" /> {contactInfo.phone}
         </a>
         <Link
-          href="/rezervare"
+          href={localePath(locale, "/rezervare")}
           onClick={onNavigate}
           className="flex items-center justify-center rounded-lg bg-[color:var(--red-500)] px-4 py-3 text-white font-semibold"
         >
-          Rezervă acum
+          {t.common.bookNow}
         </Link>
       </div>
     </nav>
