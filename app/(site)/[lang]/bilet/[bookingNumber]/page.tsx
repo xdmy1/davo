@@ -44,6 +44,21 @@ interface Booking {
   payMethod?: string | null;
   passengerResponse?: string | null;
   createdAt: string;
+  outboundSeats?: number[];
+  returnSeats?: number[];
+}
+
+// Numele pasagerilor sunt salvate concatenat în firstName/lastName separate prin
+// ", " (vezi rezervare/page.tsx → submit). Le re-spargem aici ca să le afișăm
+// frumos. Dacă nu sunt virgule, e o singură persoană — comportament istoric.
+function splitPassengers(firstName: string, lastName: string): { firstName: string; lastName: string }[] {
+  const firsts = firstName.split(",").map((s) => s.trim()).filter(Boolean);
+  const lasts = lastName.split(",").map((s) => s.trim()).filter(Boolean);
+  const n = Math.max(firsts.length, lasts.length, 1);
+  return Array.from({ length: n }, (_, i) => ({
+    firstName: firsts[i] ?? firsts[0] ?? "",
+    lastName: lasts[i] ?? lasts[0] ?? "",
+  }));
 }
 
 const STATUS_LABELS: Record<string, { label: string; tone: "ok" | "warn" | "bad" }> = {
@@ -300,20 +315,47 @@ export default function TicketPage() {
             <DetailCell icon={<Clock className="h-3.5 w-3.5" />} label="Direcție">
               {booking.tripType === "round-trip" ? "Tur-retur" : "O direcție"}
             </DetailCell>
+            {!isParcel && booking.outboundSeats && booking.outboundSeats.length > 0 && (
+              <DetailCell icon={<User className="h-3.5 w-3.5" />} label="Locuri dus">
+                {booking.outboundSeats.join(", ")}
+              </DetailCell>
+            )}
+            {!isParcel && booking.returnSeats && booking.returnSeats.length > 0 && (
+              <DetailCell icon={<User className="h-3.5 w-3.5" />} label="Locuri retur">
+                {booking.returnSeats.join(", ")}
+              </DetailCell>
+            )}
           </div>
 
           {/* Passenger info */}
           <div className="px-7 pb-6 border-t border-[color:var(--ink-100)] pt-5">
             <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)] mb-3">
-              {isParcel ? "Date expeditor" : "Date pasager"}
+              {isParcel ? "Date expeditor" : booking.adults > 1 ? "Pasageri" : "Date pasager"}
             </div>
             <div className="grid gap-2 text-sm">
-              <div className="flex items-center gap-2 text-[color:var(--navy-900)]">
-                <User className="h-3.5 w-3.5 text-[color:var(--red-500)]" />
-                <span className="font-semibold">
-                  {booking.firstName} {booking.lastName}
-                </span>
-              </div>
+              {!isParcel ? (
+                splitPassengers(booking.firstName, booking.lastName).map((p, i, arr) => (
+                  <div key={`${p.firstName}-${i}`} className="flex items-center gap-2 text-[color:var(--navy-900)]">
+                    <User className="h-3.5 w-3.5 text-[color:var(--red-500)]" />
+                    <span className="font-semibold">
+                      {p.firstName} {p.lastName}
+                    </span>
+                    {arr.length > 1 && booking.outboundSeats && booking.outboundSeats[i] && (
+                      <span className="text-[color:var(--ink-500)] text-xs font-mono">
+                        · loc {booking.outboundSeats[i]}
+                        {booking.returnSeats && booking.returnSeats[i] ? ` / retur ${booking.returnSeats[i]}` : ""}
+                      </span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center gap-2 text-[color:var(--navy-900)]">
+                  <User className="h-3.5 w-3.5 text-[color:var(--red-500)]" />
+                  <span className="font-semibold">
+                    {booking.firstName} {booking.lastName}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-[color:var(--ink-700)]">
                 <Phone className="h-3.5 w-3.5 text-[color:var(--red-500)]" />
                 {booking.phone}

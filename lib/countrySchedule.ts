@@ -81,3 +81,40 @@ export function getCountrySchedule(slug: string): CountryScheduleRow | null {
 export function weekdayName(weekday: number): string {
   return WEEKDAY_RO[weekday] ?? "—";
 }
+
+/**
+ * Convertește un label de tipul "Duminică 19:00" în ziua săptămânii numerică
+ * (0 = duminică, 1 = luni, ..., 6 = sâmbătă) — folosit ca filtru defensiv în
+ * TripPicker, ca să nu apară accidental date din alte zile dacă DB conține
+ * curse vechi/de test.
+ */
+export function weekdayFromLabel(label: string | undefined | null): number | null {
+  if (!label) return null;
+  const first = label.trim().split(/\s+/)[0].toLowerCase();
+  const map: Record<string, number> = {
+    "duminică": 0, duminica: 0,
+    "luni": 1,
+    "marți": 2, marti: 2,
+    "miercuri": 3,
+    "joi": 4,
+    "vineri": 5,
+    "sâmbătă": 6, sambata: 6,
+  };
+  return map[first] ?? null;
+}
+
+/**
+ * Ziua săptămânii (0..6, dum..sam) pentru cursa dus / retur a unei țări destinație.
+ * Se folosește pe FE ca filtru defensiv în TripPicker — backend-ul deja
+ * generează curse doar în ziua corectă, dar dacă în DB rămân resturi din date
+ * vechi, filtrul îi maschează față de pasager.
+ */
+export function getOutboundWeekday(slug: string): number | null {
+  const sched = SCHEDULES[slug];
+  return sched ? weekdayFromLabel(sched.outboundLabel) : null;
+}
+
+export function getReturnWeekday(slug: string): number | null {
+  const sched = SCHEDULES[slug];
+  return sched ? weekdayFromLabel(sched.returnLabel) : null;
+}

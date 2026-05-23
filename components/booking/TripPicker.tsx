@@ -67,6 +67,7 @@ export function TripPicker({
   selectedTripId,
   selectedSeats,
   onSelect,
+  allowedWeekday,
 }: {
   title: string;
   subtitle?: string;
@@ -78,6 +79,10 @@ export function TripPicker({
   selectedTripId: string | null;
   selectedSeats: number[];
   onSelect: (tripId: string | null, seats: number[], trip?: PublicTrip | null) => void;
+  /** Filtru defensiv pe FE: 0=duminică, ..., 6=sâmbătă. Dacă e set, ascundem
+   *  cursele care nu cad în ziua respectivă (backend-ul ar trebui să genereze
+   *  doar zilele corecte; filtrul ăsta acoperă date vechi/de test din DB). */
+  allowedWeekday?: number | null;
 }) {
   const hasRoute = Boolean(originCityId && destCityId);
   const [trips, setTrips] = useState<PublicTrip[] | null>(null);
@@ -134,12 +139,21 @@ export function TripPicker({
     return () => controller.abort();
   }, [selectedTripId]);
 
-  const total = trips?.length ?? 0;
+  // Filtrăm defensiv după ziua săptămânii dacă e dată. Util când DB conține
+  // curse generate manual sau din date de test în zile care nu corespund
+  // programului real al rutei (ex. retur EU→MD trebuie să fie doar duminică
+  // pentru Belgia/Olanda/Germania/Anglia).
+  const filteredTrips = useMemo(() => {
+    if (!trips || allowedWeekday == null) return trips;
+    return trips.filter((t) => new Date(t.departureAt).getDay() === allowedWeekday);
+  }, [trips, allowedWeekday]);
+
+  const total = filteredTrips?.length ?? 0;
   const canPrev = pageStart > 0;
   const canNext = pageStart + VISIBLE_DESKTOP < total;
   const visible = useMemo(
-    () => (trips ?? []).slice(pageStart, pageStart + VISIBLE_DESKTOP),
-    [trips, pageStart]
+    () => (filteredTrips ?? []).slice(pageStart, pageStart + VISIBLE_DESKTOP),
+    [filteredTrips, pageStart]
   );
 
   const pickTrip = (trip: PublicTrip) => {
@@ -174,7 +188,7 @@ export function TripPicker({
         </div>
       )}
 
-      {!loading && !error && trips && trips.length === 0 && <NoTripsCard />}
+      {!loading && !error && filteredTrips && filteredTrips.length === 0 && <NoTripsCard />}
 
       {!loading && total > 0 && (
         <div>

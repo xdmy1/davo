@@ -50,20 +50,27 @@ export default function Hero() {
     [locale]
   );
 
+  // Lista MD include Chișinău (hub-ul) + toate raioanele de pickup. Chișinău
+  // nu e în `moldovanCities` (lista raioanelor), așa că îl prepend-uim explicit.
+  const moldovaCityOptions = useMemo(
+    () => [localizeCity("Chișinău", locale), ...moldovanCities.map((c) => localizeCity(c.name, locale))],
+    [locale]
+  );
+
   const fromOptions = useMemo(
     () =>
       direction === "md-to-eu"
-        ? moldovanCities.map((c) => localizeCity(c.name, locale))
+        ? moldovaCityOptions
         : destinationCities.map((c) => `${c.name}, ${c.country}`),
-    [direction, destinationCities, locale]
+    [direction, destinationCities, moldovaCityOptions]
   );
 
   const toOptions = useMemo(
     () =>
       direction === "md-to-eu"
         ? destinationCities.map((c) => `${c.name}, ${c.country}`)
-        : moldovanCities.map((c) => localizeCity(c.name, locale)),
-    [direction, destinationCities, locale]
+        : moldovaCityOptions,
+    [direction, destinationCities, moldovaCityOptions]
   );
 
   const swapDirection = () => {

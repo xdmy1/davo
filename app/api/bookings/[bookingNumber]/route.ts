@@ -9,7 +9,15 @@ export async function GET(
     const { bookingNumber } = await params
 
     const booking = await prisma.booking.findUnique({
-      where: { bookingNumber }
+      where: { bookingNumber },
+      include: {
+        // Includem scaunele cu tripId ca să putem grupa locurile pe dus/retur
+        // în pagina /bilet/[bookingNumber] și în email-urile de confirmare.
+        seatBookings: {
+          select: { seatNumber: true, tripId: true },
+          orderBy: { seatNumber: 'asc' },
+        },
+      },
     })
 
     if (!booking) {
@@ -19,7 +27,21 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ success: true, booking })
+    const outboundSeats = booking.seatBookings
+      .filter((s) => s.tripId === booking.tripId)
+      .map((s) => s.seatNumber)
+    const returnSeats = booking.returnTripId
+      ? booking.seatBookings
+          .filter((s) => s.tripId === booking.returnTripId)
+          .map((s) => s.seatNumber)
+      : []
+
+    const { seatBookings: _seatBookings, ...rest } = booking
+    void _seatBookings
+    return NextResponse.json({
+      success: true,
+      booking: { ...rest, outboundSeats, returnSeats },
+    })
   } catch (error) {
     console.error('Get booking error:', error)
     return NextResponse.json(

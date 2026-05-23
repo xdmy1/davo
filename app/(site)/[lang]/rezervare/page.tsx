@@ -23,11 +23,19 @@ import {
 import { destinations, moldovanCities, contactInfo } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
+import { getOutboundWeekday, getReturnWeekday } from "@/lib/countrySchedule";
 import RouteHero from "@/components/booking/RouteHero";
 import { StepBar } from "@/components/booking/StepBar";
 import { TripPicker, type PublicTrip } from "@/components/booking/TripPicker";
 import { CityCombobox } from "@/components/booking/CityCombobox";
 import SuccessCard from "@/components/ui/SuccessCard";
+
+// Chișinău e hub-ul implicit din Moldova; nu apare în `moldovanCities` (ce listă
+// e doar opririle intermediare). Pentru selecția UI o adăugăm explicit ca prima
+// opțiune — atât la origine MD→EU, cât și ca destinație EU→MD.
+const moldovaCityOptions = ["Chișinău", ...moldovanCities.map((c) => c.name)];
+
+type PassengerName = { firstName: string; lastName: string };
 
 type Mode = "bilet" | "colet";
 
@@ -120,6 +128,10 @@ function RezervareContent() {
     passport: "",
     note: "",
   });
+  // Pasagerii 2..N. Pasagerul 1 e `person` (contact + nume). Lista se sincronizează
+  // cu `passengers` în updatePassengers — adăugăm/scoatem perechi când userul
+  // schimbă numărul de călători.
+  const [extraPassengers, setExtraPassengers] = useState<PassengerName[]>([]);
 
   const [sender, setSender] = useState({
     name: "",
@@ -233,13 +245,19 @@ function RezervareContent() {
   const back = () => setStep((s) => Math.max(0, s - 1));
 
   // Schimb numărul de pasageri → resetează scaunele alese (s-ar putea să nu mai
-  // fie suficiente / corecte ca număr).
+  // fie suficiente / corecte ca număr) și sincronizează lista de extra-pasageri.
   const updatePassengers = (n: number) => {
     const next = Math.max(1, Math.min(4, n));
     if (next === passengers) return;
     setPassengers(next);
     setOutboundSeats([]);
     setReturnSeats([]);
+    setExtraPassengers((prev) => {
+      const target = next - 1;
+      if (prev.length === target) return prev;
+      if (prev.length > target) return prev.slice(0, target);
+      return [...prev, ...Array.from({ length: target - prev.length }, () => ({ firstName: "", lastName: "" }))];
+    });
   };
 
   // Inversează direcția (Moldova ↔ Europa). Reset cursele alese fiindcă ruta
@@ -278,6 +296,17 @@ function RezervareContent() {
     setSubmitError(null);
     try {
       const pax = Math.max(1, outboundSeats.length || 1);
+      // Construim numele tuturor pasagerilor — pasagerul 1 din `person`, restul
+      // din `extraPassengers`. Le concatenăm cu ", " ca să încapă în firstName/
+      // lastName fără schemă nouă; la afișarea biletului le re-spargem după ", ".
+      const allNames: PassengerName[] = [
+        { firstName: person.firstName.trim(), lastName: person.lastName.trim() },
+        ...extraPassengers
+          .slice(0, Math.max(0, pax - 1))
+          .map((p) => ({ firstName: p.firstName.trim(), lastName: p.lastName.trim() })),
+      ];
+      const firstNameCombined = allNames.map((p) => p.firstName).join(", ");
+      const lastNameCombined = allNames.map((p) => p.lastName).join(", ");
       const body =
         mode === "bilet"
           ? {
@@ -287,8 +316,8 @@ function RezervareContent() {
               arrivalCity: toCityName,
               departureDate: date,
               returnDate: trip === "return" ? returnDate : undefined,
-              firstName: person.firstName,
-              lastName: person.lastName,
+              firstName: firstNameCombined,
+              lastName: lastNameCombined,
               email: person.email,
               phone: person.phone,
               adults: pax,
@@ -363,13 +392,13 @@ function RezervareContent() {
                             onSwap={swapDirection}
                             fromOptions={
                               direction === "md-to-eu"
-                                ? moldovanCities.map((c) => c.name)
+                                ? moldovaCityOptions
                                 : destinationCities.map((c) => `${c.name}, ${c.country}`)
                             }
                             toOptions={
                               direction === "md-to-eu"
                                 ? destinationCities.map((c) => `${c.name}, ${c.country}`)
-                                : moldovanCities.map((c) => c.name)
+                                : moldovaCityOptions
                             }
                           />
                           {originCityId && destCityId && (
@@ -386,6 +415,15 @@ function RezervareContent() {
                                 setOutboundSeats(seats);
                                 if (tripInfo !== undefined) setOutboundTripInfo(tripInfo ?? null);
                               }}
+                              // MD→EU = ziua de plecare din MD (outbound al țării destinație);
+                              // EU→MD = ziua de retur din EU.
+                              allowedWeekday={
+                                matchedCountry
+                                  ? direction === "md-to-eu"
+                                    ? getOutboundWeekday(matchedCountry.slug)
+                                    : getReturnWeekday(matchedCountry.slug)
+                                  : null
+                              }
                             />
                           )}
                         </div>
@@ -407,12 +445,27 @@ function RezervareContent() {
                             setReturnSeats(seats);
                             if (tripInfo !== undefined) setReturnTripInfo(tripInfo ?? null);
                           }}
+                          // Returul are direcția inversă față de cursul dus —
+                          // dacă userul a luat dus MD→EU, returul e EU→MD = ziua de retur.
+                          allowedWeekday={
+                            matchedCountry
+                              ? direction === "md-to-eu"
+                                ? getReturnWeekday(matchedCountry.slug)
+                                : getOutboundWeekday(matchedCountry.slug)
+                              : null
+                          }
                         />
                       )}
 
                       {/* Pasul Pasageri */}
                       {((step === 1 && trip === "one") || (step === 2 && trip === "return")) && (
-                        <PersonalForm person={person} onChange={setPerson} />
+                        <PersonalForm
+                          person={person}
+                          onChange={setPerson}
+                          passengers={passengers}
+                          extra={extraPassengers}
+                          onExtraChange={setExtraPassengers}
+                        />
                       )}
 
                       {/* Pasul Plată */}
@@ -443,7 +496,7 @@ function RezervareContent() {
                           onFrom={setFrom}
                           onTo={setTo}
                           onTrip={setTrip}
-                          fromOptions={moldovanCities.map((c) => c.name)}
+                          fromOptions={moldovaCityOptions}
                           toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
                           hideTrip
                         />
@@ -682,68 +735,124 @@ function DirectionStep({
 function PersonalForm({
   person,
   onChange,
+  passengers,
+  extra,
+  onExtraChange,
 }: {
   person: { firstName: string; lastName: string; email: string; phone: string; passport: string; note: string };
   onChange: (p: typeof person) => void;
+  passengers: number;
+  extra: PassengerName[];
+  onExtraChange: (next: PassengerName[]) => void;
 }) {
   const setField = (k: keyof typeof person, v: string) => onChange({ ...person, [k]: v });
+  const setExtraField = (i: number, k: keyof PassengerName, v: string) => {
+    const next = extra.map((p, idx) => (idx === i ? { ...p, [k]: v } : p));
+    onExtraChange(next);
+  };
   return (
     <div className="card-elevated p-6 md:p-8">
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--red-500)]">
           Informații personale
         </span>
-        <h2 className="display-hero text-2xl md:text-3xl text-[color:var(--navy-900)]">Datele pasagerului</h2>
+        <h2 className="display-hero text-2xl md:text-3xl text-[color:var(--navy-900)]">
+          {passengers > 1 ? `Datele pasagerilor (${passengers})` : "Datele pasagerului"}
+        </h2>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <SimpleField label="Nume *" icon={<User className="h-4 w-4" />}>
-          <input
-            required
-            value={person.firstName}
-            onChange={(e) => setField("firstName", e.target.value)}
-            placeholder="Popescu"
-            className="simple-input"
-          />
-        </SimpleField>
-        <SimpleField label="Prenume *" icon={<User className="h-4 w-4" />}>
-          <input
-            required
-            value={person.lastName}
-            onChange={(e) => setField("lastName", e.target.value)}
-            placeholder="Ion"
-            className="simple-input"
-          />
-        </SimpleField>
-        <SimpleField label="Email *" icon={<Mail className="h-4 w-4" />}>
-          <input
-            required
-            type="email"
-            value={person.email}
-            onChange={(e) => setField("email", e.target.value)}
-            placeholder="ion@email.com"
-            className="simple-input"
-          />
-        </SimpleField>
-        <SimpleField label="Telefon *" icon={<Phone className="h-4 w-4" />}>
-          <input
-            required
-            type="tel"
-            value={person.phone}
-            onChange={(e) => setField("phone", e.target.value)}
-            placeholder="+373 68 065 699"
-            className="simple-input"
-          />
-        </SimpleField>
-        <SimpleField label="Serie pașaport" icon={<Info className="h-4 w-4" />}>
-          <input
-            value={person.passport}
-            onChange={(e) => setField("passport", e.target.value)}
-            placeholder="AB0000000"
-            className="simple-input"
-          />
-        </SimpleField>
+
+      {/* Pasagerul 1 — contact principal: nume + date contact. */}
+      <div className="rounded-2xl border border-[color:var(--ink-200)] bg-[color:var(--ink-50)] p-5 md:p-6 mb-4">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--navy-700)] mb-3">
+          Pasagerul 1 {passengers > 1 ? "(contact principal)" : ""}
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <SimpleField label="Nume *" icon={<User className="h-4 w-4" />}>
+            <input
+              required
+              value={person.firstName}
+              onChange={(e) => setField("firstName", e.target.value)}
+              placeholder="Popescu"
+              className="simple-input"
+            />
+          </SimpleField>
+          <SimpleField label="Prenume *" icon={<User className="h-4 w-4" />}>
+            <input
+              required
+              value={person.lastName}
+              onChange={(e) => setField("lastName", e.target.value)}
+              placeholder="Ion"
+              className="simple-input"
+            />
+          </SimpleField>
+          <SimpleField label="Email *" icon={<Mail className="h-4 w-4" />}>
+            <input
+              required
+              type="email"
+              value={person.email}
+              onChange={(e) => setField("email", e.target.value)}
+              placeholder="ion@email.com"
+              className="simple-input"
+            />
+          </SimpleField>
+          <SimpleField label="Telefon *" icon={<Phone className="h-4 w-4" />}>
+            <input
+              required
+              type="tel"
+              value={person.phone}
+              onChange={(e) => setField("phone", e.target.value)}
+              placeholder="+373 68 065 699"
+              className="simple-input"
+            />
+          </SimpleField>
+          <SimpleField label="Serie pașaport" icon={<Info className="h-4 w-4" />}>
+            <input
+              value={person.passport}
+              onChange={(e) => setField("passport", e.target.value)}
+              placeholder="AB0000000"
+              className="simple-input"
+            />
+          </SimpleField>
+        </div>
       </div>
-      <div className="mt-4">
+
+      {/* Pasagerii 2..N — doar nume + prenume. */}
+      {passengers > 1 && (
+        <div className="space-y-3 mb-4">
+          {Array.from({ length: passengers - 1 }).map((_, i) => {
+            const p = extra[i] ?? { firstName: "", lastName: "" };
+            return (
+              <div key={i} className="rounded-2xl border border-[color:var(--ink-200)] bg-white p-5 md:p-6">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--navy-700)] mb-3">
+                  Pasagerul {i + 2}
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <SimpleField label="Nume *" icon={<User className="h-4 w-4" />}>
+                    <input
+                      required
+                      value={p.firstName}
+                      onChange={(e) => setExtraField(i, "firstName", e.target.value)}
+                      placeholder="Popescu"
+                      className="simple-input"
+                    />
+                  </SimpleField>
+                  <SimpleField label="Prenume *" icon={<User className="h-4 w-4" />}>
+                    <input
+                      required
+                      value={p.lastName}
+                      onChange={(e) => setExtraField(i, "lastName", e.target.value)}
+                      placeholder="Maria"
+                      className="simple-input"
+                    />
+                  </SimpleField>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div>
         <SimpleField label="Observații">
           <textarea
             rows={3}
