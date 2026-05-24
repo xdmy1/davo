@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/send-reminders",
-      "schedule": "7 5 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/generate-trips",
