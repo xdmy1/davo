@@ -91,6 +91,33 @@ export function arrivalFor(departure: Date, durationHours: number): Date {
   return new Date(departure.getTime() + durationHours * 3600 * 1000);
 }
 
+/**
+ * Întoarce UTC-instant corespunzător orei `hh:mm` la Chișinău, în ziua dinainte
+ * de data plecării (interpretată în Europe/Chișinău).
+ *
+ * Folosit pentru reminder-ele de cursă: vrem ca email-ul să iasă constant
+ * dimineața zilei dinainte, indiferent de ora cursei. Asta dă o experiență
+ * predictibilă (pasagerul primește mereu mail-ul a doua zi dimineața înainte
+ * de călătorie) și ferește de email-uri trimise noaptea sau cu doar 1-2h
+ * înainte (cazul când cron-ul zilnic prinde un sendAt exact-24h-before greșit).
+ */
+export function dayBeforeAtLocal(departure: Date, hh = 8, mm = 0): Date {
+  const local = parseLocalParts(departure);
+  // Construim "ziua locală" în Moldova, scădem 1 zi, apoi cerem hh:mm pe acea zi.
+  // Folosim un Date UTC din care extragem componentele locale ca să gestionăm
+  // corect DST-ul (zilele cu trecerea ora -> nu apare problemă pt 08:00).
+  const localMidnightUtc = makeUtcFromLocal(local.year, local.month, local.day, 0, 0);
+  const dayBeforeMidnightUtc = new Date(localMidnightUtc.getTime() - 24 * 3600 * 1000);
+  const dayBeforeLocal = parseLocalParts(dayBeforeMidnightUtc);
+  return makeUtcFromLocal(
+    dayBeforeLocal.year,
+    dayBeforeLocal.month,
+    dayBeforeLocal.day,
+    hh,
+    mm
+  );
+}
+
 /* ---------- internal: timezone math ---------- */
 
 function parseLocalParts(d: Date): {

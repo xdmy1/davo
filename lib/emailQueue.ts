@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { sendBookingConfirmation, getResend } from "@/lib/email";
 import {
   reminder24hHtml,
-  reminder2hHtml,
   cancellationHtml,
   subjectForType,
 } from "@/lib/emailTemplates";
 import { createBookingToken, bookingResponseUrl } from "@/lib/bookingToken";
 import { appUrl as resolveAppUrl } from "@/lib/appUrl";
+import { dayBeforeAtLocal } from "@/lib/schedule";
 
 async function buildResponseUrls(bookingNumber: string) {
   const appUrl = resolveAppUrl();
@@ -32,8 +32,7 @@ const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 15 * 60 * 1000;
 
 /**
- * Când un booking este confirmat: enqueue 3 emailuri (confirmation now,
- * reminder_24h la dep-24h, reminder_2h la dep-2h).
+ * Când un booking este confirmat: enqueue confirmation + reminder_24h.
  * Skipează tipurile care există deja pentru booking-ul respectiv.
  * Reminderele din trecut nu se creează.
  */
@@ -49,8 +48,9 @@ export async function enqueueForBooking(bookingId: string) {
 
   const now = new Date();
   const dep = booking.departureDate;
-  const dep24 = new Date(dep.getTime() - 24 * 3600 * 1000);
-  const dep2 = new Date(dep.getTime() - 2 * 3600 * 1000);
+  // Reminder = ziua dinainte de plecare la 08:00 ora locală Moldova. Constant
+  // dimineața — vezi dayBeforeAtLocal pentru raționament.
+  const dep24 = dayBeforeAtLocal(dep, 8, 0);
 
   const jobs: Array<{ type: string; sendAt: Date; status: string }> = [];
   if (!have.has("confirmation")) {
@@ -58,9 +58,6 @@ export async function enqueueForBooking(bookingId: string) {
   }
   if (!have.has("reminder_24h") && dep24 > now) {
     jobs.push({ type: "reminder_24h", sendAt: dep24, status: "scheduled" });
-  }
-  if (!have.has("reminder_2h") && dep2 > now) {
-    jobs.push({ type: "reminder_2h", sendAt: dep2, status: "scheduled" });
   }
 
   if (jobs.length === 0) return { enqueued: 0 };
@@ -88,15 +85,11 @@ export async function enqueueRemindersOnly(bookingId: string) {
 
   const now = new Date();
   const dep = booking.departureDate;
-  const dep24 = new Date(dep.getTime() - 24 * 3600 * 1000);
-  const dep2 = new Date(dep.getTime() - 2 * 3600 * 1000);
+  const dep24 = dayBeforeAtLocal(dep, 8, 0);
 
   const jobs: Array<{ type: string; sendAt: Date; status: string; bookingId: string }> = [];
   if (!have.has("reminder_24h") && dep24 > now) {
     jobs.push({ type: "reminder_24h", sendAt: dep24, status: "scheduled", bookingId });
-  }
-  if (!have.has("reminder_2h") && dep2 > now) {
-    jobs.push({ type: "reminder_2h", sendAt: dep2, status: "scheduled", bookingId });
   }
   if (jobs.length > 0) {
     await prisma.emailJob.createMany({ data: jobs });
@@ -142,9 +135,17 @@ export async function processEmailQueue(limit = 50): Promise<{
   failed: number;
   retried: number;
 }> {
+  // Legacy: remove any pending 2h reminders left over from the previous
+  // schedule. Idempotent — after the first run it's a no-op.
+  await prisma.emailJob.updateMany({
+    where: { type: "reminder_2h", status: { in: ["scheduled", "queued"] } },
+    data: { status: "cancelled" },
+  });
+
   const now = new Date();
   const jobs = await prisma.emailJob.findMany({
     where: {
+      type: { not: "reminder_2h" },
       OR: [
         { status: "scheduled", sendAt: { lte: now } },
         { status: "queued" },
@@ -247,8 +248,6 @@ async function sendJob(job: EmailJob & { booking: Booking }) {
   const html =
     type === "reminder_24h"
       ? reminder24hHtml(booking, urls)
-      : type === "reminder_2h"
-      ? reminder2hHtml(booking, urls)
       : cancellationHtml(booking);
 
   if (!process.env.RESEND_API_KEY) {
