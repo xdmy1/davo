@@ -163,16 +163,31 @@ function RezervareContent() {
   // Probleme rezolvate: pasul anterior poate fi mai înalt (ex. selectorul de
   // scaune are layout vertical de autocar), iar React doar swap-uiește conținutul
   // la aceeași poziție de scroll → userul rămâne jos și nu vede primul element
-  // al pasului următor. Aici sărim la ancora poziționată chiar deasupra StepBar
-  // ca să vadă progresul + începutul noului pas.
+  // al pasului următor. Folosim window.scrollTo cu poziție calculată explicit
+  // (mai robust decât scrollIntoView, care prinde alt scroll container pe mobile
+  // și care e neîncrezut când layout-ul se schimbă concomitent cu AnimatePresence).
   const stepAnchorRef = useRef<HTMLDivElement>(null);
   const isFirstStepRender = useRef(true);
+  const scrollToStepTop = () => {
+    if (typeof window === "undefined") return;
+    const el = stepAnchorRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const top = Math.max(0, window.scrollY + rect.top - 96);
+      window.scrollTo({ top, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+  // Backup: dacă step se schimbă din alt motiv (programatic), tot scroll-uim.
+  // Sare primul render ca să nu provoace jump pe intrarea directă pe pagină.
   useEffect(() => {
     if (isFirstStepRender.current) {
       isFirstStepRender.current = false;
       return;
     }
-    stepAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToStepTop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, mode]);
 
   // Fetch city name → id map la mount pentru rezolvare la pas Direcție
@@ -257,8 +272,14 @@ function RezervareContent() {
     return <SuccessCard bookingNumber={result.bookingNumber} ticketUrl={result.ticketUrl} mode={mode} />;
   }
 
-  const next = () => setStep((s) => Math.min(steps.length - 1, s + 1));
-  const back = () => setStep((s) => Math.max(0, s - 1));
+  const next = () => {
+    scrollToStepTop();
+    setStep((s) => Math.min(steps.length - 1, s + 1));
+  };
+  const back = () => {
+    scrollToStepTop();
+    setStep((s) => Math.max(0, s - 1));
+  };
 
   // Schimb numărul de pasageri → resetează scaunele alese (s-ar putea să nu mai
   // fie suficiente / corecte ca număr) și sincronizează lista de extra-pasageri.
@@ -382,7 +403,16 @@ function RezervareContent() {
           {/* Ancora pentru scroll-to-top la schimbarea pasului. scroll-mt-24 lasă
               ~96px deasupra ca să nu intre sub header-ul sticky. */}
           <div ref={stepAnchorRef} aria-hidden className="scroll-mt-24" />
-          <StepBar steps={steps} current={step} onStepClick={(i) => i < step && setStep(i)} />
+          <StepBar
+            steps={steps}
+            current={step}
+            onStepClick={(i) => {
+              if (i < step) {
+                scrollToStepTop();
+                setStep(i);
+              }
+            }}
+          />
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr,340px]">
             <div>
