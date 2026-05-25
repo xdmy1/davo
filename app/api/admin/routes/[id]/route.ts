@@ -19,6 +19,42 @@ export async function PATCH(
     if (body.destinationCityId !== undefined) data.destinationCityId = body.destinationCityId;
 
     const route = await prisma.route.update({ where: { id }, data });
+
+    // Sincronizare preț bidirecțional: dacă s-a schimbat basePrice sau currency,
+    // aplicăm aceleași valori și pe ruta inversă (originCity ↔ destinationCity).
+    // Motivul: prețul reprezintă transportul orașul X ↔ Chișinău, nu o direcție —
+    // dacă schimbi prețul Chișinău→London, automat și London→Chișinău primește
+    // același tarif (și invers).
+    if (data.basePrice !== undefined || data.currency !== undefined) {
+      try {
+        const inverse = await prisma.route.findUnique({
+          where: {
+            originCityId_destinationCityId: {
+              originCityId: route.destinationCityId,
+              destinationCityId: route.originCityId,
+            },
+          },
+          select: { id: true, basePrice: true, currency: true },
+        });
+        if (inverse) {
+          const inverseData: Record<string, unknown> = {};
+          if (data.basePrice !== undefined && inverse.basePrice !== route.basePrice) {
+            inverseData.basePrice = route.basePrice;
+          }
+          if (data.currency !== undefined && inverse.currency !== route.currency) {
+            inverseData.currency = route.currency;
+          }
+          if (Object.keys(inverseData).length > 0) {
+            await prisma.route.update({ where: { id: inverse.id }, data: inverseData });
+          }
+        }
+      } catch (syncErr) {
+        // Sincronizarea e best-effort. Update-ul direct a trecut, doar inversa
+        // poate fi out-of-sync (rar — admin poate edita manual).
+        console.warn("admin/routes PATCH inverse sync:", syncErr);
+      }
+    }
+
     return NextResponse.json({ success: true, route });
   } catch (error) {
     console.error("admin/routes PATCH", error);

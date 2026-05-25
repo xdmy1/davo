@@ -190,17 +190,24 @@ export async function GET(req: NextRequest) {
       ? foreignCountry.outboundDurationHours
       : foreignCountry.returnDurationHours;
 
-    // Dacă schedule-ul țării e setat și userul nu caută o dată specifică,
-    // ne asigurăm că trip-urile pentru schedule-ul curent sunt create în DB.
-    // Asta înlocuiește generatorul pre-cron — sursa de adevăr e schedule-ul,
-    // nu trip-urile pregenerate.
-    if (
+    // Calculăm ocurențele așteptate din schedule-ul Country. Astea sunt ZILELE
+    // și ORELE pe care le afișăm în calendar — sursa de adevăr.
+    const expectedDates: Date[] =
       !date &&
       weekday !== null &&
       weekday !== undefined &&
       time &&
       duration &&
       duration > 0
+        ? nextDepartures(weekday, time, 8, dateRange.gte)
+        : [];
+
+    if (
+      expectedDates.length > 0 &&
+      weekday !== null &&
+      weekday !== undefined &&
+      time &&
+      duration
     ) {
       await ensureTripsForSchedule({
         routeId: route.id,
@@ -211,12 +218,21 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Acum citim trip-urile care match perioada cerută.
+    // Filtrul findMany: dacă schedule e setat (avem expected dates), returnăm
+    // STRICT trip-urile care match acele ore exacte. Astfel trip-urile vechi
+    // de la o oră schimbată în admin (care încă au rezervări → nu pot fi
+    // șterse) NU mai apar în calendar pentru clienții noi. Vechii pasageri
+    // accesează biletul lor via numărul de rezervare.
+    //
+    // Dacă schedule nu e setat (caz edge), fallback la range pentru a nu rupe
+    // căutările pe dată specifică.
     const trips = await prisma.trip.findMany({
       where: {
         routeId: route.id,
-        departureAt: dateRange,
         status: { in: ["scheduled", "boarding"] },
+        ...(expectedDates.length > 0
+          ? { departureAt: { in: expectedDates } }
+          : { departureAt: dateRange }),
       },
       orderBy: { departureAt: "asc" },
       take: date ? undefined : limit,
