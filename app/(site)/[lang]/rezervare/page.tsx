@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -158,6 +158,22 @@ function RezervareContent() {
   useEffect(() => {
     setMode(initialMode);
   }, [initialMode]);
+
+  // Scroll automat la începutul pasului curent când userul avansează/se întoarce.
+  // Probleme rezolvate: pasul anterior poate fi mai înalt (ex. selectorul de
+  // scaune are layout vertical de autocar), iar React doar swap-uiește conținutul
+  // la aceeași poziție de scroll → userul rămâne jos și nu vede primul element
+  // al pasului următor. Aici sărim la ancora poziționată chiar deasupra StepBar
+  // ca să vadă progresul + începutul noului pas.
+  const stepAnchorRef = useRef<HTMLDivElement>(null);
+  const isFirstStepRender = useRef(true);
+  useEffect(() => {
+    if (isFirstStepRender.current) {
+      isFirstStepRender.current = false;
+      return;
+    }
+    stepAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step, mode]);
 
   // Fetch city name → id map la mount pentru rezolvare la pas Direcție
   useEffect(() => {
@@ -363,6 +379,9 @@ function RezervareContent() {
 
       <section className="relative pt-8 pb-20 bg-[color:var(--ink-50)]">
         <div className="container-page">
+          {/* Ancora pentru scroll-to-top la schimbarea pasului. scroll-mt-24 lasă
+              ~96px deasupra ca să nu intre sub header-ul sticky. */}
+          <div ref={stepAnchorRef} aria-hidden className="scroll-mt-24" />
           <StepBar steps={steps} current={step} onStepClick={(i) => i < step && setStep(i)} />
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr,340px]">
