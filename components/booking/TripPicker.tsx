@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bus,
   Users,
   Phone,
   AlertCircle,
-  Check,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SeatLayout } from "@/lib/adminMock";
@@ -42,6 +41,33 @@ const weekdayFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "long" });
 const dateFmt = new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "long" });
 const timeFmt = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" });
 const arrivalDayFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "short", day: "numeric", month: "short" });
+const monthYearFmt = new Intl.DateTimeFormat("ro-RO", { month: "long", year: "numeric" });
+
+// Cheia "YYYY-MM-DD" pentru o dată — folosit la corelarea Trip ↔ ziua calendarului.
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Construiește grila lunii: 7 col, 5-6 rânduri, prima zi = Luni (convenția RO).
+// Include padding-ul din luna precedentă / următoare ca să avem 7 col întregi.
+function buildMonthGrid(view: Date): { date: Date; inMonth: boolean }[] {
+  const first = new Date(view.getFullYear(), view.getMonth(), 1);
+  // JS weekday: 0=Dum..6=Sâm. Convertim la 0=Lun..6=Dum (RO).
+  const dow = (first.getDay() + 6) % 7;
+  const start = new Date(first);
+  start.setDate(start.getDate() - dow);
+  const cells: { date: Date; inMonth: boolean }[] = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    cells.push({ date: d, inMonth: d.getMonth() === view.getMonth() });
+  }
+  // Trunchiem la 5 rânduri dacă ultima săptămână e complet în luna următoare.
+  // (Optimizare cosmetică — evită un rând gol când luna are 28 zile bine aliniate.)
+  const lastWeek = cells.slice(35);
+  if (lastWeek.every((c) => !c.inMonth)) return cells.slice(0, 35);
+  return cells;
+}
 
 function formatDuration(fromIso: string, toIso: string): string {
   const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
@@ -55,7 +81,6 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-const VISIBLE_DESKTOP = 4;
 
 export function TripPicker({
   title,
@@ -93,7 +118,6 @@ export function TripPicker({
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<TripDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [pageStart, setPageStart] = useState(0);
 
   useEffect(() => {
     if (!originCityId || !destCityId) {
@@ -104,7 +128,6 @@ export function TripPicker({
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    setPageStart(0);
     const params = new URLSearchParams({ originCityId, destCityId });
     if (fromDate) params.set("from", fromDate);
     fetch(`/api/public/trips?${params.toString()}`, { signal: controller.signal })
@@ -149,12 +172,57 @@ export function TripPicker({
   }, [trips, allowedWeekday]);
 
   const total = filteredTrips?.length ?? 0;
-  const canPrev = pageStart > 0;
-  const canNext = pageStart + VISIBLE_DESKTOP < total;
-  const visible = useMemo(
-    () => (filteredTrips ?? []).slice(pageStart, pageStart + VISIBLE_DESKTOP),
-    [filteredTrips, pageStart]
-  );
+
+  // Map zi-calendar → Trip pentru randare rapidă în calendar.
+  const tripByDay = useMemo(() => {
+    const m = new Map<string, PublicTrip>();
+    for (const t of filteredTrips ?? []) {
+      m.set(dayKey(new Date(t.departureAt)), t);
+    }
+    return m;
+  }, [filteredTrips]);
+
+  // Pornește la luna primului trip disponibil (sau luna curentă dacă nu sunt).
+  const initialMonth = useMemo(() => {
+    const first = (filteredTrips ?? [])[0];
+    const ref = first ? new Date(first.departureAt) : new Date();
+    return new Date(ref.getFullYear(), ref.getMonth(), 1);
+  }, [filteredTrips]);
+  const [viewMonth, setViewMonth] = useState<Date>(initialMonth);
+
+  // Resincronizăm view-ul când lista de trips se schimbă (nouă rută → poate primul
+  // trip e în altă lună).
+  useEffect(() => {
+    setViewMonth(initialMonth);
+  }, [initialMonth]);
+
+  const monthCells = useMemo(() => buildMonthGrid(viewMonth), [viewMonth]);
+  // Permitem navigare doar către luni care conțin trip-uri din listă (capătă-mâini).
+  const allTripMonths = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of filteredTrips ?? []) {
+      const d = new Date(t.departureAt);
+      set.add(`${d.getFullYear()}-${d.getMonth()}`);
+    }
+    return set;
+  }, [filteredTrips]);
+  const viewKey = `${viewMonth.getFullYear()}-${viewMonth.getMonth()}`;
+  const sortedMonthKeys = useMemo(() => {
+    return Array.from(allTripMonths).sort((a, b) => {
+      const [ay, am] = a.split("-").map(Number);
+      const [by, bm] = b.split("-").map(Number);
+      return ay !== by ? ay - by : am - bm;
+    });
+  }, [allTripMonths]);
+  const monthIdx = sortedMonthKeys.indexOf(viewKey);
+  const canPrev = monthIdx > 0;
+  const canNext = monthIdx >= 0 && monthIdx < sortedMonthKeys.length - 1;
+  const gotoMonth = (delta: number) => {
+    const next = sortedMonthKeys[monthIdx + delta];
+    if (!next) return;
+    const [y, m] = next.split("-").map(Number);
+    setViewMonth(new Date(y, m, 1));
+  };
 
   const pickTrip = (trip: PublicTrip) => {
     if (selectedTripId === trip.id) {
@@ -192,59 +260,149 @@ export function TripPicker({
 
       {!loading && total > 0 && (
         <div>
-          {/* Hint + paginare */}
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-xs text-[color:var(--ink-500)]">
-              {total} {total === 1 ? "dată disponibilă" : "date disponibile"} · alege ziua plecării
+          {/* Header calendar: navigare lună + count */}
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => gotoMonth(-1)}
+              disabled={!canPrev}
+              aria-label="Luna anterioară"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex flex-col items-center text-center">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-[color:var(--red-500)]">
+                <CalendarIcon className="h-3 w-3" />
+                {total} {total === 1 ? "dată disponibilă" : "date disponibile"}
+              </div>
+              <div className="mt-0.5 font-[family-name:var(--font-montserrat)] text-lg font-extrabold text-[color:var(--navy-900)] capitalize">
+                {monthYearFmt.format(viewMonth)}
+              </div>
             </div>
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPageStart((s) => Math.max(0, s - VISIBLE_DESKTOP))}
-                disabled={!canPrev}
-                aria-label="Date anterioare"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPageStart((s) => Math.min(total - VISIBLE_DESKTOP, s + VISIBLE_DESKTOP))}
-                disabled={!canNext}
-                aria-label="Date următoare"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => gotoMonth(1)}
+              disabled={!canNext}
+              aria-label="Luna următoare"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--ink-200)] bg-white text-[color:var(--navy-900)] hover:border-[color:var(--navy-500)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
 
-          {/* Desktop: 4 carduri / Mobile: stivă verticală */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {visible.map((t) => (
-              <DateCard
-                key={t.id}
-                trip={t}
-                active={selectedTripId === t.id}
-                disabled={t.availableSeats === 0 && selectedTripId !== t.id}
-                onClick={() => t.availableSeats > 0 && pickTrip(t)}
-              />
+          {/* Header zile săptămână */}
+          <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-[10px] font-bold uppercase tracking-wider text-[color:var(--ink-500)]">
+            {["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"].map((d) => (
+              <div key={d} className="py-1">{d}</div>
             ))}
           </div>
 
-          {/* Indicator paginare mobile */}
-          {total > VISIBLE_DESKTOP && (
-            <div className="mt-4 flex justify-center md:hidden">
-              <button
-                type="button"
-                onClick={() => setPageStart((s) => Math.min(total - VISIBLE_DESKTOP, s + VISIBLE_DESKTOP))}
-                disabled={!canNext}
-                className="text-xs font-semibold text-[color:var(--navy-700)] underline decoration-[color:var(--red-500)] underline-offset-4 disabled:opacity-30"
-              >
-                Vezi mai multe date →
-              </button>
-            </div>
-          )}
+          {/* Grilă calendar */}
+          <div className="grid grid-cols-7 gap-1.5">
+            {monthCells.map(({ date, inMonth }, i) => {
+              const key = dayKey(date);
+              const trip = tripByDay.get(key);
+              const isActive = trip && selectedTripId === trip.id;
+              const isAvailable = !!trip && trip.availableSeats > 0;
+              const isSoldOut = !!trip && trip.availableSeats === 0;
+              const isToday = key === dayKey(new Date());
+
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={!isAvailable && !isActive}
+                  onClick={() => trip && isAvailable && pickTrip(trip)}
+                  className={cn(
+                    "relative aspect-square rounded-xl border text-left p-1.5 md:p-2 transition-all",
+                    !inMonth && "opacity-30",
+                    isActive
+                      ? "border-[color:var(--red-500)] bg-[color:var(--red-500)] text-white shadow-[0_8px_24px_-12px_rgba(225,30,43,0.55)]"
+                      : isAvailable
+                        ? "border-[color:var(--ink-200)] bg-white hover:border-[color:var(--red-400)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(11,38,83,0.35)] cursor-pointer"
+                        : isSoldOut
+                          ? "border-[color:var(--ink-200)] bg-[color:var(--ink-50)] cursor-not-allowed"
+                          : "border-transparent bg-transparent cursor-default"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "font-[family-name:var(--font-montserrat)] font-extrabold leading-none",
+                      isActive ? "text-white" : isAvailable ? "text-[color:var(--navy-900)]" : "text-[color:var(--ink-400)]",
+                      "text-base md:text-lg"
+                    )}
+                  >
+                    {date.getDate()}
+                  </div>
+                  {isToday && !isActive && (
+                    <div className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[color:var(--red-500)]" />
+                  )}
+                  {trip && (
+                    <div className="absolute inset-x-1 bottom-1 text-[9px] md:text-[10px] font-bold leading-tight">
+                      {isActive ? (
+                        <div className="text-white/95">
+                          {timeFmt.format(new Date(trip.departureAt))}
+                        </div>
+                      ) : isSoldOut ? (
+                        <div className="text-red-600">Ocupat</div>
+                      ) : (
+                        <>
+                          <div className="text-[color:var(--navy-700)]">
+                            {timeFmt.format(new Date(trip.departureAt))}
+                          </div>
+                          <div className="text-[color:var(--ink-400)] hidden md:block">
+                            {trip.pricePerSeat}{trip.currency === "GBP" ? "£" : "€"}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Detalii cursa selectată */}
+          {selectedTripId && filteredTrips && (() => {
+            const t = filteredTrips.find((x) => x.id === selectedTripId);
+            if (!t) return null;
+            const dep = new Date(t.departureAt);
+            const arr = new Date(t.arrivalAt);
+            const currency = t.currency === "GBP" ? "£" : "€";
+            return (
+              <div className="mt-5 rounded-2xl border border-[color:var(--red-500)] bg-white p-4 md:p-5 shadow-[0_10px_30px_-18px_rgba(225,30,43,0.4)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-[color:var(--red-500)]">
+                      Cursa selectată
+                    </div>
+                    <div className="mt-1 font-[family-name:var(--font-montserrat)] text-lg font-extrabold text-[color:var(--navy-900)]">
+                      {capitalize(weekdayFmt.format(dep))} · {dateFmt.format(dep)}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[color:var(--ink-700)]">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-[color:var(--red-500)]" />
+                        Plecare {timeFmt.format(dep)}
+                      </span>
+                      <span className="text-[color:var(--ink-300,rgba(11,38,83,0.28))]">·</span>
+                      <span>Sosire {arrivalDayFmt.format(arr)} {timeFmt.format(arr)}</span>
+                      <span className="text-[color:var(--ink-300,rgba(11,38,83,0.28))]">·</span>
+                      <span>Durată {formatDuration(t.departureAt, t.arrivalAt)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold text-[color:var(--navy-900)]">
+                      {t.pricePerSeat}{currency}
+                    </div>
+                    <div className="text-[11px] font-semibold text-[color:var(--ink-500)] inline-flex items-center gap-1">
+                      <Users className="h-3 w-3" /> {t.availableSeats} libere
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -272,105 +430,6 @@ export function TripPicker({
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-function DateCard({
-  trip,
-  active,
-  disabled,
-  onClick,
-}: {
-  trip: PublicTrip;
-  active: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  const dep = new Date(trip.departureAt);
-  const arr = new Date(trip.arrivalAt);
-  const weekday = capitalize(weekdayFmt.format(dep));
-  const dateStr = dateFmt.format(dep);
-  const depTime = timeFmt.format(dep);
-  const arrTime = timeFmt.format(arr);
-  const arrivesNextDay = arr.toDateString() !== dep.toDateString();
-  const duration = formatDuration(trip.departureAt, trip.arrivalAt);
-  const currency = trip.currency === "GBP" ? "£" : "€";
-  const sold = trip.availableSeats === 0;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border p-4 text-left transition-all",
-        active
-          ? "border-[color:var(--red-500)] bg-white shadow-[0_18px_40px_-20px_rgba(225,30,43,0.55)] ring-1 ring-[color:var(--red-500)]"
-          : "border-[color:var(--ink-200)] bg-white hover:border-[color:var(--navy-500)] hover:shadow-[0_10px_30px_-22px_rgba(20,58,122,0.45)]",
-        disabled && "opacity-50 cursor-not-allowed hover:border-[color:var(--ink-200)] hover:shadow-none"
-      )}
-    >
-      {/* Selection bullet */}
-      <div
-        className={cn(
-          "absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors",
-          active
-            ? "border-[color:var(--red-500)] bg-[color:var(--red-500)]"
-            : "border-[color:var(--ink-200)]"
-        )}
-      >
-        {active && <Check className="h-3 w-3 text-white" />}
-      </div>
-
-      {/* Header: weekday mare, dată mică */}
-      <div className="pr-7">
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--red-500)]">
-          {weekday}
-        </div>
-        <div className="font-[family-name:var(--font-montserrat)] mt-0.5 text-2xl font-extrabold text-[color:var(--navy-900)] leading-none">
-          {dateStr}
-        </div>
-      </div>
-
-      {/* Ore */}
-      <div className="rounded-xl bg-[color:var(--ink-50)] px-3 py-2.5">
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider font-semibold text-[color:var(--ink-500)]">
-          <Clock className="h-3 w-3 text-[color:var(--red-500)]" />
-          Plecare
-          <span className="ml-auto font-[family-name:var(--font-montserrat)] text-base font-extrabold tracking-tight text-[color:var(--navy-900)]">
-            {depTime}
-          </span>
-        </div>
-        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-[color:var(--ink-500)]">
-          <span>Sosire {arrivesNextDay ? arrivalDayFmt.format(arr) : ""}</span>
-          <span className="font-semibold text-[color:var(--navy-700)]">{arrTime}</span>
-        </div>
-        <div className="mt-1 text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-400)]">
-          Durată {duration}
-        </div>
-      </div>
-
-      {/* Footer: locuri + preț */}
-      <div className="flex items-end justify-between">
-        <div className="text-xs flex items-center gap-1.5">
-          <Bus className="h-3.5 w-3.5 text-[color:var(--ink-400)]" />
-          <span className="text-[color:var(--ink-700)]">{trip.busLabel}</span>
-        </div>
-        <div className="text-right">
-          <div className={cn(
-            "flex items-center gap-1 text-[11px] font-semibold",
-            sold ? "text-red-600" : "text-[color:var(--ink-500)]"
-          )}>
-            <Users className="h-3 w-3" />
-            {sold ? "Locuri epuizate" : `${trip.availableSeats} libere`}
-          </div>
-          <div className="font-[family-name:var(--font-montserrat)] mt-0.5 text-lg font-extrabold text-[color:var(--navy-900)]">
-            {trip.pricePerSeat}
-            {currency}
-          </div>
-        </div>
-      </div>
-    </button>
   );
 }
 

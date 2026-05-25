@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { arrivalFor, nextDepartures } from "@/lib/schedule";
 
+const HORIZON_WEEKS = 8;
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
 
@@ -8,9 +10,6 @@ const MAX_LIMIT = 100;
  * Cache la nivel de modul cu toate ID-urile orașelor moldovenești + Chișinău.
  * Setul nu se schimbă în runtime; îl populăm o singură dată pe instanța de
  * funcție și apoi alias-ul devine sincron, fără round-trip la DB.
- *
- * Față de DB-ul Supabase din eu-west-1 (care e la ~50 ms RTT minim), fiecare
- * query salvat înseamnă vizibil mai puțin timp de încărcare a ofertelor.
  */
 let moldovaCachePromise: Promise<{
   ids: Set<string>;
@@ -29,7 +28,6 @@ function ensureMoldovaCache() {
       chisinauId: cities.find((c) => c.slug === "chisinau")?.id ?? null,
     }))
     .catch((err) => {
-      // Pe eroare resetăm cache-ul ca să încercăm din nou la următorul request.
       moldovaCachePromise = null;
       throw err;
     });
@@ -37,17 +35,79 @@ function ensureMoldovaCache() {
 }
 
 /**
- * Toate cursele pleacă/sosesc la Chișinău (un singur autocar fizic). Dacă
- * userul caută cu un alt oraș moldovenesc ca origine sau destinație, alias-ăm
- * la Chișinău: aceleași curse apar, capacitatea e partajată corect, iar
- * autocarul oprește la celelalte orașe pe drum (pickup negociat cu operatorul
- * la rezervare).
+ * Toate cursele pleacă/sosesc la Chișinău. Dacă userul caută cu un alt oraș
+ * moldovenesc ca origine sau destinație, alias-ăm la Chișinău.
  */
 async function aliasBothToChisinau(originId: string, destId: string) {
   const { ids, chisinauId } = await ensureMoldovaCache();
   const alias = (id: string) =>
     ids.has(id) && chisinauId ? chisinauId : id;
   return { originCityId: alias(originId), destCityId: alias(destId) };
+}
+
+/**
+ * Asigură că există Trip-uri în DB pentru fiecare ocurență din schedule
+ * (până la HORIZON_WEEKS săptămâni înainte). Creează doar ce lipsește — pe cele
+ * existente nu le atinge (poate au rezervări la ora veche după ce admin a
+ * schimbat schedule-ul; ele rămân valide până la curățarea declanșată în PATCH).
+ *
+ * Schedule-ul Country e SURSA DE ADEVĂR — pagina publică afișează ce e în
+ * schedule, nu ce-i pregenerat. Trip-urile vechi cu ora schimbată dispar din
+ * picker (deși rămân în DB pentru bookings deja existente).
+ */
+async function ensureTripsForSchedule(params: {
+  routeId: string;
+  weekday: number;
+  time: string;
+  durationHours: number;
+  from: Date;
+}): Promise<void> {
+  const { routeId, weekday, time, durationHours, from } = params;
+
+  // Calculăm primele HORIZON_WEEKS ocurențe ale (weekday + time) după `from`.
+  const expected = nextDepartures(weekday, time, HORIZON_WEEKS, from);
+  if (expected.length === 0) return;
+
+  // Vedem care există deja la timestamp-urile exacte calculate.
+  const existing = await prisma.trip.findMany({
+    where: {
+      routeId,
+      departureAt: { in: expected },
+    },
+    select: { departureAt: true },
+  });
+  const existingTimes = new Set(existing.map((t) => t.departureAt.getTime()));
+  const missing = expected.filter((d) => !existingTimes.has(d.getTime()));
+  if (missing.length === 0) return;
+
+  // Avem nevoie de un autocar activ ca să atașăm capacitate. Folosim primul
+  // (cel mai vechi) — consistent cu generatorul vechi.
+  const bus = await prisma.bus.findFirst({
+    where: { active: true },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, totalSeats: true },
+  });
+  if (!bus) return; // fără autocar configurat, nu putem oferi rezervări
+
+  // createMany nu suportă skipDuplicates fără unique constraint, dar `missing`
+  // e deja filtrat — duplicări concurrent sunt rare și ar fi acoperite de
+  // următorul fetch (idempotent).
+  await prisma.trip
+    .createMany({
+      data: missing.map((dep) => ({
+        routeId,
+        busId: bus.id,
+        departureAt: dep,
+        arrivalAt: arrivalFor(dep, durationHours),
+        capacity: bus.totalSeats,
+        status: "scheduled",
+      })),
+    })
+    .catch((err) => {
+      // Race condition (alt request a creat în paralel) — ignorăm, la următorul
+      // fetch tot e în ordine.
+      console.warn("ensureTripsForSchedule createMany:", err?.message ?? err);
+    });
 }
 
 export async function GET(req: NextRequest) {
@@ -96,15 +156,13 @@ export async function GET(req: NextRequest) {
       Math.max(1, Number(limitParam) || DEFAULT_LIMIT)
     );
 
-    // Alias: orice oraș MD → Chișinău, în ambele direcții (dus + retur).
     const { originCityId, destCityId } = await aliasBothToChisinau(
       rawOriginCityId,
       rawDestCityId
     );
 
-    // Un singur round-trip: rută + curse + locuri rezervate, totul împreună.
-    // Față de DB-ul Supabase din eu-west-1 fiecare query are latență de rețea,
-    // așa că aici evităm round-trip-ul separat pentru `trips`.
+    // Includem ambele orașe + țările lor ca să decidem direcția (outbound vs return)
+    // și să citim schedule-ul Country relevant.
     const route = await prisma.route.findUnique({
       where: {
         originCityId_destinationCityId: {
@@ -112,33 +170,65 @@ export async function GET(req: NextRequest) {
           destinationCityId: destCityId,
         },
       },
-      select: {
-        id: true,
-        active: true,
-        basePrice: true,
-        currency: true,
-        trips: {
-          where: {
-            departureAt: dateRange,
-            status: { in: ["scheduled", "boarding"] },
-          },
-          orderBy: { departureAt: "asc" },
-          take: date ? undefined : limit,
-          select: {
-            id: true,
-            departureAt: true,
-            arrivalAt: true,
-            status: true,
-            bus: { select: { id: true, label: true, totalSeats: true } },
-            _count: { select: { seatBookings: true } },
-          },
-        },
+      include: {
+        originCity: { include: { country: true } },
+        destinationCity: { include: { country: true } },
       },
     });
 
     if (!route || !route.active) {
       return NextResponse.json({ success: true, route: null, trips: [] });
     }
+
+    // Detectăm direcția: dacă origin = Moldova → outbound (folosim destCountry.outbound*);
+    // dacă origin = țară străină → return (folosim originCountry.return*).
+    const originIsMd = route.originCity.country.slug === "moldova";
+    const foreignCountry = originIsMd ? route.destinationCity.country : route.originCity.country;
+    const weekday = originIsMd ? foreignCountry.outboundWeekday : foreignCountry.returnWeekday;
+    const time = originIsMd ? foreignCountry.outboundTime : foreignCountry.returnTime;
+    const duration = originIsMd
+      ? foreignCountry.outboundDurationHours
+      : foreignCountry.returnDurationHours;
+
+    // Dacă schedule-ul țării e setat și userul nu caută o dată specifică,
+    // ne asigurăm că trip-urile pentru schedule-ul curent sunt create în DB.
+    // Asta înlocuiește generatorul pre-cron — sursa de adevăr e schedule-ul,
+    // nu trip-urile pregenerate.
+    if (
+      !date &&
+      weekday !== null &&
+      weekday !== undefined &&
+      time &&
+      duration &&
+      duration > 0
+    ) {
+      await ensureTripsForSchedule({
+        routeId: route.id,
+        weekday,
+        time,
+        durationHours: duration,
+        from: dateRange.gte,
+      });
+    }
+
+    // Acum citim trip-urile care match perioada cerută.
+    const trips = await prisma.trip.findMany({
+      where: {
+        routeId: route.id,
+        departureAt: dateRange,
+        status: { in: ["scheduled", "boarding"] },
+      },
+      orderBy: { departureAt: "asc" },
+      take: date ? undefined : limit,
+      select: {
+        id: true,
+        departureAt: true,
+        arrivalAt: true,
+        status: true,
+        bus: { select: { id: true, label: true, totalSeats: true } },
+        _count: { select: { seatBookings: true } },
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -147,7 +237,7 @@ export async function GET(req: NextRequest) {
         basePrice: route.basePrice,
         currency: route.currency,
       },
-      trips: route.trips.map((t) => {
+      trips: trips.map((t) => {
         const booked = t._count.seatBookings;
         return {
           id: t.id,

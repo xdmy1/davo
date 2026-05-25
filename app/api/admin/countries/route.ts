@@ -87,6 +87,41 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await prisma.country.update({ where: { id }, data });
+
+    // După update, curățăm trip-urile viitoare GOALE (fără SeatBookings) de pe
+    // toate rutele care ating țara asta. Următorul fetch în /api/public/trips
+    // le recreează cu noul schedule.
+    //
+    // Trip-urile cu bookings rămân — pasagerii au email-uri/bilete cu ora veche
+    // și nu vrem să rupem rezervările existente. Operatorul îi anunță manual
+    // dacă schedule-ul s-a mutat.
+    try {
+      const affectedRoutes = await prisma.route.findMany({
+        where: {
+          active: true,
+          OR: [
+            { originCity: { countryId: id } },
+            { destinationCity: { countryId: id } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (affectedRoutes.length > 0) {
+        await prisma.trip.deleteMany({
+          where: {
+            routeId: { in: affectedRoutes.map((r) => r.id) },
+            departureAt: { gt: new Date() },
+            status: "scheduled",
+            seatBookings: { none: {} },
+          },
+        });
+      }
+    } catch (cleanupErr) {
+      // Curățarea e best-effort — dacă pică, update-ul de Country tot a trecut.
+      // Următorul cron / fetch va consolida.
+      console.warn("admin/countries PATCH cleanup:", cleanupErr);
+    }
+
     return NextResponse.json({ success: true, country: updated });
   } catch (error) {
     console.error("admin/countries PATCH", error);
