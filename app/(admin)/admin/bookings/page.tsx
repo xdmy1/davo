@@ -12,6 +12,7 @@ import {
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import { statusMeta } from "@/lib/adminLabels";
+import { destinations, moldovanCities } from "@/lib/data";
 
 type Booking = {
   id: string;
@@ -45,6 +46,91 @@ const statusOptions = [
   { value: "completed", label: "Finalizată" },
 ];
 
+// Lookup oraș → țară. Pornim de la `destinations` (orașele străine) și adăugăm
+// Moldova pentru toate orașele moldovene + Chișinău (default origin). Cheile
+// sunt normalizate (lowercase + diacritice scoase) pentru a tolera variații.
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+}
+
+const cityToCountry: Map<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const d of destinations) {
+    for (const c of d.cities) m.set(normalize(c.name), d.name);
+  }
+  for (const c of moldovanCities) m.set(normalize(c.name), "Moldova");
+  m.set(normalize("Chișinău"), "Moldova");
+  m.set(normalize("Chisinau"), "Moldova");
+  return m;
+})();
+
+const COUNTRY_OPTIONS = ["Moldova", ...destinations.map((d) => d.name)];
+
+// Pentru flow-ul colet-la-cheie arrivalCity e formatată ca "Oraș, Țară" —
+// extragem partea după ultima virgulă dacă pică în lista cunoscută.
+function countryOf(city: string): string | null {
+  const direct = cityToCountry.get(normalize(city));
+  if (direct) return direct;
+  const idx = city.lastIndexOf(",");
+  if (idx >= 0) {
+    const tail = city.slice(idx + 1).trim();
+    if (COUNTRY_OPTIONS.some((c) => normalize(c) === normalize(tail))) return tail;
+    const lookup = cityToCountry.get(normalize(tail));
+    if (lookup) return lookup;
+  }
+  return null;
+}
+
+type PeriodFilter = "all" | "today" | "this_week" | "next_week" | "this_month";
+
+const periodOptions: { value: PeriodFilter; label: string }[] = [
+  { value: "all", label: "Orice perioadă" },
+  { value: "today", label: "Astăzi" },
+  { value: "this_week", label: "Săptămâna aceasta" },
+  { value: "next_week", label: "Săptămâna viitoare" },
+  { value: "this_month", label: "Luna aceasta" },
+];
+
+// Range cu zilele de Luni 00:00 → Duminică 23:59:59.999 ale săptămânii care
+// conține `ref`. Folosit pentru filtrul „săptămâna aceasta / viitoare” pe
+// departureDate. Săptămâna ISO (Luni e prima zi) — convenția RO.
+function isoWeekRange(ref: Date): { start: Date; end: Date } {
+  const start = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  const day = start.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diffToMonday);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  end.setMilliseconds(-1);
+  return { start, end };
+}
+
+function periodRange(p: PeriodFilter, now: Date): { start: Date; end: Date } | null {
+  if (p === "all") return null;
+  if (p === "today") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    end.setMilliseconds(-1);
+    return { start, end };
+  }
+  if (p === "this_week") return isoWeekRange(now);
+  if (p === "next_week") {
+    const next = new Date(now);
+    next.setDate(next.getDate() + 7);
+    return isoWeekRange(next);
+  }
+  // this_month
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  end.setMilliseconds(-1);
+  return { start, end };
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +138,11 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [responseFilter, setResponseFilter] = useState<string>("all");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+  // Filtru pe dată exactă a plecării (YYYY-MM-DD). Când e setat, înlocuiește
+  // filtrul de perioadă presetată — userul a ales o zi anume.
+  const [dateFilter, setDateFilter] = useState<string>("");
 
   async function fetchBookings() {
     setLoading(true);
@@ -95,6 +186,7 @@ export default function BookingsPage() {
     }
   }
 
+  const range = periodRange(periodFilter, new Date());
   const filtered = bookings.filter((b) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
@@ -110,7 +202,22 @@ export default function BookingsPage() {
       (responseFilter === "none"
         ? !b.passengerResponse
         : b.passengerResponse === responseFilter);
-    return matchesSearch && matchesStatus && matchesType && matchesResponse;
+    let matchesPeriod = true;
+    if (dateFilter) {
+      // Comparăm doar partea de dată (YYYY-MM-DD) — ignorăm ora ca să prindem
+      // toate cursele din ziua aleasă, indiferent de ora plecării.
+      const dep = new Date(b.departureDate);
+      const depKey = `${dep.getFullYear()}-${String(dep.getMonth() + 1).padStart(2, "0")}-${String(dep.getDate()).padStart(2, "0")}`;
+      matchesPeriod = depKey === dateFilter;
+    } else if (range) {
+      const dep = new Date(b.departureDate);
+      matchesPeriod = dep >= range.start && dep <= range.end;
+    }
+    const matchesCountry =
+      countryFilter === "all" ||
+      countryOf(b.departureCity) === countryFilter ||
+      countryOf(b.arrivalCity) === countryFilter;
+    return matchesSearch && matchesStatus && matchesType && matchesResponse && matchesPeriod && matchesCountry;
   });
 
   return (
@@ -168,6 +275,47 @@ export default function BookingsPage() {
           <option value="all">Toate tipurile</option>
           <option value="passenger">Pasageri</option>
           <option value="parcel">Colete</option>
+        </select>
+        <select
+          value={periodFilter}
+          onChange={(e) => setPeriodFilter(e.target.value as PeriodFilter)}
+          disabled={!!dateFilter}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:opacity-50"
+          title={dateFilter ? "Dezactivat — filtrul de dată exactă e activ" : "Filtrează după data plecării"}
+        >
+          {periodOptions.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <div className="flex items-center gap-1">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
+            title="Dată exactă a plecării"
+          />
+          {dateFilter && (
+            <button
+              type="button"
+              onClick={() => setDateFilter("")}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+              title="Șterge filtrul de dată"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <select
+          value={countryFilter}
+          onChange={(e) => setCountryFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
+          title="Filtrează după țara de plecare sau destinație"
+        >
+          <option value="all">Toate țările</option>
+          {COUNTRY_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
         </select>
         <select
           value={responseFilter}
