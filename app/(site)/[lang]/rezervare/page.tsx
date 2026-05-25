@@ -82,7 +82,7 @@ function RezervareContent() {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [step, setStep] = useState(0);
   const initialFrom = params.get("from") || "Chișinău";
-  const initialTo = params.get("to") || "London";
+  const initialTo = params.get("to") || "";
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
   // Direcția determină ce listă apare la "Plecare din" vs "Destinația".
