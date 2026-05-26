@@ -18,7 +18,7 @@ async function run(req: NextRequest) {
   }
 
   try {
-    const result = await generateTrips({ scope: "all", weeks: 8 });
+    const result = await generateTrips({ scope: "all", weeks: 16 });
     return NextResponse.json({ success: true, ...result, at: new Date().toISOString() });
   } catch (error) {
     console.error("cron/generate-trips", error);

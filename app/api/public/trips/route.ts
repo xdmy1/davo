@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { arrivalFor, nextDepartures } from "@/lib/schedule";
 
-const HORIZON_WEEKS = 8;
+const HORIZON_WEEKS = 16;
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
 
@@ -199,7 +199,7 @@ export async function GET(req: NextRequest) {
       time &&
       duration &&
       duration > 0
-        ? nextDepartures(weekday, time, 8, dateRange.gte)
+        ? nextDepartures(weekday, time, HORIZON_WEEKS, dateRange.gte)
         : [];
 
     if (
