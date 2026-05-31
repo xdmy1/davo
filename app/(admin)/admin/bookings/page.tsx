@@ -8,6 +8,7 @@ import {
   Mail,
   Download,
   Filter,
+  Plus,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
@@ -143,6 +144,7 @@ export default function BookingsPage() {
   // Filtru pe dată exactă a plecării (YYYY-MM-DD). Când e setat, înlocuiește
   // filtrul de perioadă presetată — userul a ales o zi anume.
   const [dateFilter, setDateFilter] = useState<string>("");
+  const [creating, setCreating] = useState(false);
 
   async function fetchBookings() {
     setLoading(true);
@@ -227,6 +229,12 @@ export default function BookingsPage() {
         subtitle={`${bookings.length} înregistrări în baza de date`}
         actions={
           <>
+            <button
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600"
+            >
+              <Plus className="h-3.5 w-3.5" /> Rezervare manuală
+            </button>
             <button
               onClick={fetchBookings}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -471,6 +479,332 @@ export default function BookingsPage() {
           </div>
         )}
       </div>
+
+      {creating && (
+        <ManualBookingModal
+          onClose={() => setCreating(false)}
+          onSaved={() => {
+            setCreating(false);
+            fetchBookings();
+          }}
+        />
+      )}
     </div>
   );
 }
+
+function toLocalInput(d: Date) {
+  const tz = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - tz * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+const OTHER = "__other__";
+
+function ManualBookingModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const [originSelect, setOriginSelect] = useState<string>(moldovanCities[0]?.name ?? OTHER);
+  const [originCustom, setOriginCustom] = useState("");
+
+  const [countrySelect, setCountrySelect] = useState<string>(destinations[0]?.name ?? OTHER);
+  const [countryCustom, setCountryCustom] = useState("");
+  const [destCity, setDestCity] = useState("");
+  const [destAddress, setDestAddress] = useState("");
+
+  const [tripType, setTripType] = useState<"one-way" | "round-trip">("one-way");
+  const [departureDate, setDepartureDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    d.setHours(20, 0, 0, 0);
+    return toLocalInput(d);
+  });
+  const [returnDate, setReturnDate] = useState("");
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+
+  const [price, setPrice] = useState<string>("");
+  const [currency, setCurrency] = useState<"EUR" | "GBP" | "MDL">("GBP");
+  const [payMethod, setPayMethod] = useState<"cash_on_pickup" | "card_on_pickup" | "paid_in_advance">("cash_on_pickup");
+
+  const [status, setStatus] = useState<"confirmed" | "pending">("confirmed");
+  const [sendEmail, setSendEmail] = useState(true);
+  const [notes, setNotes] = useState("");
+
+  const [saving, setSaving] = useState(false);
+
+  const departureCity = originSelect === OTHER ? originCustom.trim() : originSelect;
+  const destinationCountry = countrySelect === OTHER ? countryCustom.trim() : countrySelect;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!departureCity) {
+      alert("Completează orașul de plecare.");
+      return;
+    }
+    if (!destinationCountry) {
+      alert("Completează țara de destinație.");
+      return;
+    }
+    const priceNum = Number(price);
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      alert("Preț invalid.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          phone,
+          departureCity,
+          destinationCountry,
+          destinationCity: destCity,
+          destinationAddress: destAddress,
+          departureDate: new Date(departureDate).toISOString(),
+          returnDate: tripType === "round-trip" && returnDate ? new Date(returnDate).toISOString() : null,
+          tripType,
+          adults,
+          children,
+          price: priceNum,
+          currency,
+          payMethod,
+          status,
+          sendEmail,
+          notes,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error ?? "Eroare la creare");
+        return;
+      }
+      onSaved();
+    } catch (err) {
+      console.error(err);
+      alert("Eroare la creare");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
+          <Plus className="h-4 w-4 text-orange-500" />
+          <h3 className="text-base font-semibold text-slate-900">Rezervare manuală</h3>
+        </div>
+        <form className="grid gap-4 px-5 py-4" onSubmit={submit}>
+          <Section title="Client">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Prenume">
+                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} required />
+              </Field>
+              <Field label="Nume">
+                <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} required />
+              </Field>
+              <Field label="Email">
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} required />
+              </Field>
+              <Field label="Telefon">
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} required />
+              </Field>
+            </div>
+          </Section>
+
+          <Section title="Plecare">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Oraș plecare">
+                <select value={originSelect} onChange={(e) => setOriginSelect(e.target.value)} className={inputCls}>
+                  {moldovanCities.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                  <option value={OTHER}>Alt oraș…</option>
+                </select>
+                {originSelect === OTHER && (
+                  <input
+                    value={originCustom}
+                    onChange={(e) => setOriginCustom(e.target.value)}
+                    placeholder="ex: Cahul"
+                    className={`${inputCls} mt-2`}
+                    required
+                  />
+                )}
+              </Field>
+              <Field label="Data + ora plecării">
+                <input type="datetime-local" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={inputCls} required />
+              </Field>
+            </div>
+          </Section>
+
+          <Section title="Destinație">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Țară">
+                <select value={countrySelect} onChange={(e) => setCountrySelect(e.target.value)} className={inputCls}>
+                  {destinations.map((d) => (
+                    <option key={d.id} value={d.name}>{d.name}</option>
+                  ))}
+                  <option value={OTHER}>Altă țară…</option>
+                </select>
+                {countrySelect === OTHER && (
+                  <input
+                    value={countryCustom}
+                    onChange={(e) => setCountryCustom(e.target.value)}
+                    placeholder="ex: Suedia"
+                    className={`${inputCls} mt-2`}
+                    required
+                  />
+                )}
+              </Field>
+              <Field label="Oraș / regiune">
+                <input value={destCity} onChange={(e) => setDestCity(e.target.value)} placeholder="ex: York" className={inputCls} required />
+              </Field>
+            </div>
+            <Field label="Adresă exactă (fermă, șantier, depou)">
+              <input
+                value={destAddress}
+                onChange={(e) => setDestAddress(e.target.value)}
+                placeholder="ex: Hopgrove Farm, Malton Rd, YO32 9TA"
+                className={inputCls}
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Apare doar pentru intern/ambasadă, nu se publică pe site.
+              </span>
+            </Field>
+          </Section>
+
+          <Section title="Călătorie">
+            <div className="flex items-center gap-4 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={tripType === "one-way"}
+                  onChange={() => setTripType("one-way")}
+                />
+                Doar dus
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={tripType === "round-trip"}
+                  onChange={() => setTripType("round-trip")}
+                />
+                Dus-întors
+              </label>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {tripType === "round-trip" && (
+                <Field label="Data întoarcerii">
+                  <input type="datetime-local" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} className={inputCls} />
+                </Field>
+              )}
+              <Field label="Adulți">
+                <input type="number" min={1} value={adults} onChange={(e) => setAdults(Number(e.target.value))} className={inputCls} />
+              </Field>
+              <Field label="Copii">
+                <input type="number" min={0} value={children} onChange={(e) => setChildren(Number(e.target.value))} className={inputCls} />
+              </Field>
+            </div>
+          </Section>
+
+          <Section title="Preț & plată">
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Sumă">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="ex: 150"
+                  className={inputCls}
+                  required
+                />
+              </Field>
+              <Field label="Monedă">
+                <select value={currency} onChange={(e) => setCurrency(e.target.value as typeof currency)} className={inputCls}>
+                  <option value="GBP">GBP £</option>
+                  <option value="EUR">EUR €</option>
+                  <option value="MDL">MDL lei</option>
+                </select>
+              </Field>
+              <Field label="Metodă plată">
+                <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as typeof payMethod)} className={inputCls}>
+                  <option value="cash_on_pickup">Cash la îmbarcare</option>
+                  <option value="card_on_pickup">Card la îmbarcare</option>
+                  <option value="paid_in_advance">Achitată în avans</option>
+                </select>
+              </Field>
+            </div>
+          </Section>
+
+          <Section title="Status & email">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Status inițial">
+                <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className={inputCls}>
+                  <option value="confirmed">Confirmată</option>
+                  <option value="pending">În așteptare</option>
+                </select>
+              </Field>
+              <label className="flex items-end gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={sendEmail}
+                  onChange={(e) => setSendEmail(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Trimite email de confirmare clientului
+              </label>
+            </div>
+            <Field label="Notițe interne (opțional)">
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputCls} placeholder="ex: viză muncă fermă căpșuni" />
+            </Field>
+          </Section>
+
+          <div className="mt-2 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+            <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+              Anulează
+            </button>
+            <button type="submit" disabled={saving} className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60">
+              {saving ? "Salvez…" : "Creează rezervarea"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</div>
+      <div className="grid gap-3">{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold text-slate-600">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const inputCls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200";

@@ -247,6 +247,7 @@ function payLabel(payMethod?: string | null): string {
   if (payMethod === "card_on_pickup") return "Card la îmbarcare (POS la șofer)";
   if (payMethod === "cash_on_pickup") return "Cash la îmbarcare";
   if (payMethod === "cash_on_delivery") return "Cash la livrare";
+  if (payMethod === "paid_in_advance") return "Achitată în avans";
   return "La îmbarcare";
 }
 
