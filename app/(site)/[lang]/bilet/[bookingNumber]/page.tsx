@@ -43,9 +43,31 @@ interface Booking {
   currency: string;
   payMethod?: string | null;
   passengerResponse?: string | null;
+  parcelDetails?: string | null;
   createdAt: string;
   outboundSeats?: number[];
   returnSeats?: number[];
+}
+
+function parseManualDetails(parcelDetails: string | null | undefined): {
+  originAddress?: string;
+  destinationAddress?: string;
+  notes?: string;
+} {
+  if (!parcelDetails) return {};
+  try {
+    const d = JSON.parse(parcelDetails);
+    if (d && d.manual) {
+      return {
+        originAddress: typeof d.originAddress === "string" ? d.originAddress : undefined,
+        destinationAddress: typeof d.destinationAddress === "string" ? d.destinationAddress : undefined,
+        notes: typeof d.notes === "string" ? d.notes : undefined,
+      };
+    }
+  } catch {
+    // not JSON — colete vechi cu detalii ca text liber; nu e cazul nostru
+  }
+  return {};
 }
 
 // Numele pasagerilor sunt salvate concatenat în firstName/lastName separate prin
@@ -176,6 +198,8 @@ export default function TicketPage() {
   const isParcel = booking.type === "parcel" || booking.type === "colet_la_cheie";
   const status = STATUS_LABELS[booking.status] ?? { label: booking.status, tone: "warn" as const };
   const isCancelled = status.tone === "bad" || booking.passengerResponse === "cancelled";
+  const manualDetails = parseManualDetails(booking.parcelDetails);
+  const timeFmt = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="min-h-screen bg-[color:var(--ink-50)] py-8 px-4 print:bg-white print:py-0">
@@ -256,16 +280,21 @@ export default function TicketPage() {
 
           {/* Route visual */}
           <div className="px-7 py-6 print:py-4">
-            <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-4">
+            <div className="grid grid-cols-[1fr,auto,1fr] items-start gap-4">
               <div className="text-center">
                 <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)]">
                   Plecare
                 </div>
-                <div className="mt-1 font-[family-name:var(--font-montserrat)] text-xl font-extrabold text-[color:var(--navy-900)] truncate">
+                <div className="mt-1 font-[family-name:var(--font-montserrat)] text-xl font-extrabold text-[color:var(--navy-900)] break-words">
                   {booking.departureCity}
                 </div>
+                {manualDetails.originAddress && (
+                  <div className="mt-1.5 text-xs font-medium text-[color:var(--ink-700)] break-words">
+                    {manualDetails.originAddress}
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col items-center text-[color:var(--red-500)]">
+              <div className="flex flex-col items-center text-[color:var(--red-500)] pt-3">
                 <div className="h-px w-12 bg-[color:var(--red-200,rgba(225,30,43,0.25))]" />
                 <div className="my-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--red-50)] text-[color:var(--red-500)]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
@@ -278,9 +307,14 @@ export default function TicketPage() {
                 <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)]">
                   Sosire
                 </div>
-                <div className="mt-1 font-[family-name:var(--font-montserrat)] text-xl font-extrabold text-[color:var(--navy-900)] truncate">
+                <div className="mt-1 font-[family-name:var(--font-montserrat)] text-xl font-extrabold text-[color:var(--navy-900)] break-words">
                   {booking.arrivalCity}
                 </div>
+                {manualDetails.destinationAddress && (
+                  <div className="mt-1.5 text-xs font-medium text-[color:var(--ink-700)] break-words">
+                    {manualDetails.destinationAddress}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -294,6 +328,7 @@ export default function TicketPage() {
                 month: "long",
                 year: "numeric",
               })}
+              <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {timeFmt.format(departureDate)}</span>
             </DetailCell>
             {returnDate && (
               <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label="Data întoarcerii">
@@ -303,6 +338,7 @@ export default function TicketPage() {
                   month: "long",
                   year: "numeric",
                 })}
+                <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {timeFmt.format(returnDate)}</span>
               </DetailCell>
             )}
             <DetailCell icon={<User className="h-3.5 w-3.5" />} label={isParcel ? "Tip" : "Pasageri"}>
