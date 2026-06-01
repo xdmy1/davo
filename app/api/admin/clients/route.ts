@@ -6,7 +6,15 @@ export async function GET() {
     const clients = await prisma.client.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        bookings: { select: { price: true, departureDate: true, status: true } },
+        bookings: {
+          select: {
+            price: true,
+            departureDate: true,
+            status: true,
+            departureCity: true,
+            arrivalCity: true,
+          },
+        },
       },
     });
 
@@ -17,6 +25,9 @@ export async function GET() {
         const lastTrip = valid
           .map((b) => b.departureDate.getTime())
           .sort((a, b) => b - a)[0];
+        const routes = Array.from(
+          new Set(valid.map((b) => `${b.departureCity} → ${b.arrivalCity}`)),
+        ).sort();
         return {
           id: c.id,
           firstName: c.firstName,
@@ -28,6 +39,7 @@ export async function GET() {
           bookings: valid.length,
           totalSpent: valid.reduce((s, b) => s + b.price, 0),
           lastTripAt: lastTrip ? new Date(lastTrip).toISOString() : null,
+          routes,
         };
       }),
     });

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Search, Star, Mail, Phone, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, Star, Mail, Phone, Plus, Download, Route as RouteIcon } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import EmptyState from "@/components/admin/EmptyState";
@@ -18,6 +18,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [onlyVip, setOnlyVip] = useState(false);
+  const [routeFilter, setRouteFilter] = useState<string>("all");
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -33,8 +34,15 @@ export default function ClientsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const allRoutes = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of clients) for (const r of c.routes ?? []) s.add(r);
+    return Array.from(s).sort();
+  }, [clients]);
+
   const filtered = clients.filter((c) => {
     if (onlyVip && !c.vip) return false;
+    if (routeFilter !== "all" && !(c.routes ?? []).includes(routeFilter)) return false;
     if (!q) return true;
     const k = q.toLowerCase();
     return (
@@ -44,6 +52,48 @@ export default function ClientsPage() {
       c.phone.includes(q)
     );
   });
+
+  function exportCsv() {
+    const headers = [
+      "Prenume",
+      "Nume",
+      "Email",
+      "Telefon",
+      "Rezervari",
+      "Total cheltuit (EUR)",
+      "Ultima cursa",
+      "VIP",
+      "Rute",
+      "Notite",
+    ];
+    const rows = filtered.map((c) => [
+      c.firstName,
+      c.lastName,
+      c.email,
+      c.phone,
+      String(c.bookings),
+      String(c.totalSpent),
+      c.lastTripAt ? new Date(c.lastTripAt).toISOString().slice(0, 10) : "",
+      c.vip ? "DA" : "",
+      (c.routes ?? []).join(" | "),
+      c.notes ?? "",
+    ]);
+    // CSV cu BOM UTF-8 ca Excel să detecteze diacriticele
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const csv =
+      "﻿" +
+      [headers, ...rows].map((row) => row.map(escape).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `clienti-davo-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
   async function create(form: { firstName: string; lastName: string; email: string; phone: string; vip: boolean; notes: string }) {
     const res = await fetch("/api/admin/clients", {
@@ -66,9 +116,19 @@ export default function ClientsPage() {
         title="Clienți"
         subtitle={`${clients.length} persoane cu rezervări`}
         actions={
-          <button onClick={() => setCreating(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600">
-            <Plus className="h-3.5 w-3.5" /> Client nou
-          </button>
+          <>
+            <button
+              onClick={exportCsv}
+              disabled={filtered.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+              title={filtered.length === 0 ? "Niciun client de exportat" : `Exportă ${filtered.length} clienți (Excel/CSV)`}
+            >
+              <Download className="h-3.5 w-3.5" /> Export Excel
+            </button>
+            <button onClick={() => setCreating(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600">
+              <Plus className="h-3.5 w-3.5" /> Client nou
+            </button>
+          </>
         }
       />
 
@@ -83,6 +143,17 @@ export default function ClientsPage() {
             className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm focus:border-orange-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-200"
           />
         </div>
+        <select
+          value={routeFilter}
+          onChange={(e) => setRouteFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200 max-w-[280px]"
+          title="Filtrează clienții după ruta pe care au mers"
+        >
+          <option value="all">Toate rutele</option>
+          {allRoutes.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input type="checkbox" checked={onlyVip} onChange={(e) => setOnlyVip(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-300" />
           Doar VIP
@@ -102,6 +173,7 @@ export default function ClientsPage() {
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
               <tr>
@@ -110,6 +182,7 @@ export default function ClientsPage() {
                 <th className="px-5 py-3 text-left">Rezervări</th>
                 <th className="px-5 py-3 text-left">Total cheltuit</th>
                 <th className="px-5 py-3 text-left">Ultima cursă</th>
+                <th className="px-5 py-3 text-left">Rute</th>
                 <th className="px-5 py-3 text-left">Etichete</th>
               </tr>
             </thead>
@@ -141,6 +214,31 @@ export default function ClientsPage() {
                     {c.lastTripAt ? dateFmt.format(new Date(c.lastTripAt)) : "—"}
                   </td>
                   <td className="px-5 py-3">
+                    {!c.routes || c.routes.length === 0 ? (
+                      <span className="text-xs text-slate-400">—</span>
+                    ) : (
+                      <div
+                        className="flex flex-wrap gap-1 max-w-[260px]"
+                        title={c.routes.join("\n")}
+                      >
+                        {c.routes.slice(0, 2).map((r) => (
+                          <span
+                            key={r}
+                            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                          >
+                            <RouteIcon className="h-2.5 w-2.5 text-orange-500" />
+                            <span className="max-w-[180px] truncate">{r}</span>
+                          </span>
+                        ))}
+                        {c.routes.length > 2 && (
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                            +{c.routes.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-5 py-3">
                     {c.vip && (
                       <Badge variant="orange"><Star className="h-3 w-3" /> VIP</Badge>
                     )}
@@ -149,6 +247,7 @@ export default function ClientsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

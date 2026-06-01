@@ -63,6 +63,7 @@ export type MockClient = {
   lastTripAt: string | null;
   vip: boolean;
   notes?: string | null;
+  routes?: string[];
 };
 
 export type EmailStatus = "sent" | "failed" | "queued" | "scheduled";
