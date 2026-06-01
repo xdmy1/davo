@@ -810,8 +810,11 @@ function ManualBookingModal({
                 Trimite email de confirmare clientului
               </label>
             </div>
-            <Field label="Notițe interne (opțional)">
+            <Field label="Notițe pe bilet (opțional)">
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputCls} placeholder="ex: viză muncă fermă căpșuni" />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Apar pe biletul tipărit, sub datele pasagerului.
+              </span>
             </Field>
           </Section>
 

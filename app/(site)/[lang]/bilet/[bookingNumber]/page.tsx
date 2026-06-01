@@ -403,6 +403,17 @@ export default function TicketPage() {
             </div>
           </div>
 
+          {manualDetails.notes && (
+            <div className="px-7 pb-6 border-t border-[color:var(--ink-100)] pt-5">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)] mb-2">
+                Notițe
+              </div>
+              <div className="text-sm text-[color:var(--navy-900)] whitespace-pre-wrap break-words">
+                {manualDetails.notes}
+              </div>
+            </div>
+          )}
+
           {/* Price + QR — navy band */}
           <div className="bg-[color:var(--navy-900)] bg-hero-navy text-white p-7 relative overflow-hidden print:bg-[#0b2653]">
             <div className="bg-noise absolute inset-0 opacity-30 print:hidden" />
