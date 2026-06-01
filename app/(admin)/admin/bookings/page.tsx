@@ -9,6 +9,7 @@ import {
   Download,
   Filter,
   Plus,
+  ArrowDownUp,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
@@ -513,11 +514,13 @@ function ManualBookingModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  const [originSelect, setOriginSelect] = useState<string>(moldovanCities[0]?.name ?? OTHER);
-  const [originCustom, setOriginCustom] = useState("");
+  const [originCountrySelect, setOriginCountrySelect] = useState<string>("Moldova");
+  const [originCountryCustom, setOriginCountryCustom] = useState("");
+  const [originCity, setOriginCity] = useState<string>("Chișinău");
+  const [originAddress, setOriginAddress] = useState("");
 
-  const [countrySelect, setCountrySelect] = useState<string>(destinations[0]?.name ?? OTHER);
-  const [countryCustom, setCountryCustom] = useState("");
+  const [destCountrySelect, setDestCountrySelect] = useState<string>(destinations[0]?.name ?? OTHER);
+  const [destCountryCustom, setDestCountryCustom] = useState("");
   const [destCity, setDestCity] = useState("");
   const [destAddress, setDestAddress] = useState("");
 
@@ -542,17 +545,28 @@ function ManualBookingModal({
 
   const [saving, setSaving] = useState(false);
 
-  const departureCity = originSelect === OTHER ? originCustom.trim() : originSelect;
-  const destinationCountry = countrySelect === OTHER ? countryCustom.trim() : countrySelect;
+  const originCountry = originCountrySelect === OTHER ? originCountryCustom.trim() : originCountrySelect;
+  const destinationCountry = destCountrySelect === OTHER ? destCountryCustom.trim() : destCountrySelect;
+
+  function swapDirection() {
+    setOriginCountrySelect(destCountrySelect);
+    setOriginCountryCustom(destCountryCustom);
+    setOriginCity(destCity);
+    setOriginAddress(destAddress);
+    setDestCountrySelect(originCountrySelect);
+    setDestCountryCustom(originCountryCustom);
+    setDestCity(originCity);
+    setDestAddress(originAddress);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!departureCity) {
-      alert("Completează orașul de plecare.");
+    if (!originCountry || !originCity.trim()) {
+      alert("Completează țara și orașul de plecare.");
       return;
     }
-    if (!destinationCountry) {
-      alert("Completează țara de destinație.");
+    if (!destinationCountry || !destCity.trim()) {
+      alert("Completează țara și orașul de destinație.");
       return;
     }
     const priceNum = Number(price);
@@ -570,9 +584,11 @@ function ManualBookingModal({
           lastName,
           email,
           phone,
-          departureCity,
+          originCountry,
+          originCity: originCity.trim(),
+          originAddress,
           destinationCountry,
-          destinationCity: destCity,
+          destinationCity: destCity.trim(),
           destinationAddress: destAddress,
           departureDate: new Date(departureDate).toISOString(),
           returnDate: tripType === "round-trip" && returnDate ? new Date(returnDate).toISOString() : null,
@@ -628,42 +644,66 @@ function ManualBookingModal({
 
           <Section title="Plecare">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Oraș plecare">
-                <select value={originSelect} onChange={(e) => setOriginSelect(e.target.value)} className={inputCls}>
-                  {moldovanCities.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                  <option value={OTHER}>Alt oraș…</option>
-                </select>
-                {originSelect === OTHER && (
-                  <input
-                    value={originCustom}
-                    onChange={(e) => setOriginCustom(e.target.value)}
-                    placeholder="ex: Cahul"
-                    className={`${inputCls} mt-2`}
-                    required
-                  />
-                )}
-              </Field>
-              <Field label="Data + ora plecării">
-                <input type="datetime-local" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={inputCls} required />
-              </Field>
-            </div>
-          </Section>
-
-          <Section title="Destinație">
-            <div className="grid grid-cols-2 gap-3">
               <Field label="Țară">
-                <select value={countrySelect} onChange={(e) => setCountrySelect(e.target.value)} className={inputCls}>
+                <select value={originCountrySelect} onChange={(e) => setOriginCountrySelect(e.target.value)} className={inputCls}>
+                  <option value="Moldova">Moldova</option>
                   {destinations.map((d) => (
                     <option key={d.id} value={d.name}>{d.name}</option>
                   ))}
                   <option value={OTHER}>Altă țară…</option>
                 </select>
-                {countrySelect === OTHER && (
+                {originCountrySelect === OTHER && (
                   <input
-                    value={countryCustom}
-                    onChange={(e) => setCountryCustom(e.target.value)}
+                    value={originCountryCustom}
+                    onChange={(e) => setOriginCountryCustom(e.target.value)}
+                    placeholder="ex: Suedia"
+                    className={`${inputCls} mt-2`}
+                    required
+                  />
+                )}
+              </Field>
+              <Field label="Oraș / regiune">
+                <input value={originCity} onChange={(e) => setOriginCity(e.target.value)} placeholder="ex: Chișinău" className={inputCls} required />
+              </Field>
+            </div>
+            <Field label="Adresă exactă (opțional)">
+              <input
+                value={originAddress}
+                onChange={(e) => setOriginAddress(e.target.value)}
+                placeholder="ex: str. Mihai Eminescu 5"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Data + ora plecării">
+              <input type="datetime-local" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={inputCls} required />
+            </Field>
+          </Section>
+
+          <div className="-my-2 flex justify-center">
+            <button
+              type="button"
+              onClick={swapDirection}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 hover:text-orange-600"
+              title="Inversează sensul (plecare ↔ destinație)"
+            >
+              <ArrowDownUp className="h-3.5 w-3.5" /> Inversează sensul
+            </button>
+          </div>
+
+          <Section title="Destinație">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Țară">
+                <select value={destCountrySelect} onChange={(e) => setDestCountrySelect(e.target.value)} className={inputCls}>
+                  <option value="Moldova">Moldova</option>
+                  {destinations.map((d) => (
+                    <option key={d.id} value={d.name}>{d.name}</option>
+                  ))}
+                  <option value={OTHER}>Altă țară…</option>
+                </select>
+                {destCountrySelect === OTHER && (
+                  <input
+                    value={destCountryCustom}
+                    onChange={(e) => setDestCountryCustom(e.target.value)}
                     placeholder="ex: Suedia"
                     className={`${inputCls} mt-2`}
                     required

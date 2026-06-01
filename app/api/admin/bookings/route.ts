@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const required = ['firstName', 'lastName', 'email', 'phone', 'departureCity', 'destinationCountry', 'destinationCity', 'departureDate', 'price', 'currency']
+    const required = ['firstName', 'lastName', 'email', 'phone', 'originCountry', 'originCity', 'destinationCountry', 'destinationCity', 'departureDate', 'price', 'currency']
     for (const f of required) {
       if (body[f] === undefined || body[f] === null || body[f] === '') {
         return NextResponse.json(
@@ -69,12 +69,14 @@ export async function POST(request: NextRequest) {
     const paymentStatus = payMethod === 'paid_in_advance' ? 'paid' : 'pending'
     const sendEmail: boolean = body.sendEmail !== false
 
+    const departureCityFull = `${String(body.originCity).trim()}, ${String(body.originCountry).trim()}`
     const arrivalCity = `${String(body.destinationCity).trim()}, ${String(body.destinationCountry).trim()}`
 
-    const address: string | undefined = body.destinationAddress?.trim() || undefined
+    const originAddress: string | undefined = body.originAddress?.trim() || undefined
+    const destinationAddress: string | undefined = body.destinationAddress?.trim() || undefined
     const notes: string | undefined = body.notes?.trim() || undefined
-    const parcelDetails = address || notes
-      ? JSON.stringify({ address, notes, manual: true })
+    const parcelDetails = originAddress || destinationAddress || notes
+      ? JSON.stringify({ originAddress, destinationAddress, notes, manual: true })
       : undefined
 
     const bookingNumber = generateBookingNumber()
@@ -96,7 +98,7 @@ export async function POST(request: NextRequest) {
         type: 'passenger',
         status,
         tripType,
-        departureCity: String(body.departureCity).trim(),
+        departureCity: departureCityFull,
         arrivalCity,
         departureDate,
         returnDate,
