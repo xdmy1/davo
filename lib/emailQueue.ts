@@ -245,10 +245,14 @@ async function sendJob(job: EmailJob & { booking: Booking }) {
     return;
   }
 
-  const html =
-    type === "reminder_24h"
-      ? reminder24hHtml(booking, urls)
-      : cancellationHtml(booking);
+  let html: string;
+  if (type === "reminder_24h") {
+    const { resolveScheduledTimes } = await import("@/lib/scheduledTime");
+    const scheduled = await resolveScheduledTimes(booking);
+    html = reminder24hHtml(booking, urls, scheduled.departureTime ?? null);
+  } else {
+    html = cancellationHtml(booking);
+  }
 
   if (!process.env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY not configured");

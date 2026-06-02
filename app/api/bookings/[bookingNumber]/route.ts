@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { resolveScheduledTimes } from '@/lib/scheduledTime'
 
 export async function GET(
   request: NextRequest,
@@ -36,11 +37,19 @@ export async function GET(
           .map((s) => s.seatNumber)
       : []
 
+    const scheduled = await resolveScheduledTimes(booking)
+
     const { seatBookings: _seatBookings, ...rest } = booking
     void _seatBookings
     return NextResponse.json({
       success: true,
-      booking: { ...rest, outboundSeats, returnSeats },
+      booking: {
+        ...rest,
+        outboundSeats,
+        returnSeats,
+        departureTime: scheduled.departureTime ?? null,
+        returnTime: scheduled.returnTime ?? null,
+      },
     })
   } catch (error) {
     console.error('Get booking error:', error)

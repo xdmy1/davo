@@ -1,16 +1,23 @@
 import type { Booking } from "@prisma/client";
 import { appUrl } from "@/lib/appUrl";
 
+// Ora plecării/întoarcerii e introdusă mereu în ora locală Moldovei (admin +
+// flow public). Serverul (Vercel) rulează în UTC, deci fără `timeZone` ar
+// afișa orele cu 3h mai puțin în emailuri — clientul vede "04:00" pentru o
+// cursă programată la 07:00 Chișinău. Forțăm Europe/Chișinău ca să fie
+// consistent indiferent de unde citește destinatarul emailul.
 const dateFmt = new Intl.DateTimeFormat("ro-RO", {
   weekday: "long",
   day: "numeric",
   month: "long",
   year: "numeric",
+  timeZone: "Europe/Chisinau",
 });
 
 const timeFmt = new Intl.DateTimeFormat("ro-RO", {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Chisinau",
 });
 
 function logoUrl(): string {
@@ -236,6 +243,11 @@ export type ConfirmationData = {
   price: number;
   currency: string;
   payMethod?: string | null;
+  // Ora literală din programul țării (admin → Țări → "Ora plecării").
+  // Când e setată, înlocuiește `formatTime(departureDate)` în template, ca să
+  // afișăm exact ce vede admin-ul (ex: "07:00" pentru Anglia DUS).
+  departureTime?: string | null;
+  returnTime?: string | null;
 };
 
 function paxLine(adults: number, children: number): string {
@@ -263,17 +275,19 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
   const isParcel = b.type === "parcel";
   const isRoundTrip = b.tripType === "round-trip";
 
+  const depTime = b.departureTime ?? formatTime(b.departureDate);
+  const retTime = b.returnDate ? (b.returnTime ?? formatTime(b.returnDate)) : null;
   const rows: DetailRow[] = [
     { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
     {
       label: "Plecare",
-      value: `${formatDate(b.departureDate)} · ${formatTime(b.departureDate)}`,
+      value: `${formatDate(b.departureDate)} · ${depTime}`,
     },
   ];
-  if (isRoundTrip && b.returnDate) {
+  if (isRoundTrip && b.returnDate && retTime) {
     rows.push({
       label: "Întoarcere",
-      value: `${formatDate(b.returnDate)} · ${formatTime(b.returnDate)}`,
+      value: `${formatDate(b.returnDate)} · ${retTime}`,
     });
   }
   if (isParcel && b.parcelDetails) {
@@ -308,13 +322,14 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
 
 // ----- Reminders -----
 
-export function reminder24hHtml(b: Booking, urls?: ResponseUrls): string {
+export function reminder24hHtml(b: Booking, urls?: ResponseUrls, scheduledDepartureTime?: string | null): string {
+  const depTime = scheduledDepartureTime ?? formatTime(b.departureDate);
   const body = `
     ${headline(`${b.firstName}, mâine e ziua mare.`)}
     ${intro(`Cursa ta <strong style="color:${C.navy900};">${b.departureCity} → ${b.arrivalCity}</strong> pleacă mâine. Vezi detaliile și confirmă-ne că vii.`)}
     ${detailsCard([
       { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
-      { label: "Plecare", value: `${formatDate(b.departureDate)} · ${formatTime(b.departureDate)}` },
+      { label: "Plecare", value: `${formatDate(b.departureDate)} · ${depTime}` },
       { label: "Nr. rezervare", value: b.bookingNumber },
     ])}
     ${urls ? vxButtons(urls, "Mai vii la cursă? Confirmă-ne acum sau anulează dacă nu mai poți.") : ""}
@@ -389,12 +404,13 @@ export function cancellationHtml(b: Booking): string {
 
 export function adminNotificationHtml(b: ConfirmationData): string {
   const isParcel = b.type === "parcel";
+  const depTime = b.departureTime ?? formatTime(b.departureDate);
   const rows: DetailRow[] = [
     { label: "Nr. rezervare", value: b.bookingNumber },
     { label: "Tip", value: isParcel ? "Colet" : "Pasager" },
     { label: "Client", value: b.firstName },
     { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
-    { label: "Plecare", value: `${formatDate(b.departureDate)} · ${formatTime(b.departureDate)}` },
+    { label: "Plecare", value: `${formatDate(b.departureDate)} · ${depTime}` },
   ];
   if (!isParcel) {
     rows.push({ label: "Pasageri", value: paxLine(b.adults, b.children) });

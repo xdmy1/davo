@@ -47,6 +47,10 @@ interface Booking {
   createdAt: string;
   outboundSeats?: number[];
   returnSeats?: number[];
+  // Ora literală din programul țării (Anglia DUS 07:00 etc.). Când e setată,
+  // o afișăm ca atare ca să nu depindem de fusul orar al browser-ului.
+  departureTime?: string | null;
+  returnTime?: string | null;
 }
 
 function parseManualDetails(parcelDetails: string | null | undefined): {
@@ -199,7 +203,20 @@ export default function TicketPage() {
   const status = STATUS_LABELS[booking.status] ?? { label: booking.status, tone: "warn" as const };
   const isCancelled = status.tone === "bad" || booking.passengerResponse === "cancelled";
   const manualDetails = parseManualDetails(booking.parcelDetails);
-  const timeFmt = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" });
+  // Datele sunt stocate UTC; clientul poate deschide biletul din UK/DE/etc —
+  // forțăm ora Moldovei ca să corespundă cu ce a fost programat în admin.
+  const dateFmt = new Intl.DateTimeFormat("ro-RO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Chisinau",
+  });
+  const timeFmt = new Intl.DateTimeFormat("ro-RO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Chisinau",
+  });
 
   return (
     <div className="min-h-screen bg-[color:var(--ink-50)] py-8 px-4 print:bg-white print:py-0">
@@ -274,7 +291,7 @@ export default function TicketPage() {
               {booking.bookingNumber}
             </div>
             <div className="mt-1 text-[11px] text-[color:var(--ink-500)]">
-              Emis {created.toLocaleDateString("ro-RO", { day: "2-digit", month: "long", year: "numeric" })}
+              Emis {created.toLocaleDateString("ro-RO", { day: "2-digit", month: "long", year: "numeric", timeZone: "Europe/Chisinau" })}
             </div>
           </div>
 
@@ -322,23 +339,13 @@ export default function TicketPage() {
           {/* Details grid */}
           <div className="px-7 pb-6 grid grid-cols-2 gap-3 print:gap-2">
             <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label="Data plecării">
-              {departureDate.toLocaleDateString("ro-RO", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-              <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {timeFmt.format(departureDate)}</span>
+              {dateFmt.format(departureDate)}
+              <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.departureTime ?? timeFmt.format(departureDate)}</span>
             </DetailCell>
             {returnDate && (
               <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label="Data întoarcerii">
-                {returnDate.toLocaleDateString("ro-RO", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-                <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {timeFmt.format(returnDate)}</span>
+                {dateFmt.format(returnDate)}
+                <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.returnTime ?? timeFmt.format(returnDate)}</span>
               </DetailCell>
             )}
             <DetailCell icon={<User className="h-3.5 w-3.5" />} label={isParcel ? "Tip" : "Pasageri"}>

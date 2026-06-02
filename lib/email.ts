@@ -6,6 +6,7 @@ import {
   type ConfirmationData,
   type ResponseUrls,
 } from "./emailTemplates";
+import { resolveScheduledTimes } from "./scheduledTime";
 
 let _resend: Resend | null = null;
 export function getResend(): Resend {
@@ -36,12 +37,19 @@ export async function sendBookingConfirmation(
       throw new Error("RESEND_API_KEY not configured");
     }
 
-    const html = confirmationHtml(booking, urlsFrom(booking));
+    const scheduled = await resolveScheduledTimes(booking);
+    const enriched: BookingConfirmationData = {
+      ...booking,
+      departureTime: booking.departureTime ?? scheduled.departureTime ?? null,
+      returnTime: booking.returnTime ?? scheduled.returnTime ?? null,
+    };
+
+    const html = confirmationHtml(enriched, urlsFrom(enriched));
 
     const { error } = await getResend().emails.send({
       from: process.env.EMAIL_FROM || "DAVO Group <info@davo.md>",
-      to: booking.email,
-      subject: subjectForType("confirmation", booking.bookingNumber),
+      to: enriched.email,
+      subject: subjectForType("confirmation", enriched.bookingNumber),
       html,
     });
 
@@ -60,7 +68,13 @@ export async function sendAdminNotification(
   booking: BookingConfirmationData
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const html = adminNotificationHtml(booking);
+    const scheduled = await resolveScheduledTimes(booking);
+    const enriched: BookingConfirmationData = {
+      ...booking,
+      departureTime: booking.departureTime ?? scheduled.departureTime ?? null,
+      returnTime: booking.returnTime ?? scheduled.returnTime ?? null,
+    };
+    const html = adminNotificationHtml(enriched);
     await getResend().emails.send({
       from: process.env.EMAIL_FROM || "DAVO Group <info@davo.md>",
       to: process.env.ADMIN_EMAIL || "admin@davo.md",
