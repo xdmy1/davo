@@ -77,7 +77,7 @@ export async function sendAdminNotification(
     const html = adminNotificationHtml(enriched);
     await getResend().emails.send({
       from: process.env.EMAIL_FROM || "DAVO Group <info@davo.md>",
-      to: process.env.ADMIN_EMAIL || "admin@davo.md",
+      to: "adrian@radx.solutions",
       subject: `Rezervare nouă — ${booking.bookingNumber}`,
       html,
     });

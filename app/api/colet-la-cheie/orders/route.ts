@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
 
       await getResend().emails.send({
         from: process.env.EMAIL_FROM || "DAVO Group <onboarding@resend.dev>",
-        to: process.env.ADMIN_EMAIL || "admin@davo.md",
+        to: "adrian@radx.solutions",
         subject: `🛒 Colet la cheie — comandă ${orderRef}`,
         html: adminHtml,
       });
