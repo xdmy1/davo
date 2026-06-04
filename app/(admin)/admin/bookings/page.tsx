@@ -10,6 +10,8 @@ import {
   Filter,
   Plus,
   ArrowDownUp,
+  Pencil,
+  X,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
@@ -34,6 +36,7 @@ type Booking = {
   emailSent: boolean;
   passengerResponse: "confirmed" | "cancelled" | null;
   passengerResponseAt: string | null;
+  parcelDetails?: string | null;
 };
 
 const responseOptions = [
@@ -146,6 +149,7 @@ export default function BookingsPage() {
   // filtrul de perioadă presetată — userul a ales o zi anume.
   const [dateFilter, setDateFilter] = useState<string>("");
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Booking | null>(null);
 
   async function fetchBookings() {
     setLoading(true);
@@ -449,6 +453,13 @@ export default function BookingsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setEditing(b)}
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-orange-600"
+                            title="Editează rezervarea"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
                           <a
                             href={`/bilet/${b.bookingNumber}`}
                             target="_blank"
@@ -486,6 +497,17 @@ export default function BookingsPage() {
           onClose={() => setCreating(false)}
           onSaved={() => {
             setCreating(false);
+            fetchBookings();
+          }}
+        />
+      )}
+
+      {editing && (
+        <EditBookingModal
+          booking={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
             fetchBookings();
           }}
         />
@@ -851,3 +873,358 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputCls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200";
+
+function EditBookingModal({
+  booking,
+  onClose,
+  onSaved,
+}: {
+  booking: Booking;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  // Câmpuri editabile, preîncărcate cu valorile curente
+  const [firstName, setFirstName] = useState(booking.firstName);
+  const [lastName, setLastName] = useState(booking.lastName);
+  const [email, setEmail] = useState(booking.email);
+  const [phone, setPhone] = useState(booking.phone);
+  const [departureCity, setDepartureCity] = useState(booking.departureCity);
+  const [arrivalCity, setArrivalCity] = useState(booking.arrivalCity);
+  const [departureDate, setDepartureDate] = useState(toLocalInput(new Date(booking.departureDate)));
+  const [tripType, setTripType] = useState<"one-way" | "round-trip">("one-way");
+  const [returnDate, setReturnDate] = useState<string>("");
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [price, setPrice] = useState<string>(String(booking.price));
+  const [currency, setCurrency] = useState<string>(booking.currency);
+  const [payMethod, setPayMethod] = useState<string>("cash_on_pickup");
+  const [paymentStatus, setPaymentStatus] = useState<string>("pending");
+  const [status, setStatus] = useState<string>(booking.status);
+  const [notes, setNotes] = useState<string>("");
+
+  // Date stocate doar la fetch: scaune curente + tripIds
+  const [outboundSeats, setOutboundSeats] = useState<number[]>([]);
+  const [returnSeats, setReturnSeats] = useState<number[]>([]);
+  const [removeOutbound, setRemoveOutbound] = useState<number[]>([]);
+  const [removeReturn, setRemoveReturn] = useState<number[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Detalii extra (parcelDetails ca JSON pentru rezervări manuale)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/bookings/${booking.bookingNumber}`);
+        const data = await res.json();
+        if (cancelled || !data?.success || !data.booking) return;
+        const b = data.booking;
+        setAdults(b.adults ?? 1);
+        setChildren(b.children ?? 0);
+        setTripType(b.tripType === "round-trip" ? "round-trip" : "one-way");
+        if (b.returnDate) setReturnDate(toLocalInput(new Date(b.returnDate)));
+        setPayMethod(b.payMethod ?? "cash_on_pickup");
+        setPaymentStatus(b.paymentStatus ?? "pending");
+        setOutboundSeats(Array.isArray(b.outboundSeats) ? b.outboundSeats : []);
+        setReturnSeats(Array.isArray(b.returnSeats) ? b.returnSeats : []);
+        // Extragem notițele din parcelDetails dacă e JSON manual
+        if (b.parcelDetails) {
+          try {
+            const parsed = JSON.parse(b.parcelDetails);
+            if (parsed && typeof parsed.notes === "string") setNotes(parsed.notes);
+          } catch {
+            // nu e JSON manual — îl lăsăm așa
+          }
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [booking.bookingNumber]);
+
+  function toggleRemoveOutbound(seat: number) {
+    setRemoveOutbound((prev) => (prev.includes(seat) ? prev.filter((s) => s !== seat) : [...prev, seat]));
+  }
+  function toggleRemoveReturn(seat: number) {
+    setRemoveReturn((prev) => (prev.includes(seat) ? prev.filter((s) => s !== seat) : [...prev, seat]));
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim()) {
+      alert("Numele și prenumele sunt obligatorii.");
+      return;
+    }
+    const priceNum = Number(price);
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      alert("Preț invalid.");
+      return;
+    }
+    await save(status);
+  }
+
+  async function cancelBooking() {
+    if (!confirm("Sigur vrei să anulezi rezervarea? Clientul va primi email de anulare.")) return;
+    await save("cancelled");
+  }
+
+  async function save(targetStatus: string) {
+    setSaving(true);
+    try {
+      // Reconstruim parcelDetails dacă era JSON manual (păstrăm structura)
+      let parcelDetails: string | null | undefined = undefined;
+      if (booking.parcelDetails) {
+        try {
+          const parsed = JSON.parse(booking.parcelDetails);
+          if (parsed && parsed.manual) {
+            parcelDetails = JSON.stringify({ ...parsed, notes: notes.trim() || undefined });
+          }
+        } catch {
+          // nu atingem dacă nu e structura noastră
+        }
+      }
+
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          departureCity: departureCity.trim(),
+          arrivalCity: arrivalCity.trim(),
+          departureDate: new Date(departureDate).toISOString(),
+          tripType,
+          returnDate: tripType === "round-trip" && returnDate ? new Date(returnDate).toISOString() : null,
+          adults: Math.max(0, Number(adults) || 0),
+          children: Math.max(0, Number(children) || 0),
+          price: Number(price),
+          currency,
+          payMethod,
+          paymentStatus,
+          status: targetStatus,
+          ...(parcelDetails !== undefined ? { parcelDetails } : {}),
+          removeOutboundSeats: removeOutbound,
+          removeReturnSeats: removeReturn,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error ?? "Eroare la salvare");
+        return;
+      }
+      onSaved();
+    } catch (err) {
+      console.error(err);
+      alert("Eroare la salvare");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
+          <Pencil className="h-4 w-4 text-orange-500" />
+          <h3 className="text-base font-semibold text-slate-900">
+            Editează rezervarea <span className="font-mono text-orange-600">{booking.bookingNumber}</span>
+          </h3>
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+          </div>
+        ) : (
+          <form className="grid gap-4 px-5 py-4" onSubmit={submit}>
+            <Section title="Client">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Prenume (separat cu virgulă pt. mai mulți)">
+                  <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} required />
+                </Field>
+                <Field label="Nume">
+                  <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} required />
+                </Field>
+                <Field label="Email">
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+                </Field>
+                <Field label="Telefon">
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+                </Field>
+              </div>
+            </Section>
+
+            <Section title="Rută & date">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Plecare (oraș, țară)">
+                  <input value={departureCity} onChange={(e) => setDepartureCity(e.target.value)} className={inputCls} />
+                </Field>
+                <Field label="Sosire (oraș, țară)">
+                  <input value={arrivalCity} onChange={(e) => setArrivalCity(e.target.value)} className={inputCls} />
+                </Field>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <label className="inline-flex items-center gap-2">
+                  <input type="radio" checked={tripType === "one-way"} onChange={() => setTripType("one-way")} />
+                  Doar dus
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="radio" checked={tripType === "round-trip"} onChange={() => setTripType("round-trip")} />
+                  Dus-întors
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Data plecării">
+                  <input type="datetime-local" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={inputCls} required />
+                </Field>
+                {tripType === "round-trip" && (
+                  <Field label="Data întoarcerii">
+                    <input type="datetime-local" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} className={inputCls} />
+                  </Field>
+                )}
+              </div>
+            </Section>
+
+            <Section title="Pasageri">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Adulți">
+                  <input type="number" min={0} value={adults} onChange={(e) => setAdults(Number(e.target.value))} className={inputCls} />
+                </Field>
+                <Field label="Copii">
+                  <input type="number" min={0} value={children} onChange={(e) => setChildren(Number(e.target.value))} className={inputCls} />
+                </Field>
+              </div>
+            </Section>
+
+            {(outboundSeats.length > 0 || returnSeats.length > 0) && (
+              <Section title="Locuri rezervate">
+                {outboundSeats.length > 0 && (
+                  <Field label="Dus — click pe × să eliberezi locul">
+                    <div className="flex flex-wrap gap-2">
+                      {outboundSeats.map((s) => {
+                        const removed = removeOutbound.includes(s);
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => toggleRemoveOutbound(s)}
+                            className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-sm font-semibold transition-colors ${
+                              removed
+                                ? "border-red-300 bg-red-50 text-red-700 line-through"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                            }`}
+                            title={removed ? "Click ca să anulezi ștergerea" : "Click ca să eliberezi locul"}
+                          >
+                            Loc {s} <X className="h-3 w-3" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+                )}
+                {returnSeats.length > 0 && (
+                  <Field label="Retur — click pe × să eliberezi locul">
+                    <div className="flex flex-wrap gap-2">
+                      {returnSeats.map((s) => {
+                        const removed = removeReturn.includes(s);
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => toggleRemoveReturn(s)}
+                            className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-sm font-semibold transition-colors ${
+                              removed
+                                ? "border-red-300 bg-red-50 text-red-700 line-through"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                            }`}
+                          >
+                            Loc {s} <X className="h-3 w-3" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+                )}
+                {(removeOutbound.length > 0 || removeReturn.length > 0) && (
+                  <span className="text-[11px] text-red-600">
+                    Vor fi eliberate: {removeOutbound.length + removeReturn.length} loc(uri) la salvare.
+                  </span>
+                )}
+              </Section>
+            )}
+
+            <Section title="Preț & plată">
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Sumă">
+                  <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} className={inputCls} required />
+                </Field>
+                <Field label="Monedă">
+                  <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputCls}>
+                    <option value="GBP">GBP £</option>
+                    <option value="EUR">EUR €</option>
+                    <option value="MDL">MDL lei</option>
+                  </select>
+                </Field>
+                <Field label="Metodă plată">
+                  <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={inputCls}>
+                    <option value="cash_on_pickup">Cash la îmbarcare</option>
+                    <option value="card_on_pickup">Card la îmbarcare</option>
+                    <option value="paid_in_advance">Achitată în avans</option>
+                    <option value="cash_on_delivery">Cash la livrare</option>
+                  </select>
+                </Field>
+              </div>
+              <Field label="Status plată">
+                <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className={inputCls}>
+                  <option value="pending">Neachitată</option>
+                  <option value="paid">Achitată</option>
+                </select>
+              </Field>
+            </Section>
+
+            <Section title="Status rezervare">
+              <Field label="Status">
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
+                  <option value="pending">În așteptare</option>
+                  <option value="confirmed">Confirmată</option>
+                  <option value="cancelled">Anulată</option>
+                  <option value="completed">Finalizată</option>
+                </select>
+              </Field>
+              <Field label="Notițe pe bilet (opțional)">
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputCls} />
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Editabile doar pentru rezervări manuale (cu adresă custom).
+                </span>
+              </Field>
+            </Section>
+
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={cancelBooking}
+                disabled={saving || status === "cancelled"}
+                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40"
+              >
+                Anulează rezervarea
+              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                  Renunță
+                </button>
+                <button type="submit" disabled={saving} className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60">
+                  {saving ? "Salvez…" : "Salvează"}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
