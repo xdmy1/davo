@@ -38,11 +38,11 @@ const SCHEDULES: Record<string, CountryScheduleRow> = {
   },
   belgia: {
     outboundLabel: "Vineri 08:30",
-    outboundDuration: "~28h",
+    outboundDuration: "34-35h",
     returnLabel: "Duminică 12:00",
-    returnDuration: "~28h",
+    returnDuration: "34-35h",
     fullSentence:
-      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Belgia. Călătorie ~28h.",
+      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Belgia. Călătorie 34-35h.",
   },
   olanda: {
     outboundLabel: "Vineri 08:30",
