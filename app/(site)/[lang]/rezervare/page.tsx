@@ -21,19 +21,16 @@ import {
   Info,
 } from "lucide-react";
 import { destinations, moldovanCities, contactInfo } from "@/lib/data";
+import { CountryCityPicker } from "@/components/booking/CountryCityPicker";
+import { useLocale } from "@/lib/i18n/client";
+import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
 import { getOutboundWeekday, getReturnWeekday } from "@/lib/countrySchedule";
 import RouteHero from "@/components/booking/RouteHero";
 import { StepBar } from "@/components/booking/StepBar";
 import { TripPicker, type PublicTrip } from "@/components/booking/TripPicker";
-import { CityCombobox } from "@/components/booking/CityCombobox";
 import SuccessCard from "@/components/ui/SuccessCard";
-
-// Chișinău e hub-ul implicit din Moldova; nu apare în `moldovanCities` (ce listă
-// e doar opririle intermediare). Pentru selecția UI o adăugăm explicit ca prima
-// opțiune — atât la origine MD→EU, cât și ca destinație EU→MD.
-const moldovaCityOptions = ["Chișinău", ...moldovanCities.map((c) => c.name)];
 
 type PassengerName = { firstName: string; lastName: string };
 
@@ -77,11 +74,12 @@ export default function RezervarePage() {
 
 function RezervareContent() {
   const params = useSearchParams();
+  const locale = useLocale();
   const initialMode = (params.get("mode") as Mode) === "colet" ? "colet" : "bilet";
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [step, setStep] = useState(0);
-  const initialFrom = params.get("from") || "Chișinău";
+  const initialFrom = params.get("from") || "Chișinău, Moldova";
   const initialTo = params.get("to") || "";
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
@@ -208,6 +206,18 @@ function RezervareContent() {
       .catch(() => setCityIndex({}));
   }, []);
 
+  // Re-derivă direcția din country-ul curent din `from` — userul poate schimba
+  // țara liber din picker (Country+City) iar direcția trebuie să țină pasul ca
+  // restul logicii (weekday-uri permise, etichete, etc.) să se refacă corect.
+  useEffect(() => {
+    const country = from.split(",").pop()?.trim().toLowerCase() ?? "";
+    if (country === "moldova") {
+      setDirection("md-to-eu");
+    } else if (country.length > 0) {
+      setDirection("eu-to-md");
+    }
+  }, [from]);
+
   const steps = mode === "bilet"
     ? (trip === "return"
         ? ["Călătorie", "Cursa retur", "Pasageri", "Plată"]
@@ -300,7 +310,6 @@ function RezervareContent() {
   // Inversează direcția (Moldova ↔ Europa). Reset cursele alese fiindcă ruta
   // s-a schimbat și ID-urile vechi nu mai sunt valide.
   const swapDirection = () => {
-    setDirection((d) => (d === "md-to-eu" ? "eu-to-md" : "md-to-eu"));
     setFrom(to);
     setTo(from);
     setOutboundTripId(null);
@@ -439,16 +448,7 @@ function RezervareContent() {
                             onTrip={setTrip}
                             onPassengers={updatePassengers}
                             onSwap={swapDirection}
-                            fromOptions={
-                              direction === "md-to-eu"
-                                ? moldovaCityOptions
-                                : destinationCities.map((c) => `${c.name}, ${c.country}`)
-                            }
-                            toOptions={
-                              direction === "md-to-eu"
-                                ? destinationCities.map((c) => `${c.name}, ${c.country}`)
-                                : moldovaCityOptions
-                            }
+                            locale={locale}
                           />
                           {originCityId && destCityId && (
                             <TripPicker
@@ -545,8 +545,8 @@ function RezervareContent() {
                           onFrom={setFrom}
                           onTo={setTo}
                           onTrip={setTrip}
-                          fromOptions={moldovaCityOptions}
-                          toOptions={destinationCities.map((c) => `${c.name}, ${c.country}`)}
+                          onSwap={swapDirection}
+                          locale={locale}
                           hideTrip
                         />
                       )}
@@ -679,8 +679,7 @@ function DirectionStep({
   onTrip,
   onPassengers,
   onSwap,
-  fromOptions,
-  toOptions,
+  locale,
   hideTrip = false,
 }: {
   from: string;
@@ -692,8 +691,7 @@ function DirectionStep({
   onTrip: (v: "one" | "return") => void;
   onPassengers?: (n: number) => void;
   onSwap?: () => void;
-  fromOptions: string[];
-  toOptions: string[];
+  locale: Locale;
   hideTrip?: boolean;
 }) {
   return (
@@ -707,10 +705,10 @@ function DirectionStep({
 
       <div className="relative grid md:grid-cols-2 gap-4">
         <FancyField label="Plecare din" icon={<MapPin className="h-4 w-4" />}>
-          <CityCombobox value={from} onChange={onFrom} options={fromOptions} placeholder="Alege oraș plecare" />
+          <CountryCityPicker value={from} onChange={onFrom} locale={locale} />
         </FancyField>
         <FancyField label="Destinația" icon={<MapPin className="h-4 w-4" />}>
-          <CityCombobox value={to} onChange={onTo} options={toOptions} placeholder="Alege oraș destinație" />
+          <CountryCityPicker value={to} onChange={onTo} locale={locale} />
         </FancyField>
         {onSwap && (
           <button

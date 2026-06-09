@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,15 +15,14 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn, countryLandingUrl } from "@/lib/utils";
-import { destinations, moldovanCities } from "@/lib/data";
+import { destinations } from "@/lib/data";
 import { CountryFlag, countryMeta, type CountryCode } from "@/components/ui/CountryFlag";
-import { CityCombobox } from "@/components/booking/CityCombobox";
+import { CountryCityPicker } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
 import { dict } from "@/lib/i18n/dict";
 import { localePath } from "@/lib/i18n/config";
 import {
   localizeDestinationName,
-  localizeCity,
 } from "@/lib/i18n/dataI18n";
 
 type Tab = "transport" | "colete";
@@ -35,46 +34,32 @@ export default function Hero() {
 
   const [tab, setTab] = useState<Tab>("transport");
   const [serviceType, setServiceType] = useState("regular");
-  const [from, setFrom] = useState(t.hero.fromPlaceholder);
+  // Valoare canonică "Oraș, Țară" — picker-ul o emite în acest format.
+  const [from, setFrom] = useState("Chișinău, Moldova");
   const [to, setTo] = useState("");
-  const [direction, setDirection] = useState<"md-to-eu" | "eu-to-md">("md-to-eu");
 
-  const destinationCities = useMemo(
-    () =>
-      destinations.flatMap((d) =>
-        d.cities.map((c) => ({
-          name: localizeCity(c.name, locale),
-          country: localizeDestinationName(d.slug, locale, d.name),
-        }))
-      ),
-    [locale]
-  );
-
-  // Lista MD include Chișinău (hub-ul) + toate raioanele de pickup. Chișinău
-  // nu e în `moldovanCities` (lista raioanelor), așa că îl prepend-uim explicit.
-  const moldovaCityOptions = useMemo(
-    () => [localizeCity("Chișinău", locale), ...moldovanCities.map((c) => localizeCity(c.name, locale))],
-    [locale]
-  );
-
-  const fromOptions = useMemo(
-    () =>
-      direction === "md-to-eu"
-        ? moldovaCityOptions
-        : destinationCities.map((c) => `${c.name}, ${c.country}`),
-    [direction, destinationCities, moldovaCityOptions]
-  );
-
-  const toOptions = useMemo(
-    () =>
-      direction === "md-to-eu"
-        ? destinationCities.map((c) => `${c.name}, ${c.country}`)
-        : moldovaCityOptions,
-    [direction, destinationCities, moldovaCityOptions]
-  );
+  // Auto-detectare geo: cerem /api/geo (Vercel/Cloudflare headers) și
+  // pre-completăm țara plecării dacă userul nu e din Moldova. Astfel un
+  // pasager din UK vede direct "Anglia" în PLECARE DIN — Image #1 din issue.
+  useEffect(() => {
+    const ac = new AbortController();
+    fetch("/api/geo", { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { countryName?: string | null } | null) => {
+        if (!data?.countryName || data.countryName === "Moldova") return;
+        setFrom((prev) => {
+          // Nu suprascriem dacă userul a apucat deja să modifice
+          if (prev !== "Chișinău, Moldova" && prev !== "") return prev;
+          return `, ${data.countryName}`;
+        });
+      })
+      .catch(() => {
+        /* dev / fără headere — rămânem pe default */
+      });
+    return () => ac.abort();
+  }, []);
 
   const swapDirection = () => {
-    setDirection((d) => (d === "md-to-eu" ? "eu-to-md" : "md-to-eu"));
     setFrom(to);
     setTo(from);
   };
@@ -282,20 +267,18 @@ export default function Hero() {
 
                   <div className="relative grid gap-2.5 md:grid-cols-2 items-stretch">
                     <Field label={t.hero.departureFrom} icon={<MapPin className="h-3.5 w-3.5" />}>
-                      <CityCombobox
+                      <CountryCityPicker
                         value={from}
                         onChange={setFrom}
-                        options={fromOptions}
-                        placeholder={t.hero.fromPlaceholder}
+                        locale={locale}
                       />
                     </Field>
 
                     <Field label={t.hero.destination} icon={<MapPin className="h-3.5 w-3.5" />}>
-                      <CityCombobox
+                      <CountryCityPicker
                         value={to}
                         onChange={setTo}
-                        options={toOptions}
-                        placeholder={t.hero.toPlaceholder}
+                        locale={locale}
                       />
                     </Field>
 
