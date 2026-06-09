@@ -20,12 +20,29 @@ export async function PATCH(
 
     const route = await prisma.route.update({ where: { id }, data });
 
-    // Sincronizare preț bidirecțional: dacă s-a schimbat basePrice sau currency,
-    // aplicăm aceleași valori și pe ruta inversă (originCity ↔ destinationCity).
-    // Motivul: prețul reprezintă transportul orașul X ↔ Chișinău, nu o direcție —
-    // dacă schimbi prețul Chișinău→London, automat și London→Chișinău primește
-    // același tarif (și invers).
-    if (data.basePrice !== undefined || data.currency !== undefined) {
+    // === Sincronizare bidirecțională cu ruta inversă (originCity ↔ destinationCity) ===
+    //
+    // Cele 2 direcții ale unei rute (Chișinău → Birmingham vs Birmingham →
+    // Chișinău) reprezintă același produs comercial: drumul X ↔ Chișinău.
+    // Admin-ul a confirmat că vrea ca prețul/moneda să rămână mereu identice
+    // între ele — dacă editezi una, cealaltă primește exact aceleași valori,
+    // chiar dacă valorile vechi coincideau (idempotent → safe).
+    //
+    // Dacă ruta inversă nu există deloc, o cream automat copiindu-i atributele
+    // de la cea editată. Asta previne starea unde admin schimbă prețul dar
+    // simetria nu se realizează pentru că cealaltă direcție pur și simplu
+    // lipsea din DB (cazul reclamat: Birmingham→Moldova editat 150 GBP, dar
+    // Moldova→Birmingham nu există → fără sync vizibil).
+    let inverseUpdated = false;
+    let inverseCreated = false;
+    const shouldSync =
+      data.basePrice !== undefined ||
+      data.currency !== undefined ||
+      data.description !== undefined ||
+      data.weeklyDepartures !== undefined ||
+      data.active !== undefined;
+
+    if (shouldSync) {
       try {
         const inverse = await prisma.route.findUnique({
           where: {
@@ -34,28 +51,42 @@ export async function PATCH(
               destinationCityId: route.originCityId,
             },
           },
-          select: { id: true, basePrice: true, currency: true },
+          select: { id: true },
         });
+
+        const syncData: Record<string, unknown> = {};
+        if (data.basePrice !== undefined) syncData.basePrice = route.basePrice;
+        if (data.currency !== undefined) syncData.currency = route.currency;
+        if (data.description !== undefined) syncData.description = route.description;
+        if (data.weeklyDepartures !== undefined) syncData.weeklyDepartures = route.weeklyDepartures;
+        if (data.active !== undefined) syncData.active = route.active;
+
         if (inverse) {
-          const inverseData: Record<string, unknown> = {};
-          if (data.basePrice !== undefined && inverse.basePrice !== route.basePrice) {
-            inverseData.basePrice = route.basePrice;
-          }
-          if (data.currency !== undefined && inverse.currency !== route.currency) {
-            inverseData.currency = route.currency;
-          }
-          if (Object.keys(inverseData).length > 0) {
-            await prisma.route.update({ where: { id: inverse.id }, data: inverseData });
-          }
+          await prisma.route.update({ where: { id: inverse.id }, data: syncData });
+          inverseUpdated = true;
+        } else if (data.basePrice !== undefined || data.currency !== undefined) {
+          // Cream ruta inversă DOAR când admin a atins prețul/moneda — semn
+          // clar de intenție comercială. Nu creem ruta inversă doar pentru
+          // un toggle de `active` (poate fi exact opusul a ce vrea admin-ul).
+          await prisma.route.create({
+            data: {
+              originCityId: route.destinationCityId,
+              destinationCityId: route.originCityId,
+              basePrice: route.basePrice,
+              currency: route.currency,
+              description: route.description ?? null,
+              weeklyDepartures: route.weeklyDepartures,
+              active: route.active,
+            },
+          });
+          inverseCreated = true;
         }
       } catch (syncErr) {
-        // Sincronizarea e best-effort. Update-ul direct a trecut, doar inversa
-        // poate fi out-of-sync (rar — admin poate edita manual).
         console.warn("admin/routes PATCH inverse sync:", syncErr);
       }
     }
 
-    return NextResponse.json({ success: true, route });
+    return NextResponse.json({ success: true, route, inverseUpdated, inverseCreated });
   } catch (error) {
     console.error("admin/routes PATCH", error);
     return NextResponse.json({ success: false, error: "Failed to update route" }, { status: 500 });

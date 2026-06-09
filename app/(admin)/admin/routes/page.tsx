@@ -71,6 +71,18 @@ export default function RoutesPage() {
     }
     setEditing(null);
     await load();
+    // Feedback explicit dacă ruta inversă a fost actualizată/creată cu același
+    // preț — admin-ul vede negru pe alb că sync-ul s-a întâmplat (cazul cu
+    // Birmingham unde nu era clar dacă cealaltă direcție s-a aliniat).
+    if (data.inverseCreated) {
+      alert("Rută inversă creată automat cu același preț și monedă.");
+    } else if (data.inverseUpdated) {
+      // Folosesc un mesaj scurt — nu vrem să sufoc admin-ul cu pop-up-uri
+      // la fiecare editare. Show only when prețul/moneda s-au atins.
+      if (body.basePrice !== undefined || body.currency !== undefined) {
+        alert("Prețul a fost sincronizat și pe ruta inversă.");
+      }
+    }
   }
 
   async function toggleActive(route: MockRoute) {
