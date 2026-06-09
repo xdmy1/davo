@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, CalendarClock, Bus as BusIcon, Sparkles } from "lucide-react";
+import { Plus, CalendarClock, Bus as BusIcon, Sparkles, Mail } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import EmptyState from "@/components/admin/EmptyState";
@@ -62,6 +62,23 @@ export default function TripsPage() {
       body: JSON.stringify({ status }),
     });
     load();
+  }
+
+  async function sendManifest(id: string) {
+    const force = confirm(
+      "Trimit manifest pe adresa admin pentru această cursă. Apasă OK ca să forțezi retrimitere (chiar dacă deja a plecat un manifest); Cancel = doar dacă nu s-a trimis."
+    );
+    const res = await fetch(`/api/admin/trips/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "send-manifest", force }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert(data.message ?? "Manifest trimis.");
+    } else {
+      alert(data.error ?? "Eroare la trimitere");
+    }
   }
 
   async function generateAll() {
@@ -145,6 +162,7 @@ export default function TripsPage() {
                 <th className="px-5 py-3 text-left">Autocar</th>
                 <th className="px-5 py-3 text-left">Ocupare</th>
                 <th className="px-5 py-3 text-left">Status</th>
+                <th className="px-5 py-3 text-right">Acțiuni</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -179,6 +197,15 @@ export default function TripsPage() {
                         ))}
                       </select>
                       <div className="mt-1"><Badge variant={meta.variant}>{meta.label}</Badge></div>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={() => sendManifest(t.id)}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-orange-600"
+                        title="Trimite manifest pe email admin"
+                      >
+                        <Mail className="h-3.5 w-3.5" /> Manifest
+                      </button>
                     </td>
                   </tr>
                 );

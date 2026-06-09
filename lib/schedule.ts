@@ -118,6 +118,27 @@ export function dayBeforeAtLocal(departure: Date, hh = 8, mm = 0): Date {
   );
 }
 
+/**
+ * Bounds UTC pentru "ziua de mâine" în Europe/Chișinău. Folosit de cron-ul
+ * zilnic ca să găsim cursele care pleacă mâine (manifest admin 24h înainte).
+ * `start` = mâine 00:00 MD ca UTC. `end` = poimâine 00:00 MD ca UTC (exclusiv).
+ */
+export function tomorrowWindowMD(now: Date = new Date()): { start: Date; end: Date } {
+  const today = parseLocalParts(now);
+  const start = makeUtcFromLocal(today.year, today.month, today.day + 1, 0, 0);
+  const end = makeUtcFromLocal(today.year, today.month, today.day + 2, 0, 0);
+  return { start, end };
+}
+
+/**
+ * "Ora locală" a unei date interpretată în Europe/Chișinău, formatată "HH:mm".
+ * Pentru afișare în email-uri și UI server-render.
+ */
+export function localTimeStringMD(d: Date): string {
+  const p = parseLocalParts(d);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+}
+
 /* ---------- internal: timezone math ---------- */
 
 function parseLocalParts(d: Date): {

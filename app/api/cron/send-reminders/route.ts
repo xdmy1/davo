@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processEmailQueue } from "@/lib/emailQueue";
+import { processAdminTripManifests } from "@/lib/adminTripManifest";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,22 @@ async function run(req: NextRequest) {
   }
 
   try {
-    const results = await processEmailQueue();
-    return NextResponse.json({ success: true, ...results, at: new Date().toISOString() });
+    const queue = await processEmailQueue();
+    // Manifest admin per cursă — independent de coada per-booking. Failureul
+    // unei pârți nu blochează cealaltă; orice eroare e logată.
+    let manifest;
+    try {
+      manifest = await processAdminTripManifests();
+    } catch (e) {
+      console.error("cron admin trip manifest:", e);
+      manifest = { error: e instanceof Error ? e.message : String(e) };
+    }
+    return NextResponse.json({
+      success: true,
+      queue,
+      manifest,
+      at: new Date().toISOString(),
+    });
   } catch (error) {
     console.error("cron/send-reminders", error);
     const msg = error instanceof Error ? error.message : "Internal error";

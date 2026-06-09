@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendManifestForTrip } from "@/lib/adminTripManifest";
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await req.json().catch(() => ({}));
+    if (body.action === "send-manifest") {
+      const res = await sendManifestForTrip(id, { force: !!body.force });
+      if (!res.ok) {
+        return NextResponse.json({ success: false, error: res.reason }, { status: 409 });
+      }
+      return NextResponse.json({ success: true, message: "Manifest trimis pe email admin." });
+    }
+    return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    console.error("admin/trips/[id] POST", error);
+    return NextResponse.json({ success: false, error: "Failed to process action" }, { status: 500 });
+  }
+}
 
 const ALLOWED_STATUSES = new Set([
   "scheduled",

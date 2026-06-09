@@ -438,14 +438,118 @@ export function adminNotificationHtml(b: ConfirmationData): string {
 
 // ----- Subjects -----
 
+// ----- Admin trip manifest (24h before) -----
+
+export type TripManifestPassenger = {
+  bookingNumber: string;
+  isParcel: boolean;
+  passengerNames: string;   // "Andrei Popescu" sau "Andrei, Ion / Popescu, Vasile"
+  phone: string;
+  email: string;
+  arrivalCity: string;      // destinația specifică a clientului (poate diferi de capul de cursă)
+  seats: number[];          // locurile rezervate pe ACEASTĂ cursă (dus sau retur)
+  paxCount: number;
+  price: number;
+  currency: string;
+  payMethod: string | null;
+  parcelDetails: string | null;
+};
+
+export type TripManifestData = {
+  origin: string;                 // "Chișinău"
+  originCountry: string;          // "Moldova"
+  destination: string;            // "York"
+  destinationCountry: string;     // "Anglia"
+  departureDate: Date;
+  localTime: string;              // "07:00" — citit din schedule (NU din departureDate)
+  busLabel: string;               // "Setra S517 · NR 444 AS"
+  totalSeats: number;             // capacity
+  passengers: TripManifestPassenger[];
+  adminUrl: string;
+};
+
+export function adminTripManifestHtml(d: TripManifestData): string {
+  const totalPax = d.passengers.reduce((s, p) => s + p.paxCount, 0);
+  const totalSeats = d.passengers.reduce((s, p) => s + p.seats.length, 0);
+  const totalRevenue = d.passengers.reduce((s, p) => s + p.price, 0);
+  const occupancy = d.totalSeats > 0 ? Math.round((totalSeats / d.totalSeats) * 100) : 0;
+  const currencies = Array.from(new Set(d.passengers.map((p) => p.currency))).filter(Boolean);
+  const revenueLabel = currencies.length === 1
+    ? formatPrice(totalRevenue, currencies[0])
+    : `${totalRevenue} (mixt: ${currencies.join(", ")})`;
+
+  const rows: DetailRow[] = [
+    { label: "Cursa", value: `${d.origin}, ${d.originCountry} → ${d.destination}, ${d.destinationCountry}` },
+    { label: "Plecare", value: `${formatDate(d.departureDate)} · ${d.localTime} (ora locală)` },
+    { label: "Autocar", value: d.busLabel },
+    { label: "Ocupare", value: `${totalSeats}/${d.totalSeats} locuri (${occupancy}%) · ${totalPax} pasageri` },
+    { label: "Total încasat", value: revenueLabel },
+  ];
+
+  const passengerRows = d.passengers.length === 0
+    ? `<tr><td colspan="6" style="padding:18px;text-align:center;color:${C.ink500};font-style:italic;">Nicio rezervare pe această cursă.</td></tr>`
+    : d.passengers
+        .map((p, i) => {
+          const seatsLabel = p.seats.length ? p.seats.join(", ") : "—";
+          const payLabel = p.isParcel ? "Colet" : `${p.paxCount} pax`;
+          const dest = p.arrivalCity.replace(/, /g, ",&#8202;");
+          return `
+        <tr style="${i % 2 === 0 ? `background:${C.ink50};` : ""}">
+          <td style="padding:10px 12px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};">
+            <div style="font-weight:700;">${p.passengerNames}</div>
+            <div style="color:${C.ink500};font-size:11px;margin-top:2px;font-family:monospace;">${p.bookingNumber}</div>
+          </td>
+          <td style="padding:10px 12px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};">
+            <a href="tel:${p.phone}" style="color:${C.navy900};text-decoration:none;">${p.phone}</a><br>
+            <a href="mailto:${p.email}" style="color:${C.ink500};text-decoration:none;font-size:11px;">${p.email}</a>
+          </td>
+          <td style="padding:10px 12px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};">${dest}</td>
+          <td style="padding:10px 12px;font-family:${FONT_BODY};font-size:13px;font-weight:700;color:${C.navy900};border-bottom:1px solid ${C.ink200};text-align:center;">${seatsLabel}</td>
+          <td style="padding:10px 12px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};text-align:right;">${formatPrice(p.price, p.currency)}<br><span style="color:${C.ink500};font-size:11px;">${payLabel}</span></td>
+        </tr>`;
+        })
+        .join("");
+
+  const passengerTable = `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;border:1px solid ${C.ink200};border-radius:14px;overflow:hidden;margin:0 0 28px;">
+      <tr style="background:${C.navy900};color:#ffffff;">
+        <th style="padding:11px 12px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.4px;text-align:left;">Pasager / Nr.</th>
+        <th style="padding:11px 12px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.4px;text-align:left;">Contact</th>
+        <th style="padding:11px 12px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.4px;text-align:left;">Destinație</th>
+        <th style="padding:11px 12px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.4px;text-align:center;">Loc</th>
+        <th style="padding:11px 12px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.4px;text-align:right;">Tarif</th>
+      </tr>
+      ${passengerRows}
+    </table>`;
+
+  const body = `
+    ${headline(`Mâine pleacă cursa ${d.origin} → ${d.destination}.`)}
+    ${intro(`Peste ~24h pleacă cursa <strong style="color:${C.navy900};">${d.origin}, ${d.originCountry} → ${d.destination}, ${d.destinationCountry}</strong>. Mâine la <strong style="color:${C.red500};">${d.localTime}</strong> (ora locală a plecării). Mai jos manifestul complet — pregătește listele și sună pasagerii dacă mai e nevoie.`)}
+    ${detailsCard(rows)}
+    <h3 style="margin:0 0 14px;font-family:${FONT_DISPLAY};font-size:18px;font-weight:800;color:${C.navy900};">Manifest pasageri</h3>
+    ${passengerTable}
+    <div style="text-align:center;">
+      <a href="${d.adminUrl}" style="display:inline-block;background:${C.red500};color:#fff;text-decoration:none;padding:14px 28px;border-radius:999px;font-family:${FONT_DISPLAY};font-weight:800;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 14px 28px -12px rgba(225,30,43,0.55);">
+        Vezi cursa în admin
+      </a>
+    </div>
+  `;
+
+  return layout({
+    preheader: `Manifest cursă ${d.origin} → ${d.destination} — mâine ${d.localTime}, ${totalPax} pasageri`,
+    title: `DAVO admin · ${d.origin} → ${d.destination} (mâine ${d.localTime})`,
+    eyebrow: "Manifest cursă · 24h",
+    eyebrowColor: C.red400,
+    body,
+  });
+}
+
 export function subjectForType(type: string, bookingNumber: string): string {
   switch (type) {
     case "confirmation":
       return `Rezervare confirmată — DAVO ${bookingNumber}`;
     case "reminder_24h":
       return "Mâine pleci cu DAVO — confirmă-ne că vii";
-    case "reminder_2h":
-      return "Cursa ta pleacă în 2 ore";
     case "cancellation":
       return `Rezervare ${bookingNumber} anulată`;
     default:
