@@ -28,6 +28,8 @@ export default function TripsPage() {
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
   const [viewingTripId, setViewingTripId] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<string>("");
+  const [routeFilter, setRouteFilter] = useState<string>("all");
 
   async function load() {
     setLoading(true);
@@ -47,12 +49,29 @@ export default function TripsPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Lista distinctă a rutelor pentru dropdown — derivată din curse, sortată.
+  // Folosim eticheta vizibilă a rutei ca să nu trebuiască mapping.
+  const allRouteLabels = Array.from(new Set(trips.map((t) => t.routeLabel))).sort();
+
   const now = Date.now();
   const visible = trips.filter((t) => {
     const ts = new Date(t.departureAt).getTime();
-    if (filter === "upcoming") return ts >= now && t.status !== "completed";
-    if (filter === "active") return t.status === "boarding" || t.status === "en_route";
-    if (filter === "past") return ts < now || t.status === "completed" || t.status === "cancelled";
+    if (filter === "upcoming" && !(ts >= now && t.status !== "completed")) return false;
+    if (filter === "active" && !(t.status === "boarding" || t.status === "en_route")) return false;
+    if (filter === "past" && !(ts < now || t.status === "completed" || t.status === "cancelled")) return false;
+    // Filtru rută (după label complet)
+    if (routeFilter !== "all" && t.routeLabel !== routeFilter) return false;
+    // Filtru dată exactă (YYYY-MM-DD în Europe/Chișinău, conform admin)
+    if (dateFilter) {
+      const dep = new Date(t.departureAt);
+      const depKey = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Chisinau",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(dep);
+      if (depKey !== dateFilter) return false;
+    }
     return true;
   });
 
@@ -140,6 +159,52 @@ export default function TripsPage() {
             {({ all: "Toate", upcoming: "Viitoare", active: "În desfășurare", past: "Finalizate" } as Record<Filter, string>)[f]}
           </button>
         ))}
+
+        <div className="mx-1 h-5 w-px bg-slate-200" />
+
+        <div className="flex items-center gap-1">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
+            title="Filtrează după data plecării"
+          />
+          {dateFilter && (
+            <button
+              type="button"
+              onClick={() => setDateFilter("")}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-500 hover:bg-slate-50"
+              title="Șterge filtrul de dată"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <select
+          value={routeFilter}
+          onChange={(e) => setRouteFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200 max-w-[260px]"
+          title="Filtrează după rută"
+        >
+          <option value="all">Toate rutele</option>
+          {allRouteLabels.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+
+        {(dateFilter || routeFilter !== "all") && (
+          <button
+            type="button"
+            onClick={() => { setDateFilter(""); setRouteFilter("all"); }}
+            className="rounded-lg px-2 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100"
+            title="Șterge toate filtrele"
+          >
+            Resetează
+          </button>
+        )}
+
         <span className="ml-auto text-xs text-slate-500">{visible.length} curse</span>
       </div>
 
