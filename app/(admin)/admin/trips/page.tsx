@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, CalendarClock, Bus as BusIcon, Sparkles, Mail } from "lucide-react";
+import { Plus, CalendarClock, Bus as BusIcon, Sparkles, Mail, X, Users, Phone, MapPin, Ticket } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import EmptyState from "@/components/admin/EmptyState";
@@ -27,6 +27,7 @@ export default function TripsPage() {
   const [creating, setCreating] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
+  const [viewingTripId, setViewingTripId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -170,7 +171,12 @@ export default function TripsPage() {
                 const meta = tripStatusMeta[t.status];
                 const pct = t.capacity > 0 ? Math.round((t.booked / t.capacity) * 100) : 0;
                 return (
-                  <tr key={t.id} className="hover:bg-slate-50">
+                  <tr
+                    key={t.id}
+                    onClick={() => setViewingTripId(t.id)}
+                    className="hover:bg-slate-50 cursor-pointer"
+                    title="Click pentru a vedea pasagerii înregistrați"
+                  >
                     <td className="px-5 py-3">
                       <div className="font-semibold text-slate-900">{t.routeLabel}</div>
                       <div className="text-xs text-slate-500">ID {t.id.slice(0, 8)}</div>
@@ -190,7 +196,7 @@ export default function TripsPage() {
                         <span className="text-xs font-semibold text-slate-700">{t.booked}/{t.capacity}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                       <select value={t.status} onChange={(e) => setStatus(t.id, e.target.value as TripStatus)} className="rounded-md border border-transparent bg-transparent text-xs font-semibold focus:outline-none">
                         {(Object.keys(tripStatusMeta) as TripStatus[]).map((s) => (
                           <option key={s} value={s}>{tripStatusMeta[s].label}</option>
@@ -198,7 +204,7 @@ export default function TripsPage() {
                       </select>
                       <div className="mt-1"><Badge variant={meta.variant}>{meta.label}</Badge></div>
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => sendManifest(t.id)}
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-orange-600"
@@ -223,8 +229,231 @@ export default function TripsPage() {
           onSaved={() => { setCreating(false); load(); }}
         />
       )}
+
+      {viewingTripId && (
+        <TripPassengersModal tripId={viewingTripId} onClose={() => setViewingTripId(null)} />
+      )}
     </div>
   );
+}
+
+type ManifestPassenger = {
+  bookingNumber: string;
+  isParcel: boolean;
+  passengerNames: string;
+  phone: string;
+  email: string;
+  arrivalCity: string;
+  seats: number[];
+  paxCount: number;
+  price: number;
+  currency: string;
+  payMethod: string | null;
+  parcelDetails: string | null;
+};
+
+type Manifest = {
+  origin: string;
+  originCountry: string;
+  destination: string;
+  destinationCountry: string;
+  departureDate: string;
+  localTime: string;
+  busLabel: string;
+  totalSeats: number;
+  passengers: ManifestPassenger[];
+};
+
+function TripPassengersModal({ tripId, onClose }: { tripId: string; onClose: () => void }) {
+  const [manifest, setManifest] = useState<Manifest | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/admin/trips/${tripId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (!d?.success) {
+          setError(d?.error ?? "Eroare la încărcare");
+          return;
+        }
+        setManifest(d.manifest);
+      })
+      .catch(() => !cancelled && setError("Eroare de rețea"))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId]);
+
+  const totalPax = manifest?.passengers.reduce((s, p) => s + p.paxCount, 0) ?? 0;
+  const totalSeats = manifest?.passengers.reduce((s, p) => s + p.seats.length, 0) ?? 0;
+  const totalRevenue = manifest?.passengers.reduce((s, p) => s + p.price, 0) ?? 0;
+  const occupancy = manifest && manifest.totalSeats > 0 ? Math.round((totalSeats / manifest.totalSeats) * 100) : 0;
+  const currencies = manifest ? Array.from(new Set(manifest.passengers.map((p) => p.currency))).filter(Boolean) : [];
+  const revenueLabel =
+    currencies.length === 1
+      ? `${totalRevenue} ${currencies[0] === "GBP" ? "£" : currencies[0] === "EUR" ? "€" : currencies[0]}`
+      : currencies.length > 1
+        ? `${totalRevenue} (mixt)`
+        : "—";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-orange-500" />
+            <h3 className="text-base font-semibold text-slate-900">
+              {manifest
+                ? `${manifest.origin} → ${manifest.destination}`
+                : loading
+                  ? "Se încarcă…"
+                  : "Cursă"}
+            </h3>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Închide">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+          </div>
+        ) : error ? (
+          <div className="p-6 text-sm text-red-600">{error}</div>
+        ) : !manifest ? (
+          <div className="p-6 text-sm text-slate-500">Date indisponibile.</div>
+        ) : (
+          <div className="p-5">
+            {/* Stats grid */}
+            <div className="mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Stat label="Plecare" value={
+                <span>
+                  {new Date(manifest.departureDate).toLocaleDateString("ro-RO", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "long",
+                    timeZone: "Europe/Chisinau",
+                  })}
+                  <br />
+                  <span className="text-orange-600 font-bold">{manifest.localTime}</span>
+                </span>
+              } />
+              <Stat label="Autocar" value={manifest.busLabel} />
+              <Stat label="Ocupare" value={
+                <span>
+                  {totalSeats}/{manifest.totalSeats} <span className="text-slate-500">({occupancy}%)</span>
+                  <br />
+                  <span className="text-xs text-slate-500">{totalPax} pasageri</span>
+                </span>
+              } />
+              <Stat label="Total încasat" value={revenueLabel} />
+            </div>
+
+            {/* Passengers table */}
+            {manifest.passengers.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                Nicio rezervare pe această cursă.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Pasager</th>
+                      <th className="px-3 py-2 text-left">Contact</th>
+                      <th className="px-3 py-2 text-left">Destinație</th>
+                      <th className="px-3 py-2 text-center">Loc</th>
+                      <th className="px-3 py-2 text-right">Tarif</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {manifest.passengers.map((p) => (
+                      <tr key={p.bookingNumber} className="hover:bg-slate-50">
+                        <td className="px-3 py-2.5">
+                          <div className="font-semibold text-slate-900">
+                            {p.passengerNames}
+                            {p.isParcel && (
+                              <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+                                Colet
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 font-mono text-[11px] text-slate-500">{p.bookingNumber}</div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1 text-xs text-slate-700">
+                            <Phone className="h-3 w-3 text-slate-400" />
+                            <a href={`tel:${p.phone}`} className="hover:text-orange-600">{p.phone}</a>
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-slate-500">
+                            <a href={`mailto:${p.email}`} className="hover:text-orange-600">{p.email}</a>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-start gap-1 text-xs text-slate-700">
+                            <MapPin className="mt-0.5 h-3 w-3 text-slate-400 shrink-0" />
+                            <span>{p.arrivalCity}</span>
+                          </div>
+                          {!p.isParcel && p.paxCount > 1 && (
+                            <div className="mt-0.5 text-[11px] text-slate-500">{p.paxCount} pax</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          {p.seats.length > 0 ? (
+                            <div className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                              <Ticket className="h-3 w-3 text-orange-500" />
+                              {p.seats.join(", ")}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="font-semibold text-slate-900">
+                            {p.price} {p.currency === "GBP" ? "£" : p.currency === "EUR" ? "€" : p.currency}
+                          </div>
+                          {p.payMethod && (
+                            <div className="mt-0.5 text-[11px] text-slate-500">
+                              {payLabel(p.payMethod)}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function payLabel(m: string): string {
+  if (m === "cash_on_pickup") return "Cash la îmbarcare";
+  if (m === "card_on_pickup") return "Card la îmbarcare";
+  if (m === "paid_in_advance") return "Achitată în avans";
+  if (m === "cash_on_delivery") return "Cash la livrare";
+  return m;
 }
 
 function TripModal({

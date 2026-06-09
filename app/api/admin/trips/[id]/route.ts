@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendManifestForTrip } from "@/lib/adminTripManifest";
+import { sendManifestForTrip, getTripManifestData } from "@/lib/adminTripManifest";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const data = await getTripManifestData(id);
+    if (!data) return NextResponse.json({ success: false, error: "Trip not found" }, { status: 404 });
+    return NextResponse.json({ success: true, manifest: data });
+  } catch (error) {
+    console.error("admin/trips/[id] GET", error);
+    return NextResponse.json({ success: false, error: "Failed to load trip" }, { status: 500 });
+  }
+}
 
 export async function POST(
   req: NextRequest,

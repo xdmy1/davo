@@ -118,7 +118,26 @@ type TripWithIncludes = Awaited<ReturnType<typeof prisma.trip.findMany>>[number]
   bus: { label: string; plate: string };
 };
 
-async function sendOne(trip: TripWithIncludes) {
+// Reutilizabil: extrage datele complete de manifest pentru o cursă. Folosit
+// atât de email-ul de cron cât și de modalul "Vezi pasageri" din /admin/trips.
+export async function getTripManifestData(tripId: string): Promise<TripManifestData | null> {
+  const trip = await prisma.trip.findUnique({
+    where: { id: tripId },
+    include: {
+      route: {
+        include: {
+          originCity: { include: { country: true } },
+          destinationCity: { include: { country: true } },
+        },
+      },
+      bus: true,
+    },
+  });
+  if (!trip) return null;
+  return buildManifest(trip);
+}
+
+async function buildManifest(trip: TripWithIncludes): Promise<TripManifestData> {
   const origin = trip.route.originCity.name;
   const originCountry = trip.route.originCity.country.name;
   const destination = trip.route.destinationCity.name;
@@ -180,7 +199,7 @@ async function sendOne(trip: TripWithIncludes) {
   const dateStr = formatDateMD(trip.departureAt);
   const adminUrl = `${resolveAppUrl().replace(/\/$/, "")}/admin/bookings?date=${encodeURIComponent(dateStr)}`;
 
-  const data: TripManifestData = {
+  return {
     origin,
     originCountry,
     destination,
@@ -192,8 +211,11 @@ async function sendOne(trip: TripWithIncludes) {
     passengers,
     adminUrl,
   };
+}
 
-  const subject = `🚌 Mâine ${localTime} · ${origin} → ${destination} · ${passengers.length} rezerv.`;
+async function sendOne(trip: TripWithIncludes) {
+  const data = await buildManifest(trip);
+  const subject = `🚌 Mâine ${data.localTime} · ${data.origin} → ${data.destination} · ${data.passengers.length} rezerv.`;
   const html = adminTripManifestHtml(data);
 
   if (!process.env.RESEND_API_KEY) {
