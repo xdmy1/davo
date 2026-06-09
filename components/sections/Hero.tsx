@@ -17,7 +17,7 @@ import {
 import { cn, countryLandingUrl } from "@/lib/utils";
 import { destinations } from "@/lib/data";
 import { CountryFlag, countryMeta, type CountryCode } from "@/components/ui/CountryFlag";
-import { CountryCityPicker } from "@/components/booking/CountryCityPicker";
+import { CountryCityPicker, complementHide, getCountryFromValue } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
 import { dict } from "@/lib/i18n/dict";
 import { localePath } from "@/lib/i18n/config";
@@ -63,6 +63,28 @@ export default function Hero() {
     setFrom(to);
     setTo(from);
   };
+
+  // Regulă de simetrie: cursa e mereu MD ↔ străinătate. Calculăm ce să
+  // ascundem în fiecare picker pe baza țării celeilalte părți.
+  const fromCountry = getCountryFromValue(from);
+  const toCountry = getCountryFromValue(to);
+  const fromHide = useMemo(() => complementHide(toCountry), [toCountry]);
+  const toHide = useMemo(() => complementHide(fromCountry), [fromCountry]);
+
+  // Dacă userul comută `from` de pe MD pe străinătate (sau invers) și `to`
+  // devine ilegal (ambele MD sau ambele străine), îl resetăm — picker-ul
+  // de pe `to` va auto-selecta unica țară rămasă vizibilă.
+  useEffect(() => {
+    if (!fromCountry || !toCountry) return;
+    const fromMD = fromCountry === "Moldova";
+    const toMD = toCountry === "Moldova";
+    if (fromMD === toMD) {
+      setTo("");
+    }
+    // Reacționăm doar la modificările laterale ale `from`. Modificările
+    // utilizatorului în `to` sunt deja filtrate de picker via `toHide`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromCountry]);
 
   const searchHref = useMemo(() => {
     const params = new URLSearchParams({
@@ -271,6 +293,7 @@ export default function Hero() {
                         value={from}
                         onChange={setFrom}
                         locale={locale}
+                        hideCountries={fromHide}
                       />
                     </Field>
 
@@ -279,6 +302,7 @@ export default function Hero() {
                         value={to}
                         onChange={setTo}
                         locale={locale}
+                        hideCountries={toHide}
                       />
                     </Field>
 

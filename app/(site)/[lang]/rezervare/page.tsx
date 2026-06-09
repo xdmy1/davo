@@ -21,7 +21,7 @@ import {
   Info,
 } from "lucide-react";
 import { destinations, moldovanCities, contactInfo } from "@/lib/data";
-import { CountryCityPicker } from "@/components/booking/CountryCityPicker";
+import { CountryCityPicker, complementHide, getCountryFromValue } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
 import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
@@ -217,6 +217,33 @@ function RezervareContent() {
       setDirection("eu-to-md");
     }
   }, [from]);
+
+  // Cursa e mereu MD ↔ străinătate. Calculăm constrângerea de simetrie ca să
+  // ascundem opțiunile invalide în picker (ex: dacă origin = Anglia, în
+  // picker-ul de destinație doar Moldova rămâne vizibilă).
+  const fromCountryName = getCountryFromValue(from);
+  const toCountryName = getCountryFromValue(to);
+  const fromHide = useMemo(() => complementHide(toCountryName), [toCountryName]);
+  const toHide = useMemo(() => complementHide(fromCountryName), [fromCountryName]);
+
+  // Auto-flip pe `to` dacă userul a schimbat `from` și combinația devine
+  // ilegală (ambele MD sau ambele străine). Picker-ul `to` va auto-selecta
+  // unica țară permisă imediat după reset.
+  useEffect(() => {
+    if (!fromCountryName || !toCountryName) return;
+    const fromMD = fromCountryName === "Moldova";
+    const toMD = toCountryName === "Moldova";
+    if (fromMD === toMD) {
+      setTo("");
+      setOutboundTripId(null);
+      setOutboundSeats([]);
+      setOutboundTripInfo(null);
+      setReturnTripId(null);
+      setReturnSeats([]);
+      setReturnTripInfo(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromCountryName]);
 
   const steps = mode === "bilet"
     ? (trip === "return"
@@ -449,6 +476,8 @@ function RezervareContent() {
                             onPassengers={updatePassengers}
                             onSwap={swapDirection}
                             locale={locale}
+                            fromHide={fromHide}
+                            toHide={toHide}
                           />
                           {originCityId && destCityId && (
                             <TripPicker
@@ -547,6 +576,8 @@ function RezervareContent() {
                           onTrip={setTrip}
                           onSwap={swapDirection}
                           locale={locale}
+                          fromHide={fromHide}
+                          toHide={toHide}
                           hideTrip
                         />
                       )}
@@ -680,6 +711,8 @@ function DirectionStep({
   onPassengers,
   onSwap,
   locale,
+  fromHide,
+  toHide,
   hideTrip = false,
 }: {
   from: string;
@@ -692,6 +725,8 @@ function DirectionStep({
   onPassengers?: (n: number) => void;
   onSwap?: () => void;
   locale: Locale;
+  fromHide?: string[];
+  toHide?: string[];
   hideTrip?: boolean;
 }) {
   return (
@@ -705,10 +740,10 @@ function DirectionStep({
 
       <div className="relative grid md:grid-cols-2 gap-4">
         <FancyField label="Plecare din" icon={<MapPin className="h-4 w-4" />}>
-          <CountryCityPicker value={from} onChange={onFrom} locale={locale} />
+          <CountryCityPicker value={from} onChange={onFrom} locale={locale} hideCountries={fromHide} />
         </FancyField>
         <FancyField label="Destinația" icon={<MapPin className="h-4 w-4" />}>
-          <CountryCityPicker value={to} onChange={onTo} locale={locale} />
+          <CountryCityPicker value={to} onChange={onTo} locale={locale} hideCountries={toHide} />
         </FancyField>
         {onSwap && (
           <button

@@ -1,10 +1,44 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ChevronDown } from "lucide-react";
 import { destinations, moldovanCities } from "@/lib/data";
 import { localizeCity, localizeDestinationName } from "@/lib/i18n/dataI18n";
 import type { Locale } from "@/lib/i18n/config";
+
+// Numele țărilor "străinătate" pe care DAVO le deservește. Folosit pentru
+// regula de simetrie: o cursă validă merge mereu Moldova ↔ străinătate. Dacă
+// origin = MD → destination ∈ aceste 5; dacă origin ∈ aceste 5 → destination
+// = Moldova. Listă derivată din `destinations` (lib/data.ts) — dacă apare o
+// țară nouă acolo, e luată în considerare automat prin export-ul de mai jos.
+export const FOREIGN_COUNTRIES = destinations.map((d) => d.name);
+export const MOLDOVA = "Moldova";
+
+// Extrage numele țării din valoarea picker-ului ("Oraș, Țară" sau "Țară") —
+// folosit de Hero & rezervare ca să decidă ce să ascundă în picker-ul opus.
+export function getCountryFromValue(v: string): string | null {
+  if (!v) return null;
+  const idx = v.lastIndexOf(",");
+  if (idx >= 0) {
+    const c = v.slice(idx + 1).trim();
+    return c || null;
+  }
+  // Fără virgulă: putem fi pe valoarea inițială ".... ?" Tratează ca țară doar
+  // dacă e exact unul din numele cunoscute.
+  const trimmed = v.trim();
+  if (trimmed === MOLDOVA || FOREIGN_COUNTRIES.includes(trimmed)) return trimmed;
+  return null;
+}
+
+// Pentru o țară aleasă într-o parte (origin/dest), returnează lista țărilor
+// care TREBUIE ascunse pe partea opusă. Aplicat: dacă origin = Moldova →
+// destination NU poate fi Moldova; dacă origin = orice țară străină →
+// destination trebuie să fie Moldova (deci hide-uim toate cele străine).
+export function complementHide(otherCountry: string | null): string[] {
+  if (!otherCountry) return [];
+  if (otherCountry === MOLDOVA) return [MOLDOVA];
+  return FOREIGN_COUNTRIES;
+}
 
 // Lista țărilor pe care DAVO le deservește (Moldova + cele 5 europene din
 // `lib/data.ts`). Valorile interne folosesc întotdeauna numele canonic
@@ -104,6 +138,22 @@ export function CountryCityPicker({
   const { city, country } = parseValue(value, countries);
   const selectedCountry = countries.find((c) => c.name === country);
   const cities = selectedCountry?.cities ?? [];
+
+  // Auto-select când rămâne o singură țară posibilă (ex: origin=Anglia → în
+  // picker-ul de destinație, doar Moldova mai e vizibilă). Economiseste un
+  // click utilizatorului și evită faza de "Țară" cu dropdown gol.
+  const onlyCountry = visible.length === 1 ? visible[0].name : null;
+  useEffect(() => {
+    if (!country && onlyCountry) {
+      onChange(buildValue(city, onlyCountry));
+    }
+    // Dacă țara curentă a devenit invalidă (filtrul a ascuns-o), o resetăm
+    // — caller-ul (Hero/rezervare) face și auto-flip pe partea opusă.
+    if (country && !visible.some((c) => c.name === country)) {
+      onChange(buildValue("", onlyCountry ?? ""));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlyCountry, country]);
 
   const countryPh = countryPlaceholder ?? (locale === "ru" ? "Страна" : "Țară");
   const cityPh = cityPlaceholder ?? (locale === "ru" ? "Город" : "Oraș");
