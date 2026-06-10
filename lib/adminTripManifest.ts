@@ -18,11 +18,12 @@ export type ManifestRunResult = {
   trips: number;
   sent: number;
   alreadySent: number;
+  skippedEmpty: number;
   failed: number;
 };
 
 export async function processAdminTripManifests(now: Date = new Date()): Promise<ManifestRunResult> {
-  const result: ManifestRunResult = { trips: 0, sent: 0, alreadySent: 0, failed: 0 };
+  const result: ManifestRunResult = { trips: 0, sent: 0, alreadySent: 0, skippedEmpty: 0, failed: 0 };
 
   const { start, end } = tomorrowWindowMD(now);
   const trips = await prisma.trip.findMany({
@@ -52,6 +53,21 @@ export async function processAdminTripManifests(now: Date = new Date()): Promise
     });
     if (alreadyLogged) {
       result.alreadySent++;
+      continue;
+    }
+
+    // Verificăm întâi dacă avem pasageri — admin a cerut explicit să NU mai
+    // trimitem email-uri pe curse goale (ieri au plecat ~40, 99% goale).
+    // Numărarea ușoară prin count() ca să nu încărcăm tot include-ul când
+    // oricum nu trimitem nimic.
+    const passengerCount = await prisma.booking.count({
+      where: {
+        OR: [{ tripId: trip.id }, { returnTripId: trip.id }],
+        status: { in: ["confirmed", "pending"] },
+      },
+    });
+    if (passengerCount === 0) {
+      result.skippedEmpty++;
       continue;
     }
 
@@ -104,6 +120,17 @@ export async function sendManifestForTrip(tripId: string, opts: { force?: boolea
       select: { id: true },
     });
     if (alreadyLogged) return { ok: false, reason: "Already sent for this trip (use force to resend)" };
+
+    // Tot fără force: nu trimitem dacă nu există pasageri. Admin poate forța.
+    const passengerCount = await prisma.booking.count({
+      where: {
+        OR: [{ tripId: trip.id }, { returnTripId: trip.id }],
+        status: { in: ["confirmed", "pending"] },
+      },
+    });
+    if (passengerCount === 0) {
+      return { ok: false, reason: "Nicio rezervare pe această cursă — nu trimit email." };
+    }
   }
 
   await sendOne(trip);
