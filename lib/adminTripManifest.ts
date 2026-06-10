@@ -1,20 +1,36 @@
 /**
- * Trimite un manifest pe email către admin cu ~24h înainte de fiecare cursă —
- * o singură dată per cursă (idempotent via EmailLog). Apelat din cron-ul zilnic
- * (/api/cron/send-reminders), după ce s-au procesat reminderele individuale ale
- * pasagerilor.
+ * Trimite manifeste pe email către admin cu ~24h înainte. Apelat din cron-ul
+ * zilnic (/api/cron/send-reminders).
+ *
+ * Agregare PER ȚARĂ (nu per cursă): pentru fiecare țară străină deservită,
+ * dacă mâine există curse care o ating (DUS spre țară sau RETUR din țară),
+ * trimitem UN singur email cu toate cursele și pasagerii lor. Cursele goale
+ * sunt omise. Țările fără pasageri tomorrow nu generează email deloc.
+ *
+ * Vechea logică (un email per cursă) producea ~40 de email-uri/zi, majoritate
+ * cu 0 pasageri — confuz și greu de scanat operațional.
+ *
+ * Idempotență: log în EmailLog cu template=admin-country-manifest +
+ * relatedId=`{country-slug}-{yyyy-mm-dd}`.
  */
 import { prisma } from "@/lib/prisma";
 import { getResend } from "@/lib/email";
-import { adminTripManifestHtml, type TripManifestData, type TripManifestPassenger } from "@/lib/emailTemplates";
+import {
+  adminCountryManifestHtml,
+  adminTripManifestHtml,
+  type CountryManifestData,
+  type TripManifestData,
+  type TripManifestPassenger,
+} from "@/lib/emailTemplates";
 import { resolveScheduledTimes } from "@/lib/scheduledTime";
 import { tomorrowWindowMD, localTimeStringMD } from "@/lib/schedule";
 import { appUrl as resolveAppUrl } from "@/lib/appUrl";
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "adrian@radx.solutions";
-const TEMPLATE_KEY = "admin-trip-manifest";
+const TEMPLATE_KEY = "admin-country-manifest";
 
 export type ManifestRunResult = {
+  countries: number;
   trips: number;
   sent: number;
   alreadySent: number;
@@ -22,11 +38,26 @@ export type ManifestRunResult = {
   failed: number;
 };
 
+type TripWithIncludes = Awaited<ReturnType<typeof prisma.trip.findFirst>> & {
+  route: {
+    originCity: { name: string; country: { name: string } };
+    destinationCity: { name: string; country: { name: string } };
+  };
+  bus: { label: string; plate: string };
+};
+
 export async function processAdminTripManifests(now: Date = new Date()): Promise<ManifestRunResult> {
-  const result: ManifestRunResult = { trips: 0, sent: 0, alreadySent: 0, skippedEmpty: 0, failed: 0 };
+  const result: ManifestRunResult = {
+    countries: 0,
+    trips: 0,
+    sent: 0,
+    alreadySent: 0,
+    skippedEmpty: 0,
+    failed: 0,
+  };
 
   const { start, end } = tomorrowWindowMD(now);
-  const trips = await prisma.trip.findMany({
+  const trips = (await prisma.trip.findMany({
     where: {
       departureAt: { gte: start, lt: end },
       status: { in: ["scheduled", "boarding"] },
@@ -41,14 +72,29 @@ export async function processAdminTripManifests(now: Date = new Date()): Promise
       bus: true,
     },
     orderBy: { departureAt: "asc" },
-  });
+  })) as TripWithIncludes[];
 
   result.trips = trips.length;
 
-  for (const trip of trips) {
-    // Idempotență: dacă deja am log de manifest reușit pe această cursă, sărim.
+  // Group: țara "străină" e cea care nu e Moldova. Pentru o cursă MD → X,
+  // țara = X. Pentru X → MD, țara = X. Pentru rare cazuri X → Y unde nimic
+  // nu e Moldova (rezervări manuale), țara = destinația.
+  const byCountry = new Map<string, TripWithIncludes[]>();
+  for (const t of trips) {
+    const oc = t.route.originCity.country.name;
+    const dc = t.route.destinationCity.country.name;
+    const foreign = oc === "Moldova" ? dc : oc !== "Moldova" ? oc : dc;
+    if (!byCountry.has(foreign)) byCountry.set(foreign, []);
+    byCountry.get(foreign)!.push(t);
+  }
+
+  result.countries = byCountry.size;
+  const dateKey = formatDateMD(start);
+
+  for (const [countryName, countryTrips] of byCountry.entries()) {
+    const relatedId = `${slug(countryName)}-${dateKey}`;
     const alreadyLogged = await prisma.emailLog.findFirst({
-      where: { template: TEMPLATE_KEY, relatedId: trip.id, status: "sent" },
+      where: { template: TEMPLATE_KEY, relatedId, status: "sent" },
       select: { id: true },
     });
     if (alreadyLogged) {
@@ -56,35 +102,32 @@ export async function processAdminTripManifests(now: Date = new Date()): Promise
       continue;
     }
 
-    // Verificăm întâi dacă avem pasageri — admin a cerut explicit să NU mai
-    // trimitem email-uri pe curse goale (ieri au plecat ~40, 99% goale).
-    // Numărarea ușoară prin count() ca să nu încărcăm tot include-ul când
-    // oricum nu trimitem nimic.
-    const passengerCount = await prisma.booking.count({
-      where: {
-        OR: [{ tripId: trip.id }, { returnTripId: trip.id }],
-        status: { in: ["confirmed", "pending"] },
-      },
-    });
-    if (passengerCount === 0) {
+    // Construim datele pentru fiecare cursă, păstrând doar cele cu pasageri.
+    const tripData: TripManifestData[] = [];
+    for (const trip of countryTrips) {
+      const data = await buildTripManifest(trip);
+      if (data.passengers.length > 0) tripData.push(data);
+    }
+
+    if (tripData.length === 0) {
       result.skippedEmpty++;
       continue;
     }
 
     try {
-      await sendOne(trip);
+      await sendCountryManifest(countryName, start, tripData, relatedId);
       result.sent++;
     } catch (e) {
-      console.error(`admin-trip-manifest trip=${trip.id}:`, e);
+      console.error(`admin-country-manifest country=${countryName}:`, e);
       result.failed++;
       const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
       await prisma.emailLog.create({
         data: {
           to: ADMIN_EMAIL,
-          subject: `DAVO admin manifest (eroare) — ${trip.id}`,
+          subject: `DAVO admin manifest (eroare) — ${countryName}`,
           template: TEMPLATE_KEY,
           status: "failed",
-          relatedId: trip.id,
+          relatedId,
           error: msg,
         },
       });
@@ -94,13 +137,14 @@ export async function processAdminTripManifests(now: Date = new Date()): Promise
   return result;
 }
 
-// Trigger manual pentru o cursă specifică (admin → buton "Trimite manifest").
-// Nu verifică fereastra de 24h și nu validează statusul cursei — admin știe
-// exact ce face când îl apasă. Cu `force: true` ignoră și idempotența.
-export async function sendManifestForTrip(tripId: string, opts: { force?: boolean } = {}): Promise<
-  { ok: true } | { ok: false; reason: string }
-> {
-  const trip = await prisma.trip.findUnique({
+// Trigger manual din butonul "Manifest" în /admin/trips. Trimite email-ul
+// per țară pentru țara cursei selectate la data ei. Cu `force` ignoră
+// idempotența și omite verificarea de pasageri zero.
+export async function sendManifestForTrip(
+  tripId: string,
+  opts: { force?: boolean } = {}
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const trip = (await prisma.trip.findUnique({
     where: { id: tripId },
     include: {
       route: {
@@ -111,44 +155,64 @@ export async function sendManifestForTrip(tripId: string, opts: { force?: boolea
       },
       bus: true,
     },
-  });
+  })) as TripWithIncludes | null;
   if (!trip) return { ok: false, reason: "Trip not found" };
+
+  const oc = trip.route.originCity.country.name;
+  const dc = trip.route.destinationCity.country.name;
+  const countryName = oc === "Moldova" ? dc : oc !== "Moldova" ? oc : dc;
+
+  // Toate cursele aceleiași țări din aceeași zi (MD calendar)
+  const dayBounds = sameDayBoundsMD(trip.departureAt);
+  const allTrips = (await prisma.trip.findMany({
+    where: {
+      departureAt: { gte: dayBounds.start, lt: dayBounds.end },
+      status: { in: ["scheduled", "boarding"] },
+      OR: [
+        { route: { originCity: { country: { name: countryName } } } },
+        { route: { destinationCity: { country: { name: countryName } } } },
+      ],
+    },
+    include: {
+      route: {
+        include: {
+          originCity: { include: { country: true } },
+          destinationCity: { include: { country: true } },
+        },
+      },
+      bus: true,
+    },
+    orderBy: { departureAt: "asc" },
+  })) as TripWithIncludes[];
+
+  const relatedId = `${slug(countryName)}-${formatDateMD(dayBounds.start)}`;
 
   if (!opts.force) {
     const alreadyLogged = await prisma.emailLog.findFirst({
-      where: { template: TEMPLATE_KEY, relatedId: trip.id, status: "sent" },
+      where: { template: TEMPLATE_KEY, relatedId, status: "sent" },
       select: { id: true },
     });
-    if (alreadyLogged) return { ok: false, reason: "Already sent for this trip (use force to resend)" };
-
-    // Tot fără force: nu trimitem dacă nu există pasageri. Admin poate forța.
-    const passengerCount = await prisma.booking.count({
-      where: {
-        OR: [{ tripId: trip.id }, { returnTripId: trip.id }],
-        status: { in: ["confirmed", "pending"] },
-      },
-    });
-    if (passengerCount === 0) {
-      return { ok: false, reason: "Nicio rezervare pe această cursă — nu trimit email." };
-    }
+    if (alreadyLogged) return { ok: false, reason: "Manifest deja trimis pentru această țară în această zi (OK la dialog = forțează retrimitere)." };
   }
 
-  await sendOne(trip);
+  const tripData: TripManifestData[] = [];
+  for (const t of allTrips) {
+    const data = await buildTripManifest(t);
+    if (data.passengers.length > 0) tripData.push(data);
+  }
+
+  if (tripData.length === 0 && !opts.force) {
+    return { ok: false, reason: "Nicio rezervare pe nicio cursă pentru această țară/zi — nu trimit email." };
+  }
+
+  await sendCountryManifest(countryName, dayBounds.start, tripData, relatedId);
   return { ok: true };
 }
 
-type TripWithIncludes = Awaited<ReturnType<typeof prisma.trip.findMany>>[number] & {
-  route: {
-    originCity: { name: string; country: { name: string } };
-    destinationCity: { name: string; country: { name: string } };
-  };
-  bus: { label: string; plate: string };
-};
-
-// Reutilizabil: extrage datele complete de manifest pentru o cursă. Folosit
-// atât de email-ul de cron cât și de modalul "Vezi pasageri" din /admin/trips.
+// Datele pentru modalul "vezi pasageri" din /admin/trips — păstrate per-cursă
+// pentru că UI-ul afișează cursa individuală pe care a apăsat admin-ul.
 export async function getTripManifestData(tripId: string): Promise<TripManifestData | null> {
-  const trip = await prisma.trip.findUnique({
+  const trip = (await prisma.trip.findUnique({
     where: { id: tripId },
     include: {
       route: {
@@ -159,21 +223,22 @@ export async function getTripManifestData(tripId: string): Promise<TripManifestD
       },
       bus: true,
     },
-  });
+  })) as TripWithIncludes | null;
   if (!trip) return null;
-  return buildManifest(trip);
+  return buildTripManifest(trip);
 }
 
-async function buildManifest(trip: TripWithIncludes): Promise<TripManifestData> {
+/* ---------- internal helpers ---------- */
+
+async function buildTripManifest(trip: TripWithIncludes): Promise<TripManifestData> {
   const origin = trip.route.originCity.name;
   const originCountry = trip.route.originCity.country.name;
   const destination = trip.route.destinationCity.name;
   const destinationCountry = trip.route.destinationCity.country.name;
 
   // Ora locală a plecării: încercăm întâi schedule-ul țării (sursa pe care
-  // admin-ul o setează în /admin/countries — vrem să arătăm acolo "07:00" /
-  // "19:00" exact așa cum a tastat). Dacă rezolvarea eșuează (cursă fără
-  // schedule sau direcție atipică) cădem pe ora locală a `departureAt`.
+  // admin-ul o setează în /admin/countries — vrem să arătăm "07:00" / "19:00"
+  // exact așa cum a tastat). Dacă rezolvarea eșuează cădem pe ora locală MD.
   let localTime: string;
   try {
     const scheduled = await resolveScheduledTimes({
@@ -186,7 +251,6 @@ async function buildManifest(trip: TripWithIncludes): Promise<TripManifestData> 
     localTime = localTimeStringMD(trip.departureAt);
   }
 
-  // Pasagerii pe ACEASTĂ cursă (poate fi tripId sau returnTripId)
   const bookings = await prisma.booking.findMany({
     where: {
       OR: [{ tripId: trip.id }, { returnTripId: trip.id }],
@@ -222,7 +286,6 @@ async function buildManifest(trip: TripWithIncludes): Promise<TripManifestData> 
     };
   });
 
-  // URL admin filtrat pe data curentă (admin/bookings are filtru date+country)
   const dateStr = formatDateMD(trip.departureAt);
   const adminUrl = `${resolveAppUrl().replace(/\/$/, "")}/admin/bookings?date=${encodeURIComponent(dateStr)}`;
 
@@ -240,14 +303,39 @@ async function buildManifest(trip: TripWithIncludes): Promise<TripManifestData> 
   };
 }
 
-async function sendOne(trip: TripWithIncludes) {
-  const data = await buildManifest(trip);
-  const subject = `🚌 Mâine ${data.localTime} · ${data.origin} → ${data.destination} · ${data.passengers.length} rezerv.`;
-  const html = adminTripManifestHtml(data);
-
+async function sendCountryManifest(
+  countryName: string,
+  dateAnchor: Date,
+  trips: TripManifestData[],
+  relatedId: string
+) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY not configured");
   }
+
+  const dateLabel = new Intl.DateTimeFormat("ro-RO", {
+    timeZone: "Europe/Chisinau",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(dateAnchor);
+  const dateKey = formatDateMD(dateAnchor);
+  const adminUrl = `${resolveAppUrl().replace(/\/$/, "")}/admin/trips?date=${encodeURIComponent(dateKey)}`;
+
+  const data: CountryManifestData = {
+    countryName,
+    dateLabel,
+    trips,
+    adminUrl,
+  };
+
+  const totalPax = trips.reduce(
+    (s, t) => s + t.passengers.reduce((s2, p) => s2 + p.paxCount, 0),
+    0
+  );
+  const subject = `🚌 Mâine pe ${countryName} · ${totalPax} pasageri / ${trips.length} curse`;
+  const html = adminCountryManifestHtml(data);
 
   const { error } = await getResend().emails.send({
     from: process.env.EMAIL_FROM || "DAVO Group <info@davo.md>",
@@ -263,12 +351,11 @@ async function sendOne(trip: TripWithIncludes) {
       subject,
       template: TEMPLATE_KEY,
       status: "sent",
-      relatedId: trip.id,
+      relatedId,
     },
   });
 }
 
-// YYYY-MM-DD în MD timezone — folosit ca filtru pe /admin/bookings
 function formatDateMD(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Chisinau",
@@ -277,3 +364,24 @@ function formatDateMD(d: Date): string {
     day: "2-digit",
   }).format(d);
 }
+
+function slug(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+// Bounds-urile UTC ale aceleiași zile (MD calendar) ca un Date dat.
+// Reutilizăm `tomorrowWindowMD`: dacă îi dăm "ieri" ca input, returnează
+// fereastra "azi" — adică tocmai ziua MD a Date-ului primit.
+function sameDayBoundsMD(d: Date): { start: Date; end: Date } {
+  const dayBefore = new Date(d.getTime() - 24 * 3600 * 1000);
+  return tomorrowWindowMD(dayBefore);
+}
+
+// Keep `adminTripManifestHtml` reference alive — folosit de modalul din UI
+// indirect prin getTripManifestData; aici e exportat pentru log/debug.
+void adminTripManifestHtml;

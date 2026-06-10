@@ -544,6 +544,127 @@ export function adminTripManifestHtml(d: TripManifestData): string {
   });
 }
 
+// ----- Admin country manifest (24h before, ONE email per country/day) -----
+//
+// Înlocuiește vechile manifeste per cursă: în loc de 40 de email-uri cu o
+// rută fiecare, admin primește unul per țară per zi, cu toate cursele
+// agregate. Cursele fără pasageri sunt omise complet (numite în array dar
+// nu apar în output) ca să nu pollueze inbox-ul.
+
+export type CountryManifestData = {
+  countryName: string;       // "Anglia"
+  dateLabel: string;         // "Joi, 11 iunie 2026"
+  trips: TripManifestData[]; // doar curse cu passengers.length > 0
+  adminUrl: string;          // /admin/trips?date=YYYY-MM-DD
+};
+
+export function adminCountryManifestHtml(d: CountryManifestData): string {
+  // Sumar agregat across all trips
+  const allPassengers = d.trips.flatMap((t) => t.passengers);
+  const totalPax = allPassengers.reduce((s, p) => s + p.paxCount, 0);
+  const totalSeats = allPassengers.reduce((s, p) => s + p.seats.length, 0);
+  const totalCapacity = d.trips.reduce((s, t) => s + t.totalSeats, 0);
+  const totalRevenue = allPassengers.reduce((s, p) => s + p.price, 0);
+  const occupancy = totalCapacity > 0 ? Math.round((totalSeats / totalCapacity) * 100) : 0;
+  const currencies = Array.from(new Set(allPassengers.map((p) => p.currency))).filter(Boolean);
+  const revenueLabel = currencies.length === 1
+    ? formatPrice(totalRevenue, currencies[0])
+    : `${totalRevenue} (mixt: ${currencies.join(", ")})`;
+
+  const summaryRows: DetailRow[] = [
+    { label: "Țară", value: d.countryName },
+    { label: "Data", value: d.dateLabel },
+    { label: "Curse cu pasageri", value: `${d.trips.length}` },
+    { label: "Ocupare totală", value: `${totalSeats}/${totalCapacity} (${occupancy}%) · ${totalPax} pasageri` },
+    { label: "Total încasat", value: revenueLabel },
+  ];
+
+  // Pentru fiecare cursă: header compact + tabel pasageri.
+  const tripsSection = d.trips
+    .map((t) => {
+      const tripSeats = t.passengers.reduce((s, p) => s + p.seats.length, 0);
+      const tripPax = t.passengers.reduce((s, p) => s + p.paxCount, 0);
+      const tripRevenue = t.passengers.reduce((s, p) => s + p.price, 0);
+      const tripCurrencies = Array.from(new Set(t.passengers.map((p) => p.currency))).filter(Boolean);
+      const tripRevenueLabel = tripCurrencies.length === 1
+        ? formatPrice(tripRevenue, tripCurrencies[0])
+        : `${tripRevenue}`;
+
+      const rows = t.passengers
+        .map((p, i) => {
+          const seatsLabel = p.seats.length ? p.seats.join(", ") : "—";
+          const dest = p.arrivalCity.replace(/, /g, ",&#8202;");
+          const paxLabel = p.isParcel ? "Colet" : `${p.paxCount} pax`;
+          return `
+        <tr style="${i % 2 === 0 ? `background:${C.ink50};` : ""}">
+          <td style="padding:9px 11px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};">
+            <div style="font-weight:700;">${p.passengerNames}</div>
+            <div style="color:${C.ink500};font-size:11px;margin-top:2px;font-family:monospace;">${p.bookingNumber}</div>
+          </td>
+          <td style="padding:9px 11px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};">
+            <a href="tel:${p.phone}" style="color:${C.navy900};text-decoration:none;">${p.phone}</a><br>
+            <a href="mailto:${p.email}" style="color:${C.ink500};text-decoration:none;font-size:11px;">${p.email}</a>
+          </td>
+          <td style="padding:9px 11px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};">${dest}</td>
+          <td style="padding:9px 11px;font-family:${FONT_BODY};font-size:13px;font-weight:700;color:${C.navy900};border-bottom:1px solid ${C.ink200};text-align:center;">${seatsLabel}</td>
+          <td style="padding:9px 11px;font-family:${FONT_BODY};font-size:12px;color:${C.navy900};border-bottom:1px solid ${C.ink200};text-align:right;">${formatPrice(p.price, p.currency)}<br><span style="color:${C.ink500};font-size:11px;">${paxLabel}</span></td>
+        </tr>`;
+        })
+        .join("");
+
+      return `
+        <div style="margin:0 0 24px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:${C.navy900};color:#ffffff;border-radius:12px 12px 0 0;overflow:hidden;">
+            <tr>
+              <td style="padding:14px 18px;">
+                <div style="font-family:${FONT_DISPLAY};font-size:15px;font-weight:800;letter-spacing:-0.01em;">
+                  ${t.origin} <span style="color:${C.red400};">→</span> ${t.destination}
+                </div>
+                <div style="margin-top:4px;font-family:${FONT_BODY};font-size:12px;color:rgba(255,255,255,0.75);">
+                  Plecare <strong style="color:#fff;">${t.localTime}</strong>
+                  · ${t.busLabel}
+                  · ${tripSeats}/${t.totalSeats} locuri
+                  · ${tripPax} pax
+                  · ${tripRevenueLabel}
+                </div>
+              </td>
+            </tr>
+          </table>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;border:1px solid ${C.ink200};border-top:none;border-radius:0 0 12px 12px;overflow:hidden;">
+            <tr style="background:${C.ink100};">
+              <th style="padding:9px 11px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${C.ink700};text-align:left;">Pasager / Nr.</th>
+              <th style="padding:9px 11px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${C.ink700};text-align:left;">Contact</th>
+              <th style="padding:9px 11px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${C.ink700};text-align:left;">Destinație</th>
+              <th style="padding:9px 11px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${C.ink700};text-align:center;">Loc</th>
+              <th style="padding:9px 11px;font-family:${FONT_BODY};font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${C.ink700};text-align:right;">Tarif</th>
+            </tr>
+            ${rows}
+          </table>
+        </div>`;
+    })
+    .join("");
+
+  const body = `
+    ${headline(`Mâine pe ${d.countryName}.`)}
+    ${intro(`Mai jos manifestul pentru toate cursele de mâine spre/dinspre <strong style="color:${C.navy900};">${d.countryName}</strong>. ${d.dateLabel}. Cursele fără rezervări nu sunt listate.`)}
+    ${detailsCard(summaryRows)}
+    ${d.trips.length > 0 ? tripsSection : `<p style="margin:0;padding:18px;text-align:center;color:${C.ink500};font-style:italic;">Nicio rezervare pe nicio cursă a acestei țări pentru data ${d.dateLabel}.</p>`}
+    <div style="text-align:center;margin-top:8px;">
+      <a href="${d.adminUrl}" style="display:inline-block;background:${C.red500};color:#fff;text-decoration:none;padding:14px 28px;border-radius:999px;font-family:${FONT_DISPLAY};font-weight:800;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 14px 28px -12px rgba(225,30,43,0.55);">
+        Vezi cursele în admin
+      </a>
+    </div>
+  `;
+
+  return layout({
+    preheader: `${d.countryName} · ${d.dateLabel} · ${totalPax} pasageri pe ${d.trips.length} curse`,
+    title: `DAVO admin · ${d.countryName} · mâine`,
+    eyebrow: `${d.countryName} · 24h`,
+    eyebrowColor: C.red400,
+    body,
+  });
+}
+
 export function subjectForType(type: string, bookingNumber: string): string {
   switch (type) {
     case "confirmation":
