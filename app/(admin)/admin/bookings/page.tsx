@@ -574,13 +574,36 @@ function ManualBookingModal({
     id: string;
     departureAt: string;
     arrivalAt: string;
-    available: number;
-    capacity: number;
+    availableSeats: number;
+    totalSeats: number;
     busLabel: string;
   };
   const [tripOptions, setTripOptions] = useState<TripOption[]>([]);
   const [tripsLoading, setTripsLoading] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState<string>("");
+  // Map nume oraș (lowercase) → ID, populat o singură dată la mount din
+  // /api/public/cities. Endpoint-ul de curse cere `originCityId` și
+  // `destCityId` (UUID), deci trebuie să rezolvăm înainte de a căuta.
+  const [cityIndex, setCityIndex] = useState<Record<string, string> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/cities")
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.success) return;
+        const map: Record<string, string> = {};
+        for (const c of [...(d.origins ?? []), ...(d.destinations ?? [])]) {
+          map[String(c.name).trim().toLowerCase()] = String(c.id);
+        }
+        setCityIndex(map);
+      })
+      .catch(() => {
+        if (!cancelled) setCityIndex({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   type TripDetail = {
     layout: { rows: number; cols: number; cells: SeatKind[] };
     occupiedSeats: number[];
@@ -594,12 +617,20 @@ function ManualBookingModal({
   const originCountry = originCountrySelect === OTHER ? originCountryCustom.trim() : originCountrySelect;
   const destinationCountry = destCountrySelect === OTHER ? destCountryCustom.trim() : destCountrySelect;
 
-  // Caut curse când origine + destinație + data sunt completate. Ruta e
-  // identificată în public/trips după originCityName/destCityName. Pentru
-  // rezervări custom (orașe necunoscute în DB) lista vine goală — admin
-  // creează rezervarea fără asociere de cursă.
+  // Caut curse când origine + destinație + data sunt completate. Rezolvăm
+  // numele orașelor la ID-urile DB (cityIndex) ca să putem chema endpointul
+  // public/trips care cere UUID-uri. Orașele custom (necunoscute în DB) →
+  // listă goală, admin lasă rezervarea stand-alone.
   useEffect(() => {
-    if (!originCity.trim() || !destCity.trim() || !departureDate) {
+    if (!originCity.trim() || !destCity.trim() || !cityIndex) {
+      setTripOptions([]);
+      setSelectedTripId("");
+      setSelectedSeats([]);
+      return;
+    }
+    const originId = cityIndex[originCity.trim().toLowerCase()];
+    const destId = cityIndex[destCity.trim().toLowerCase()];
+    if (!originId || !destId) {
       setTripOptions([]);
       setSelectedTripId("");
       setSelectedSeats([]);
@@ -608,34 +639,35 @@ function ManualBookingModal({
     const ac = new AbortController();
     setTripsLoading(true);
     const params = new URLSearchParams({
-      originCity: originCity.trim(),
-      destCity: destCity.trim(),
+      originCityId: originId,
+      destCityId: destId,
+      limit: "30",
     });
     fetch(`/api/public/trips?${params.toString()}`, { signal: ac.signal })
       .then((r) => r.json())
       .then((d) => {
         if (!d?.success) return;
-        // Filtru cele 7 zile din jurul datei alese (admin-ul tastat o dată
-        // specifică). Vrem să arătăm doar cursele compatibile.
-        const target = new Date(departureDate);
-        const sameDay = (a: Date, b: Date) =>
-          a.getFullYear() === b.getFullYear() &&
-          a.getMonth() === b.getMonth() &&
-          a.getDate() === b.getDate();
-        const sameDayTrips = (d.trips as TripOption[]).filter((t) =>
-          sameDay(new Date(t.departureAt), target),
-        );
-        // Dacă nu există în ziua exactă, expun toate cele viitoare (max 8)
-        // ca să poată alege oricum.
-        const fallback = (d.trips as TripOption[])
-          .filter((t) => new Date(t.departureAt) >= new Date())
-          .slice(0, 8);
-        setTripOptions(sameDayTrips.length > 0 ? sameDayTrips : fallback);
+        const all = (d.trips ?? []) as TripOption[];
+        // Dacă admin a tastat o dată exactă, prioritizăm cursele din ziua aia
+        // dar tot afișăm restul ca fallback (dacă nu există ziua respectivă).
+        if (departureDate) {
+          const target = new Date(departureDate);
+          const sameDay = (a: Date, b: Date) =>
+            a.getFullYear() === b.getFullYear() &&
+            a.getMonth() === b.getMonth() &&
+            a.getDate() === b.getDate();
+          const sameDayTrips = all.filter((t) =>
+            sameDay(new Date(t.departureAt), target),
+          );
+          setTripOptions(sameDayTrips.length > 0 ? sameDayTrips : all.slice(0, 16));
+        } else {
+          setTripOptions(all.slice(0, 16));
+        }
       })
       .catch(() => setTripOptions([]))
       .finally(() => setTripsLoading(false));
     return () => ac.abort();
-  }, [originCity, destCity, departureDate]);
+  }, [originCity, destCity, departureDate, cityIndex]);
 
   // Detaliul cursei (layout autocar + locuri ocupate) — folosit de SeatPicker.
   useEffect(() => {
@@ -930,7 +962,7 @@ function ManualBookingModal({
                   }).format(dt);
                   return (
                     <option key={t.id} value={t.id}>
-                      {dateStr} · {t.busLabel} · {t.available}/{t.capacity} libere
+                      {dateStr} · {t.busLabel} · {t.availableSeats}/{t.totalSeats} libere
                     </option>
                   );
                 })}
