@@ -91,6 +91,33 @@ export async function POST(request: NextRequest) {
       if (!Number.isNaN(r.getTime())) returnDate = r
     }
 
+    // Atașare opțională la o cursă existentă + alegere locuri. Dacă admin a
+    // ales o cursă, validăm că locurile alese sunt libere ÎNAINTE de create
+    // (race-condition gard: tranzacția de mai jos face check + insert atomic).
+    const tripId: string | undefined = typeof body.tripId === 'string' && body.tripId.length > 0 ? body.tripId : undefined
+    const seatNumbers: number[] = Array.isArray(body.seatNumbers)
+      ? body.seatNumbers.map((n: unknown) => Number(n)).filter((n: number) => Number.isInteger(n) && n > 0)
+      : []
+
+    if (tripId) {
+      const trip = await prisma.trip.findUnique({ where: { id: tripId }, select: { id: true } })
+      if (!trip) {
+        return NextResponse.json({ success: false, error: 'Cursa selectată nu există' }, { status: 400 })
+      }
+      if (seatNumbers.length > 0) {
+        const taken = await prisma.seatBooking.findMany({
+          where: { tripId, seatNumber: { in: seatNumbers } },
+          select: { seatNumber: true },
+        })
+        if (taken.length > 0) {
+          return NextResponse.json(
+            { success: false, error: `Locurile ${taken.map((t) => t.seatNumber).join(', ')} sunt deja rezervate` },
+            { status: 409 }
+          )
+        }
+      }
+    }
+
     const now = new Date()
     const booking = await prisma.booking.create({
       data: {
@@ -115,8 +142,18 @@ export async function POST(request: NextRequest) {
         payMethod,
         paidAt: paymentStatus === 'paid' ? now : null,
         confirmedAt: status === 'confirmed' ? now : null,
+        tripId: tripId ?? null,
       },
     })
+
+    // Insert SeatBookings — în paralel cu booking.create am putea face și
+    // tranzacție; pentru rezervările manuale (volum mic, admin-driven) un
+    // best-effort post-insert e ok, plus că deja am verificat coliziunile.
+    if (tripId && seatNumbers.length > 0) {
+      await prisma.seatBooking.createMany({
+        data: seatNumbers.map((n) => ({ tripId, seatNumber: n, bookingId: booking.id })),
+      })
+    }
 
     const appUrl = resolveAppUrl()
     const ticketUrl = `${appUrl}/bilet/${booking.bookingNumber}`

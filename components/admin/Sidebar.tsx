@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { canAccessUI, type Role } from "@/lib/permissions";
 
 type NavItem = {
   label: string;
@@ -63,6 +65,33 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname() ?? "";
+  const [role, setRole] = useState<Role | null>(null);
+
+  // Fetch o singură dată: păstrăm sidebar-ul complet vizibil pe `admin` (cel
+  // principal) și restrâns pe `admin2`. Cât timp nu știm rolul, afișăm tot
+  // (matchează comportamentul implicit) — proxy-ul gardează oricum servere.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d?.success) return;
+        setRole((d.user.role as Role) ?? "admin");
+      })
+      .catch(() => {
+        /* fallback la "admin" — nu blocăm UI-ul */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleGroups = navGroups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((it) => (role ? canAccessUI(role, it.href) : true)),
+    }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <>
@@ -100,7 +129,7 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-          {navGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title}>
               <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 {group.title}

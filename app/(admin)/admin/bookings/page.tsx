@@ -17,6 +17,8 @@ import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import { statusMeta } from "@/lib/adminLabels";
 import { destinations, moldovanCities } from "@/lib/data";
+import { SeatPicker } from "@/components/booking/SeatPicker";
+import type { SeatKind } from "@/lib/adminMock";
 
 type Booking = {
   id: string;
@@ -565,10 +567,98 @@ function ManualBookingModal({
   const [sendEmail, setSendEmail] = useState(true);
   const [notes, setNotes] = useState("");
 
+  // Asociere cu o cursă existentă: previne suprapunerile de locuri între
+  // rezervările manuale și cele publice. Opțional — dacă admin nu alege
+  // nicio cursă, rezervarea rămâne stand-alone (cazul ambasadei).
+  type TripOption = {
+    id: string;
+    departureAt: string;
+    arrivalAt: string;
+    available: number;
+    capacity: number;
+    busLabel: string;
+  };
+  const [tripOptions, setTripOptions] = useState<TripOption[]>([]);
+  const [tripsLoading, setTripsLoading] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState<string>("");
+  type TripDetail = {
+    layout: { rows: number; cols: number; cells: SeatKind[] };
+    occupiedSeats: number[];
+  };
+  const [tripDetail, setTripDetail] = useState<TripDetail | null>(null);
+  const [tripDetailLoading, setTripDetailLoading] = useState(false);
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+
   const [saving, setSaving] = useState(false);
 
   const originCountry = originCountrySelect === OTHER ? originCountryCustom.trim() : originCountrySelect;
   const destinationCountry = destCountrySelect === OTHER ? destCountryCustom.trim() : destCountrySelect;
+
+  // Caut curse când origine + destinație + data sunt completate. Ruta e
+  // identificată în public/trips după originCityName/destCityName. Pentru
+  // rezervări custom (orașe necunoscute în DB) lista vine goală — admin
+  // creează rezervarea fără asociere de cursă.
+  useEffect(() => {
+    if (!originCity.trim() || !destCity.trim() || !departureDate) {
+      setTripOptions([]);
+      setSelectedTripId("");
+      setSelectedSeats([]);
+      return;
+    }
+    const ac = new AbortController();
+    setTripsLoading(true);
+    const params = new URLSearchParams({
+      originCity: originCity.trim(),
+      destCity: destCity.trim(),
+    });
+    fetch(`/api/public/trips?${params.toString()}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d?.success) return;
+        // Filtru cele 7 zile din jurul datei alese (admin-ul tastat o dată
+        // specifică). Vrem să arătăm doar cursele compatibile.
+        const target = new Date(departureDate);
+        const sameDay = (a: Date, b: Date) =>
+          a.getFullYear() === b.getFullYear() &&
+          a.getMonth() === b.getMonth() &&
+          a.getDate() === b.getDate();
+        const sameDayTrips = (d.trips as TripOption[]).filter((t) =>
+          sameDay(new Date(t.departureAt), target),
+        );
+        // Dacă nu există în ziua exactă, expun toate cele viitoare (max 8)
+        // ca să poată alege oricum.
+        const fallback = (d.trips as TripOption[])
+          .filter((t) => new Date(t.departureAt) >= new Date())
+          .slice(0, 8);
+        setTripOptions(sameDayTrips.length > 0 ? sameDayTrips : fallback);
+      })
+      .catch(() => setTripOptions([]))
+      .finally(() => setTripsLoading(false));
+    return () => ac.abort();
+  }, [originCity, destCity, departureDate]);
+
+  // Detaliul cursei (layout autocar + locuri ocupate) — folosit de SeatPicker.
+  useEffect(() => {
+    setTripDetail(null);
+    setSelectedSeats([]);
+    if (!selectedTripId) return;
+    const ac = new AbortController();
+    setTripDetailLoading(true);
+    fetch(`/api/public/trips/${selectedTripId}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d?.success || !d.trip?.bus) return;
+        setTripDetail({
+          layout: d.trip.bus.layout,
+          occupiedSeats: d.trip.occupiedSeats ?? [],
+        });
+      })
+      .catch(() => setTripDetail(null))
+      .finally(() => setTripDetailLoading(false));
+    return () => ac.abort();
+  }, [selectedTripId]);
+
+  const maxSeats = Math.max(0, adults) + Math.max(0, children);
 
   function swapDirection() {
     setOriginCountrySelect(destCountrySelect);
@@ -605,6 +695,13 @@ function ManualBookingModal({
       alert("Adaugă cel puțin un pasager (adult sau copil).");
       return;
     }
+    // Sanity: dacă admin a ales o cursă dar n-a ales locuri pentru toți
+    // pasagerii, blocăm — vrem ca lista locurilor să fie exhaustivă, altfel
+    // se pot suprapune cu rezervările publice ulterioare.
+    if (selectedTripId && selectedSeats.length !== seats) {
+      alert(`Alege ${seats} loc${seats === 1 ? "" : "uri"} în autocar.`);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/admin/bookings", {
@@ -632,6 +729,8 @@ function ManualBookingModal({
           status,
           sendEmail,
           notes,
+          tripId: selectedTripId || undefined,
+          seatNumbers: selectedTripId ? selectedSeats : undefined,
         }),
       });
       const data = await res.json();
@@ -790,6 +889,67 @@ function ManualBookingModal({
                 <input type="number" min={0} value={children} onChange={(e) => setChildren(Number(e.target.value))} className={inputCls} />
               </Field>
             </div>
+          </Section>
+
+          <Section title="Cursa & locuri (opțional, evită suprapuneri)">
+            <Field label="Atașează la o cursă programată">
+              <select
+                value={selectedTripId}
+                onChange={(e) => setSelectedTripId(e.target.value)}
+                className={inputCls}
+                disabled={tripsLoading}
+              >
+                <option value="">
+                  {tripsLoading
+                    ? "Caut curse…"
+                    : tripOptions.length === 0
+                      ? "Nicio cursă programată — rezervarea rămâne stand-alone"
+                      : "— fără cursă atașată —"}
+                </option>
+                {tripOptions.map((t) => {
+                  const dt = new Date(t.departureAt);
+                  const dateStr = new Intl.DateTimeFormat("ro-RO", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "Europe/Chisinau",
+                  }).format(dt);
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {dateStr} · {t.busLabel} · {t.available}/{t.capacity} libere
+                    </option>
+                  );
+                })}
+              </select>
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Când e atașată, locurile alese mai jos blochează vânzarea publică pe acele scaune.
+              </span>
+            </Field>
+
+            {selectedTripId && (
+              <div>
+                {tripDetailLoading || !tripDetail ? (
+                  <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 py-8 text-sm text-slate-500">
+                    Încarc layout-ul autocarului…
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-2 text-[11px] text-slate-600">
+                      Alege exact <strong>{maxSeats}</strong> loc{maxSeats === 1 ? "" : "uri"} (= {adults} adulți + {children} copii). Selectate: {selectedSeats.length}.
+                    </div>
+                    <SeatPicker
+                      layout={tripDetail.layout}
+                      occupiedSeats={tripDetail.occupiedSeats}
+                      selected={selectedSeats}
+                      onSelect={setSelectedSeats}
+                      max={maxSeats}
+                    />
+                  </>
+                )}
+              </div>
+            )}
           </Section>
 
           <Section title="Preț & plată">
