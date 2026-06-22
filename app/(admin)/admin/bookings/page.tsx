@@ -591,9 +591,18 @@ function ManualBookingModal({
       alert("Completează țara și orașul de destinație.");
       return;
     }
-    const priceNum = Number(price);
-    if (!Number.isFinite(priceNum) || priceNum < 0) {
-      alert("Preț invalid.");
+    const pricePerSeat = Number(price);
+    if (!Number.isFinite(pricePerSeat) || pricePerSeat < 0) {
+      alert("Tarif invalid.");
+      return;
+    }
+    // Tariful tastat e per LOC. Totalul = tarif × (adulți + copii) ×
+    // 2 dacă e tur-retur. Nu există tarif copii — un copil ocupă un loc.
+    const seats = Math.max(0, adults) + Math.max(0, children);
+    const directionMultiplier = tripType === "round-trip" ? 2 : 1;
+    const totalPrice = pricePerSeat * seats * directionMultiplier;
+    if (seats === 0) {
+      alert("Adaugă cel puțin un pasager (adult sau copil).");
       return;
     }
     setSaving(true);
@@ -617,7 +626,7 @@ function ManualBookingModal({
           tripType,
           adults,
           children,
-          price: priceNum,
+          price: totalPrice,
           currency,
           payMethod,
           status,
@@ -785,17 +794,20 @@ function ManualBookingModal({
 
           <Section title="Preț & plată">
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Sumă">
+              <Field label="Tarif per loc">
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="ex: 150"
+                  placeholder="ex: 120"
                   className={inputCls}
                   required
                 />
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Tarif pentru UN loc; copiii plătesc la fel ca adulții.
+                </span>
               </Field>
               <Field label="Monedă">
                 <select value={currency} onChange={(e) => setCurrency(e.target.value as typeof currency)} className={inputCls}>
@@ -811,6 +823,20 @@ function ManualBookingModal({
                   <option value="paid_in_advance">Achitată în avans</option>
                 </select>
               </Field>
+            </div>
+            {/* Total live: tariful × locuri (adulți + copii). Calc identic
+                cu cel din submit ca să nu existe drift între ce vede admin
+                și ce salvăm. Tur-retur ×2 (one-way × 2 = total dus-întors). */}
+            <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm">
+              <span className="font-semibold text-slate-700">Total calculat:</span>{" "}
+              <span className="font-bold text-orange-700">
+                {(() => {
+                  const seats = Math.max(0, Number(adults) || 0) + Math.max(0, Number(children) || 0);
+                  const direction = tripType === "round-trip" ? 2 : 1;
+                  const t = (Number(price) || 0) * seats * direction;
+                  return `${(Number(price) || 0)} × ${seats} loc${seats === 1 ? "" : "uri"}${direction === 2 ? " × 2 (tur-retur)" : ""} = ${t.toFixed(2)} ${currency}`;
+                })()}
+              </span>
             </div>
           </Section>
 
