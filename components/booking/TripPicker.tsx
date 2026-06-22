@@ -316,7 +316,10 @@ export function TripPicker({
                   onClick={() => trip && isAvailable && pickTrip(trip)}
                   className={cn(
                     "relative aspect-square rounded-xl border text-left p-1.5 md:p-2 transition-all",
-                    !inMonth && "opacity-30",
+                    // Zilele din afara lunii afișate (overflow de la luna
+                    // următoare) sunt paliate doar când NU au cursă pe ele.
+                    // Altfel o cursă reală e indistinctibilă de un day gol.
+                    !inMonth && !trip && "opacity-30",
                     isActive
                       ? "border-[color:var(--red-500)] bg-[color:var(--red-500)] text-white shadow-[0_8px_24px_-12px_rgba(225,30,43,0.55)]"
                       : isAvailable
