@@ -19,6 +19,8 @@ import {
 import { useCart } from "./CartContext";
 import { COLET_LA_CHEIE_MIN_ORDER } from "@/lib/coletProducts";
 import { contactInfo } from "@/lib/data";
+import { CountryCityPicker } from "@/components/booking/CountryCityPicker";
+import { useLocale } from "@/lib/i18n/client";
 
 function formatMdl(n: number) {
   return new Intl.NumberFormat("ro-RO", {
@@ -52,12 +54,34 @@ const emptyForm: CheckoutForm = {
   consent: false,
 };
 
-const DESTINATION_COUNTRIES = ["Anglia", "Germania", "Belgia", "Olanda", "Luxemburg"];
-
 export default function CartDrawer() {
   const cart = useCart();
+  const locale = useLocale();
   const [stage, setStage] = useState<"cart" | "checkout" | "done">("cart");
   const [form, setForm] = useState<CheckoutForm>(emptyForm);
+  // Valoarea string "Oraș, Țară" pentru picker — sincronizată cu cele 2
+  // câmpuri tipizate (destinationCity / destinationCountry) din form.
+  const destinationValue =
+    form.destinationCity && form.destinationCountry
+      ? `${form.destinationCity}, ${form.destinationCountry}`
+      : form.destinationCountry || "";
+
+  function setDestination(v: string) {
+    if (!v) {
+      setForm((f) => ({ ...f, destinationCity: "", destinationCountry: "" }));
+      return;
+    }
+    const idx = v.lastIndexOf(",");
+    if (idx >= 0) {
+      setForm((f) => ({
+        ...f,
+        destinationCity: v.slice(0, idx).trim(),
+        destinationCountry: v.slice(idx + 1).trim(),
+      }));
+    } else {
+      setForm((f) => ({ ...f, destinationCity: "", destinationCountry: v.trim() }));
+    }
+  }
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orderRef, setOrderRef] = useState<string | null>(null);
@@ -276,15 +300,20 @@ export default function CartDrawer() {
                 </div>
 
                 <SectionTitle>Livrare în Europa</SectionTitle>
-                <FieldSelect
-                  label="Țara *"
-                  icon={<Truck className="h-3.5 w-3.5" />}
-                  value={form.destinationCountry}
-                  onChange={(v) => setField("destinationCountry", v)}
-                  options={DESTINATION_COUNTRIES}
-                  required
-                />
-                <FieldText label="Oraș *" icon={<MapPin className="h-3.5 w-3.5" />} value={form.destinationCity} onChange={(v) => setField("destinationCity", v)} required />
+                <div className="rounded-lg border border-[color:var(--ink-200)] bg-white px-3 py-2">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-[color:var(--ink-500)]">
+                    <Truck className="h-3.5 w-3.5 text-[color:var(--red-500)]" />
+                    Țară &amp; oraș *
+                  </div>
+                  <div className="mt-1.5">
+                    <CountryCityPicker
+                      value={destinationValue}
+                      onChange={setDestination}
+                      locale={locale}
+                      hideCountries={["Moldova"]}
+                    />
+                  </div>
+                </div>
                 <FieldText label="Adresă completă *" icon={<MapPin className="h-3.5 w-3.5" />} value={form.address} onChange={(v) => setField("address", v)} placeholder="Stradă, număr, apartament, cod poștal" required />
 
                 <FieldTextarea label="Observații" value={form.notes} onChange={(v) => setField("notes", v)} placeholder="Instrucțiuni speciale, ore de livrare preferate..." />
@@ -425,46 +454,6 @@ function FieldText({
           onChange={(e) => onChange(e.target.value)}
           className="w-full bg-transparent outline-none text-sm font-medium text-[color:var(--navy-900)]"
         />
-      </div>
-    </label>
-  );
-}
-
-function FieldSelect({
-  label,
-  value,
-  onChange,
-  options,
-  required,
-  icon,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  required?: boolean;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="block text-[11px] font-bold uppercase tracking-wider text-[color:var(--ink-500)] mb-1">
-        {label}
-      </span>
-      <div className="flex items-center gap-2 rounded-xl border border-[color:var(--ink-200)] bg-white px-3 py-2.5 focus-within:border-[color:var(--navy-700)]">
-        {icon && <span className="text-[color:var(--red-500)]">{icon}</span>}
-        <select
-          required={required}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent outline-none text-sm font-medium text-[color:var(--navy-900)]"
-        >
-          <option value="">Alege țara</option>
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
       </div>
     </label>
   );

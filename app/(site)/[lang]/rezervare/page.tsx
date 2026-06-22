@@ -297,8 +297,11 @@ function RezervareContent() {
 
   const total = useMemo(() => {
     if (mode === "colet") {
+      // Tarif fix: 1.5 EUR/kg pe toate rutele non-UK, 1.5 GBP/kg pe Anglia.
+      // Valuta o stabilim din `currency` (£ pentru UK, € altfel) — nu mai
+      // depinde de un preț de bază sau de un minim.
       const w = parseFloat(parcel.weight) || 0;
-      return Math.max(25, Math.round(w * 6));
+      return Math.round(w * 1.5);
     }
     const pax = Math.max(1, outboundSeats.length || 1);
     const multi = trip === "return" ? 1.8 : 1;
@@ -403,8 +406,11 @@ function RezervareContent() {
             }
           : {
               type: "parcel",
-              departureCity: sender.city || from,
-              arrivalCity: recipient.city || toCityName,
+              // Sursă unică pentru oraș: pasul Direcție (from/to). Orașul
+              // expeditorului / destinatarului din PartyForm e doar fallback
+              // dacă userul vine pe URL fără to (rar) — și e validat acolo.
+              departureCity: fromCityName || sender.city,
+              arrivalCity: toCityName || recipient.city,
               departureDate: date || new Date().toISOString().slice(0, 10),
               firstName: sender.name.split(" ")[0] || sender.name,
               lastName: sender.name.split(" ").slice(1).join(" ") || "—",
@@ -591,7 +597,7 @@ function RezervareContent() {
                           onPayMethod={setPayMethod}
                           lines={[
                             { label: "Livrare colet", value: "standard" },
-                            { label: `Greutate: ${parcel.weight || 0} kg`, value: `×${parcel.weight || 0}` },
+                            { label: `Greutate: ${parcel.weight || 0} kg`, value: `${parcel.weight || 0} × 1.5 ${currency}` },
                           ]}
                           total={`${total}${currency}`}
                         />
@@ -1009,13 +1015,18 @@ function PartyForm({
             className="simple-input"
           />
         </SimpleField>
-        <SimpleField label="Oraș" icon={<MapPin className="h-4 w-4" />}>
-          <input
-            value={data.city}
-            onChange={(e) => setField("city", e.target.value)}
-            className="simple-input"
-          />
-        </SimpleField>
+        {/* Orașul destinatarului = orașul de destinație ales la pasul Direcție.
+            Nu mai cerem să fie tastat încă o dată (cauza apariției "Recke" în
+            DB: clientul tasta un oraș liber care nu se valida nicăieri). */}
+        {isSender && (
+          <SimpleField label="Oraș" icon={<MapPin className="h-4 w-4" />}>
+            <input
+              value={data.city}
+              onChange={(e) => setField("city", e.target.value)}
+              className="simple-input"
+            />
+          </SimpleField>
+        )}
       </div>
       <div className="mt-4">
         <SimpleField label="Adresă completă" icon={<MapPin className="h-4 w-4" />}>
