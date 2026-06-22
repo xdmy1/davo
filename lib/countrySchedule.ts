@@ -27,46 +27,50 @@ export type CountryScheduleRow = {
   fullSentence: string; // pentru meta description
 };
 
+// Câmpurile `outboundDuration` / `returnDuration` rămân în schemă pentru
+// back-compat cu FAQ-ul SEO, dar valorile sunt goale acum: admin a cerut
+// să nu se mai afișeze durate (erau approximări care derutau pasagerii).
+// Faq-ul ru/ro detectează stringul gol și sare peste mențiunea de durată.
 const SCHEDULES: Record<string, CountryScheduleRow> = {
   anglia: {
     outboundLabel: "Joi 10:00",
-    outboundDuration: "~36h",
+    outboundDuration: "",
     returnLabel: "Duminică 19:00",
-    returnDuration: "~36h",
+    returnDuration: "",
     fullSentence:
-      "Plecare săptămânală joi la 10:00 din Chișinău (cu opriri în orașele din Moldova pe traseu), retur duminică la 19:00 din Anglia. Călătorie ~36h.",
+      "Plecare săptămânală joi la 10:00 din Chișinău (cu opriri în orașele din Moldova pe traseu), retur duminică la 19:00 din Anglia.",
   },
   belgia: {
     outboundLabel: "Vineri 08:30",
-    outboundDuration: "34-35h",
+    outboundDuration: "",
     returnLabel: "Duminică 12:00",
-    returnDuration: "34-35h",
+    returnDuration: "",
     fullSentence:
-      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Belgia. Călătorie 34-35h.",
+      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Belgia.",
   },
   olanda: {
     outboundLabel: "Vineri 08:30",
-    outboundDuration: "~28h",
+    outboundDuration: "",
     returnLabel: "Duminică 12:00",
-    returnDuration: "~28h",
+    returnDuration: "",
     fullSentence:
-      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Olanda. Călătorie ~28h.",
+      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Olanda.",
   },
   germania: {
     outboundLabel: "Vineri 08:30",
-    outboundDuration: "~28h",
+    outboundDuration: "",
     returnLabel: "Duminică 12:00",
-    returnDuration: "~28h",
+    returnDuration: "",
     fullSentence:
-      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Germania. Călătorie ~28h.",
+      "Plecare săptămânală vineri la 08:30 din Chișinău, retur duminică la 12:00 din Germania.",
   },
   luxemburg: {
     outboundLabel: "Joi 10:00",
-    outboundDuration: "~28h",
+    outboundDuration: "",
     returnLabel: "Luni 07:00",
-    returnDuration: "~28h",
+    returnDuration: "",
     fullSentence:
-      "Plecare săptămânală joi la 10:00 din Chișinău, retur luni la 07:00 dimineața din Luxemburg. Călătorie ~28h.",
+      "Plecare săptămânală joi la 10:00 din Chișinău, retur luni la 07:00 dimineața din Luxemburg.",
   },
 };
 

@@ -40,7 +40,6 @@ type TripDetail = {
 const weekdayFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "long" });
 const dateFmt = new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "long" });
 const timeFmt = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" });
-const arrivalDayFmt = new Intl.DateTimeFormat("ro-RO", { weekday: "short", day: "numeric", month: "short" });
 const monthYearFmt = new Intl.DateTimeFormat("ro-RO", { month: "long", year: "numeric" });
 
 // Cheia "YYYY-MM-DD" pentru o dată — folosit la corelarea Trip ↔ ziua calendarului.
@@ -67,14 +66,6 @@ function buildMonthGrid(view: Date): { date: Date; inMonth: boolean }[] {
   const lastWeek = cells.slice(35);
   if (lastWeek.every((c) => !c.inMonth)) return cells.slice(0, 35);
   return cells;
-}
-
-function formatDuration(fromIso: string, toIso: string): string {
-  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
-  if (ms <= 0) return "—";
-  const totalMin = Math.round(ms / 60000);
-  const h = Math.floor(totalMin / 60);
-  return `~${h}h`;
 }
 
 function capitalize(s: string): string {
@@ -371,7 +362,6 @@ export function TripPicker({
             const t = filteredTrips.find((x) => x.id === selectedTripId);
             if (!t) return null;
             const dep = new Date(t.departureAt);
-            const arr = new Date(t.arrivalAt);
             const currency = t.currency === "GBP" ? "£" : "€";
             return (
               <div className="mt-5 rounded-2xl border border-[color:var(--red-500)] bg-white p-4 md:p-5 shadow-[0_10px_30px_-18px_rgba(225,30,43,0.4)]">
@@ -388,10 +378,6 @@ export function TripPicker({
                         <Clock className="h-3 w-3 text-[color:var(--red-500)]" />
                         Plecare {timeFmt.format(dep)}
                       </span>
-                      <span className="text-[color:var(--ink-300,rgba(11,38,83,0.28))]">·</span>
-                      <span>Sosire {arrivalDayFmt.format(arr)} {timeFmt.format(arr)}</span>
-                      <span className="text-[color:var(--ink-300,rgba(11,38,83,0.28))]">·</span>
-                      <span>Durată {formatDuration(t.departureAt, t.arrivalAt)}</span>
                     </div>
                   </div>
                   <div className="text-right">

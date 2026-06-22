@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import {
   ArrowRight,
   Calendar,
-  Clock,
   MapPin,
   Phone,
   ShieldCheck,
@@ -315,10 +314,9 @@ function CountryLanding({ destination, locale }: { destination: Destination; loc
       {sched && <ScheduleSection destination={destination} sched={sched} locale={locale} />}
 
       <section className="py-16">
-        <div className="container-page grid gap-5 md:grid-cols-3">
+        <div className="container-page grid gap-5 md:grid-cols-2">
           {[
             { icon: Calendar, k: td.regularTrips, v: sched ? td.weeklyOn(sched.outboundLabel) : td.weeklyOnly },
-            { icon: Clock, k: td.duration, v: sched ? sched.outboundDuration : td.durationBetween },
             { icon: ShieldCheck, k: td.safetyTitle, v: td.safetyDesc },
           ].map((b) => (
             <div key={b.k} className="rounded-2xl border border-[color:var(--ink-200)] bg-white p-6 flex items-start gap-4">
@@ -514,8 +512,7 @@ function CityPage({
                   </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-3 gap-2 pt-4 border-t border-white/10">
-                  <JourneyStat icon={Clock} label={td.duration} value="~30h" />
+                <div className="mt-6 grid grid-cols-2 gap-2 pt-4 border-t border-white/10">
                   <JourneyStat icon={Calendar} label={td.frequency} value={td.weekly2to3} />
                   <JourneyStat
                     icon={Bus}
@@ -533,10 +530,9 @@ function CityPage({
       {sched && <ScheduleSection destination={destination} sched={sched} cityName={cityName} locale={locale} />}
 
       <section className="py-16">
-        <div className="container-page grid gap-5 md:grid-cols-3">
+        <div className="container-page grid gap-5 md:grid-cols-2">
           {[
             { icon: Calendar, k: td.regularTrips, v: sched ? td.weeklyOn(sched.outboundLabel) : td.multipleDeparturesPerWeek },
-            { icon: Clock, k: td.durationEstimate, v: sched ? sched.outboundDuration : td.durationBetween },
             { icon: ShieldCheck, k: td.doorToDoor, v: td.doorToDoorDesc },
           ].map((b) => (
             <div key={b.k} className="rounded-2xl border border-[color:var(--ink-200)] bg-white p-6 flex items-start gap-4">
@@ -711,10 +707,6 @@ function ScheduleSection({
               <div className="font-[family-name:var(--font-montserrat)] text-3xl md:text-4xl font-extrabold text-[color:var(--navy-900)] leading-tight">
                 {sched.outboundLabel}
               </div>
-              <div className="mt-2 inline-flex items-center gap-1 text-xs text-[color:var(--ink-500)]">
-                <Clock className="h-3.5 w-3.5" />
-                {td.durationShort} {sched.outboundDuration}
-              </div>
               <Link
                 href={localePath(locale, `/rezervare?to=${encodeURIComponent(cityName || destination.cities[0]?.name || "")}`)}
                 className="mt-5 inline-flex items-center gap-2 rounded-full bg-[color:var(--red-500)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[color:var(--red-600)] transition-colors"
@@ -739,10 +731,6 @@ function ScheduleSection({
               </div>
               <div className="font-[family-name:var(--font-montserrat)] text-3xl md:text-4xl font-extrabold text-[color:var(--navy-900)] leading-tight">
                 {sched.returnLabel}
-              </div>
-              <div className="mt-2 inline-flex items-center gap-1 text-xs text-[color:var(--ink-500)]">
-                <Clock className="h-3.5 w-3.5" />
-                {td.durationShort} {sched.returnDuration}
               </div>
               {flagCode && (
                 <div className="mt-5 flex items-center gap-2 text-xs text-[color:var(--ink-500)]">

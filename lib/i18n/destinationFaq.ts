@@ -37,7 +37,7 @@ export function buildCountryFaq(
       });
       items.push({
         q: `Когда обратный рейс из ${country} в Молдову?`,
-        a: `Обратный рейс отправляется ${sched.returnLabel.toLowerCase()} из ${country}. Длительность ${sched.returnDuration}. Место посадки согласуем с пассажирами до отправления.`,
+        a: `Обратный рейс отправляется ${sched.returnLabel.toLowerCase()} из ${country}. Место посадки согласуем с пассажирами до отправления.`,
       });
     }
     items.push({
@@ -69,7 +69,7 @@ export function buildCountryFaq(
     });
     items.push({
       q: `Când e returul din ${country} spre Moldova?`,
-      a: `Returul pleacă ${sched.returnLabel.toLowerCase()} din ${country}. Durată ${sched.returnDuration}. Locul de îmbarcare se confirmă cu pasagerii înainte de plecare.`,
+      a: `Returul pleacă ${sched.returnLabel.toLowerCase()} din ${country}. Locul de îmbarcare se confirmă cu pasagerii înainte de plecare.`,
     });
   }
   items.push({
@@ -110,7 +110,7 @@ export function buildCityFaq(
   if (locale === "ru") {
     items.push({
       q: `Как добраться из Кишинёва в ${cityName}?`,
-      a: `DAVO Group выполняет регулярный рейс Кишинёв → ${cityName} (${country})${sched ? `, отправление ${sched.outboundLabel.toLowerCase()} и обратный ${sched.returnLabel.toLowerCase()}` : ""}. Поездка длится ${sched?.outboundDuration ?? "20-40ч"}, на современном автобусе с Wi-Fi Starlink, включённым обедом и стюардессой 24/24.`,
+      a: `DAVO Group выполняет регулярный рейс Кишинёв → ${cityName} (${country})${sched ? `, отправление ${sched.outboundLabel.toLowerCase()} и обратный ${sched.returnLabel.toLowerCase()}` : ""}. Современный автобус с Wi-Fi Starlink, включённым обедом и стюардессой 24/24.`,
     });
     items.push({
       q: `Сколько стоит билет Кишинёв - ${cityName}?`,
@@ -137,7 +137,7 @@ export function buildCityFaq(
   // RO
   items.push({
     q: `Cum ajung de la Chișinău la ${cityName}?`,
-    a: `DAVO Group operează cursă regulată Chișinău → ${cityName} (${country})${sched ? `, plecare ${sched.outboundLabel.toLowerCase()} și retur ${sched.returnLabel.toLowerCase()}` : ""}. Călătoria durează ${sched?.outboundDuration ?? "20-40h"}, cu autocar modern dotat cu Wi-Fi Starlink, prânz inclus și însoțitoare 24/24.`,
+    a: `DAVO Group operează cursă regulată Chișinău → ${cityName} (${country})${sched ? `, plecare ${sched.outboundLabel.toLowerCase()} și retur ${sched.returnLabel.toLowerCase()}` : ""}. Autocar modern dotat cu Wi-Fi Starlink, prânz inclus și însoțitoare 24/24.`,
   });
   items.push({
     q: `Cât costă biletul Chișinău - ${cityName}?`,
