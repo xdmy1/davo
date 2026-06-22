@@ -275,13 +275,16 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
   const isParcel = b.type === "parcel";
   const isRoundTrip = b.tripType === "round-trip";
 
-  const depTime = b.departureTime ?? formatTime(b.departureDate);
-  const retTime = b.returnDate ? (b.returnTime ?? formatTime(b.returnDate)) : null;
+  // Coletele NU au oră fixă — admin sună expeditorul pentru grafic propriu.
+  // Pentru ele afișăm doar data, altfel apare "03:00" doar pentru că
+  // `new Date("YYYY-MM-DD")` e UTC midnight = 03:00 Europe/Chișinău vara.
+  const depTime = isParcel ? null : (b.departureTime ?? formatTime(b.departureDate));
+  const retTime = !isParcel && b.returnDate ? (b.returnTime ?? formatTime(b.returnDate)) : null;
   const rows: DetailRow[] = [
     { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
     {
       label: "Plecare",
-      value: `${formatDate(b.departureDate)} · ${depTime}`,
+      value: depTime ? `${formatDate(b.departureDate)} · ${depTime}` : formatDate(b.departureDate),
     },
   ];
   if (isRoundTrip && b.returnDate && retTime) {
@@ -323,13 +326,17 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
 // ----- Reminders -----
 
 export function reminder24hHtml(b: Booking, urls?: ResponseUrls, scheduledDepartureTime?: string | null): string {
-  const depTime = scheduledDepartureTime ?? formatTime(b.departureDate);
+  const isParcel = b.type === "parcel" || b.type === "colet_la_cheie";
+  const depTime = isParcel ? null : (scheduledDepartureTime ?? formatTime(b.departureDate));
+  const plecareValue = depTime
+    ? `${formatDate(b.departureDate)} · ${depTime}`
+    : formatDate(b.departureDate);
   const body = `
     ${headline(`${b.firstName}, mâine e ziua mare.`)}
     ${intro(`Cursa ta <strong style="color:${C.navy900};">${b.departureCity} → ${b.arrivalCity}</strong> pleacă mâine. Vezi detaliile și confirmă-ne că vii.`)}
     ${detailsCard([
       { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
-      { label: "Plecare", value: `${formatDate(b.departureDate)} · ${depTime}` },
+      { label: "Plecare", value: plecareValue },
       { label: "Nr. rezervare", value: b.bookingNumber },
     ])}
     ${urls ? vxButtons(urls, "Mai vii la cursă? Confirmă-ne acum sau anulează dacă nu mai poți.") : ""}
@@ -404,13 +411,16 @@ export function cancellationHtml(b: Booking): string {
 
 export function adminNotificationHtml(b: ConfirmationData): string {
   const isParcel = b.type === "parcel";
-  const depTime = b.departureTime ?? formatTime(b.departureDate);
+  const depTime = isParcel ? null : (b.departureTime ?? formatTime(b.departureDate));
+  const plecareValue = depTime
+    ? `${formatDate(b.departureDate)} · ${depTime}`
+    : formatDate(b.departureDate);
   const rows: DetailRow[] = [
     { label: "Nr. rezervare", value: b.bookingNumber },
     { label: "Tip", value: isParcel ? "Colet" : "Pasager" },
     { label: "Client", value: b.firstName },
     { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
-    { label: "Plecare", value: `${formatDate(b.departureDate)} · ${depTime}` },
+    { label: "Plecare", value: plecareValue },
   ];
   if (!isParcel) {
     rows.push({ label: "Pasageri", value: paxLine(b.adults, b.children) });

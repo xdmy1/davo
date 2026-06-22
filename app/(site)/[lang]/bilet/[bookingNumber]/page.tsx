@@ -340,12 +340,19 @@ export default function TicketPage() {
           <div className="px-7 pb-6 grid grid-cols-2 gap-3 print:gap-2">
             <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label="Data plecării">
               {dateFmt.format(departureDate)}
-              <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.departureTime ?? timeFmt.format(departureDate)}</span>
+              {/* Coletele NU au oră fixă (admin sună expeditorul pentru grafic).
+                  Le păstrăm doar ca dată — altfel afișează "03:00" doar pentru
+                  că `new Date("YYYY-MM-DD")` e UTC midnight = 03:00 Chișinău. */}
+              {!isParcel && (
+                <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.departureTime ?? timeFmt.format(departureDate)}</span>
+              )}
             </DetailCell>
             {returnDate && (
               <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label="Data întoarcerii">
                 {dateFmt.format(returnDate)}
-                <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.returnTime ?? timeFmt.format(returnDate)}</span>
+                {!isParcel && (
+                  <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.returnTime ?? timeFmt.format(returnDate)}</span>
+                )}
               </DetailCell>
             )}
             <DetailCell icon={<User className="h-3.5 w-3.5" />} label={isParcel ? "Tip" : "Pasageri"}>
