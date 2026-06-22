@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   RefreshCw,
   Search,
@@ -792,8 +792,14 @@ function ManualBookingModal({
                   />
                 )}
               </Field>
-              <Field label="Oraș / regiune">
-                <input value={originCity} onChange={(e) => setOriginCity(e.target.value)} placeholder="ex: Chișinău" className={inputCls} required />
+              <Field label="Oraș">
+                <CityDropdown
+                  country={originCountry}
+                  value={originCity}
+                  onChange={setOriginCity}
+                  placeholder="Alege oraș…"
+                  required
+                />
               </Field>
             </div>
             <Field label="Adresă exactă (opțional)">
@@ -840,8 +846,14 @@ function ManualBookingModal({
                   />
                 )}
               </Field>
-              <Field label="Oraș / regiune">
-                <input value={destCity} onChange={(e) => setDestCity(e.target.value)} placeholder="ex: York" className={inputCls} required />
+              <Field label="Oraș">
+                <CityDropdown
+                  country={destinationCountry}
+                  value={destCity}
+                  onChange={setDestCity}
+                  placeholder="Alege oraș…"
+                  required
+                />
               </Field>
             </div>
             <Field label="Adresă exactă (fermă, șantier, depou)">
@@ -1059,6 +1071,96 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputCls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200";
+
+// Dropdown de orașe filtrat după țara selectată. Folosește numele canonice
+// din lib/data.ts (care reflectă seed-ul DB-ului) — astfel valorile salvate
+// matchează exact City.name din DB, ca lookup-ul /api/public/trips să găsească
+// cursele atașate. Pentru țări custom sau orașe care nu-s în listă, oferim
+// opțiunea "Alt oraș…" cu input text.
+function CityDropdown({
+  country,
+  value,
+  onChange,
+  placeholder,
+  required,
+}: {
+  country: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const cities = useMemo(() => {
+    if (!country) return [] as string[];
+    if (country === "Moldova") {
+      return ["Chișinău", ...moldovanCities.map((c) => c.name)];
+    }
+    const dest = destinations.find((d) => d.name === country);
+    return dest ? dest.cities.map((c) => c.name) : [];
+  }, [country]);
+
+  const isCustom = value !== "" && !cities.includes(value);
+  const [usingCustom, setUsingCustom] = useState(isCustom);
+
+  // Reset usingCustom când se schimbă țara — listele sunt diferite, e ușor
+  // să rămâi cu un text liber stale din altă țară.
+  useEffect(() => {
+    setUsingCustom(false);
+    if (value && !cities.includes(value) && cities.length > 0) {
+      // valoare invalidă pe noua țară → o golim
+      onChange("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country]);
+
+  if (cities.length === 0 || usingCustom) {
+    return (
+      <div className="space-y-1.5">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder ?? "Tastează orașul…"}
+          className={inputCls}
+          required={required}
+        />
+        {cities.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setUsingCustom(false);
+              if (value && !cities.includes(value)) onChange("");
+            }}
+            className="text-[11px] text-orange-600 hover:underline"
+          >
+            ← Înapoi la lista de orașe predefinite
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => {
+        if (e.target.value === "__custom__") {
+          setUsingCustom(true);
+          onChange("");
+        } else {
+          onChange(e.target.value);
+        }
+      }}
+      className={inputCls}
+      required={required}
+    >
+      <option value="">{placeholder ?? "Alege oraș…"}</option>
+      {cities.map((c) => (
+        <option key={c} value={c}>{c}</option>
+      ))}
+      <option value="__custom__">Alt oraș (tastează manual)…</option>
+    </select>
+  );
+}
 
 function EditBookingModal({
   booking,

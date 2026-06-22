@@ -84,6 +84,7 @@ export function TripPicker({
   selectedSeats,
   onSelect,
   allowedWeekday,
+  parcelMode = false,
 }: {
   title: string;
   subtitle?: string;
@@ -99,6 +100,10 @@ export function TripPicker({
    *  cursele care nu cad în ziua respectivă (backend-ul ar trebui să genereze
    *  doar zilele corecte; filtrul ăsta acoperă date vechi/de test din DB). */
   allowedWeekday?: number | null;
+  /** Coletele călătoresc cu autocarul de pasageri — folosesc același calendar
+   *  de curse dar nu rezervă scaune. Cu `parcelMode`, ascundem SeatPicker-ul
+   *  și nu mai cerem `maxSeats` să fie sincronizat cu nimic. */
+  parcelMode?: boolean;
 }) {
   const hasRoute = Boolean(originCityId && destCityId);
   const [trips, setTrips] = useState<PublicTrip[] | null>(null);
@@ -396,7 +401,7 @@ export function TripPicker({
       )}
 
       <AnimatePresence>
-        {selectedTripId && (
+        {selectedTripId && !parcelMode && (
           <motion.div
             key="seat-picker"
             initial={{ opacity: 0, height: 0 }}

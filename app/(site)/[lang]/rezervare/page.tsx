@@ -407,11 +407,14 @@ function RezervareContent() {
           : {
               type: "parcel",
               // Sursă unică pentru oraș: pasul Direcție (from/to). Orașul
-              // expeditorului / destinatarului din PartyForm e doar fallback
-              // dacă userul vine pe URL fără to (rar) — și e validat acolo.
+              // expeditorului / destinatarului din PartyForm e doar fallback.
               departureCity: fromCityName || sender.city,
               arrivalCity: toCityName || recipient.city,
-              departureDate: date || new Date().toISOString().slice(0, 10),
+              // Data + ora coletului = plecarea cursei pe care a ales-o.
+              // Cădere pe data dintr-un input liber doar dacă userul (rare!)
+              // n-a putut alege o cursă (rută fără program activ).
+              departureDate: outboundTripInfo?.departureAt || date || new Date().toISOString().slice(0, 10),
+              tripId: outboundTripId || undefined,
               firstName: sender.name.split(" ")[0] || sender.name,
               lastName: sender.name.split(" ").slice(1).join(" ") || "—",
               email: sender.email,
@@ -573,19 +576,48 @@ function RezervareContent() {
                   ) : (
                     <>
                       {step === 0 && (
-                        <DirectionStep
-                          from={from}
-                          to={to}
-                          trip={trip}
-                          onFrom={setFrom}
-                          onTo={setTo}
-                          onTrip={setTrip}
-                          onSwap={swapDirection}
-                          locale={locale}
-                          fromHide={fromHide}
-                          toHide={toHide}
-                          hideTrip
-                        />
+                        <div className="space-y-4">
+                          <DirectionStep
+                            from={from}
+                            to={to}
+                            trip={trip}
+                            onFrom={setFrom}
+                            onTo={setTo}
+                            onTrip={setTrip}
+                            onSwap={swapDirection}
+                            locale={locale}
+                            fromHide={fromHide}
+                            toHide={toHide}
+                            hideTrip
+                          />
+                          {/* Coletele călătoresc cu autocarul de pasageri. Reutilizăm
+                              același TripPicker (cu parcelMode → fără seat picker)
+                              ca data și ora afișate pe email/bilet să fie cele reale
+                              ale cursei, nu un input liber al userului. */}
+                          {originCityId && destCityId && (
+                            <TripPicker
+                              title="Alege ziua expedierii"
+                              subtitle="Coletul pleacă cu cursa de pasageri"
+                              originCityId={originCityId}
+                              destCityId={destCityId}
+                              maxSeats={1}
+                              selectedTripId={outboundTripId}
+                              selectedSeats={[]}
+                              parcelMode
+                              onSelect={(tripId, _seats, tripInfo) => {
+                                setOutboundTripId(tripId);
+                                if (tripInfo !== undefined) setOutboundTripInfo(tripInfo ?? null);
+                              }}
+                              allowedWeekday={
+                                matchedCountry
+                                  ? direction === "md-to-eu"
+                                    ? getOutboundWeekday(matchedCountry.slug)
+                                    : getReturnWeekday(matchedCountry.slug)
+                                  : null
+                              }
+                            />
+                          )}
+                        </div>
                       )}
                       {step === 1 && <PartyForm role="Expeditor" data={sender} onChange={setSender} />}
                       {step === 2 && <PartyForm role="Destinatar" data={recipient} onChange={setRecipient} />}
@@ -1015,18 +1047,9 @@ function PartyForm({
             className="simple-input"
           />
         </SimpleField>
-        {/* Orașul destinatarului = orașul de destinație ales la pasul Direcție.
-            Nu mai cerem să fie tastat încă o dată (cauza apariției "Recke" în
-            DB: clientul tasta un oraș liber care nu se valida nicăieri). */}
-        {isSender && (
-          <SimpleField label="Oraș" icon={<MapPin className="h-4 w-4" />}>
-            <input
-              value={data.city}
-              onChange={(e) => setField("city", e.target.value)}
-              className="simple-input"
-            />
-          </SimpleField>
-        )}
+        {/* Orașul a fost ales la pasul Direcție atât pentru expeditor (originea
+            cursei) cât și pentru destinatar (destinația cursei). Nu mai cerem
+            re-tastarea — cauza apariției "Recke" liber în DB era exact asta. */}
       </div>
       <div className="mt-4">
         <SimpleField label="Adresă completă" icon={<MapPin className="h-4 w-4" />}>

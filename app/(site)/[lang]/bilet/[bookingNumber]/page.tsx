@@ -494,17 +494,28 @@ export default function TicketPage() {
           </Button>
         </div>
 
-        {/* Reminders */}
+        {/* Reminders — text diferit pentru pasager vs. colet. Coletele sunt
+            ridicate/livrate de șofer, nu cer pașaport, n-au bagaj sau facilități. */}
         <div className="no-print mt-6 rounded-2xl border border-[color:var(--navy-200,rgba(20,58,122,0.18))] bg-[color:var(--navy-50)] p-5 text-sm text-[color:var(--navy-900)]">
           <div className="font-[family-name:var(--font-montserrat)] font-bold mb-2">
             Informații importante
           </div>
           <ul className="space-y-1 text-[color:var(--ink-700)]">
-            <li>• Ajunge la îmbarcare cu 30 de minute înainte.</li>
-            <li>• Ai nevoie de act de identitate / pașaport valabil.</li>
-            <li>• Pentru modificări sau anulări: {contactInfo.phone}.</li>
-            <li>• Bagaj gratuit inclus: 35 kg.</li>
-            <li>• La bord: Internet Starlink, prânz, ceai/cafea naturală, însoțitoare 24/24.</li>
+            {isParcel ? (
+              <>
+                <li>• Coletul pleacă cu cursa de pasageri — același autocar, aceeași dată.</li>
+                <li>• Te sunăm cu o zi înainte pentru a confirma locul de predare.</li>
+                <li>• Pentru modificări sau anulări: {contactInfo.phone}.</li>
+              </>
+            ) : (
+              <>
+                <li>• Ajunge la îmbarcare cu 30 de minute înainte.</li>
+                <li>• Ai nevoie de act de identitate / pașaport valabil.</li>
+                <li>• Pentru modificări sau anulări: {contactInfo.phone}.</li>
+                <li>• Bagaj gratuit inclus: 35 kg.</li>
+                <li>• La bord: Internet Starlink, prânz, ceai/cafea naturală, însoțitoare 24/24.</li>
+              </>
+            )}
           </ul>
         </div>
       </div>
