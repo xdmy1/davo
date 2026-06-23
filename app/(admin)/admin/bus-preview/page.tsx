@@ -113,6 +113,35 @@ const ASTROMEGA_DECK2 = fromGrid(
 // Numerotare DREAPTA → STÂNGA (convenția europeană — ușa de îmbarcare pe
 // dreapta).
 
+/* ──────────────── Autobuz 3: Van Hool Altano · DAW 77 ──────────────── */
+//
+// Single-deck standard. Șofer + însoțitor în față, 12 rânduri pasageri în
+// configurație 2 + 2 (24 stânga + 24 dreapta) și un rând spate cu doar 4
+// locuri (2 + gol mijloc + 2). Total: 52 locuri.
+// Numerotare DREAPTA → STÂNGA (convenția europeană).
+
+const ALTANO_DECK = fromGrid(
+  [
+    // 5 coloane: 2 pasageri | culoar | 2 pasageri
+    ".D.C.", // șofer + însoțitor
+    "..A..", // separator
+    "SSASS", // rândul 1
+    "SSASS", // rândul 2
+    "SSASS", // rândul 3
+    "SSASS", // rândul 4
+    "SSASS", // rândul 5
+    "SSASS", // rândul 6
+    "SSASS", // rândul 7
+    "SSASS", // rândul 8
+    "SSASS", // rândul 9
+    "SSASS", // rândul 10
+    "SSASS", // rândul 11
+    "SSASS", // rândul 12
+    "SS.SS", // rândul spate: doar 4 locuri (gol pe mijloc)
+  ],
+  "rtl",
+);
+
 const ALICRON_DECK = fromGrid(
   [
     // 5 coloane: 2 pasageri | culoar | 2 pasageri
@@ -155,6 +184,17 @@ export default function BusPreviewPage() {
           { label: "Etajul 1 (VIP)", layout: ASTROMEGA_DECK1 },
           { label: "Etajul 2 (standard)", layout: ASTROMEGA_DECK2 },
         ]}
+      />
+
+      <BusCard
+        name="Van Hool Altano"
+        plate="DAW 77"
+        notes={[
+          "Single-deck standard. 12 rânduri pasageri (2+2) = 24 stânga + 24 dreapta.",
+          "Rândul spate cu doar 4 locuri (gol pe mijloc).",
+          "Total: 52 locuri (1-52).",
+        ]}
+        decks={[{ label: "Etaj unic", layout: ALTANO_DECK }]}
       />
 
       <BusCard

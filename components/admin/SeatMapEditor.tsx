@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { SeatKind } from "@/lib/adminMock";
-import { Armchair, User, Bath, Minus } from "lucide-react";
+import { Armchair, User, Bath, Minus, Coffee, MoveVertical, Square, Headset } from "lucide-react";
 
 // Ciclu pentru editorul vizual de layout: click pe celulă comută la următorul
 // kind. Pentru editorul existent (admin → autocare), păstrăm doar tipurile
@@ -41,6 +41,14 @@ function cellClasses(kind: SeatKind) {
       return "bg-blue-100 border-blue-300 text-blue-700";
     case "driver":
       return "bg-slate-900 border-slate-900 text-white";
+    case "crew":
+      return "bg-slate-100 border-slate-400 text-slate-700";
+    case "stairs":
+      return "bg-amber-50 border-amber-300 text-amber-700";
+    case "table":
+      return "bg-slate-100 border-slate-300 text-slate-500";
+    case "cafe":
+      return "bg-orange-50 border-orange-300 text-orange-700";
     case "empty":
       return "bg-transparent border-dashed border-slate-200 text-slate-300";
   }
@@ -56,6 +64,14 @@ function CellIcon({ kind }: { kind: SeatKind }) {
       return <Bath className="h-4 w-4" />;
     case "driver":
       return <User className="h-4 w-4" />;
+    case "crew":
+      return <Headset className="h-4 w-4" />;
+    case "stairs":
+      return <MoveVertical className="h-4 w-4" />;
+    case "table":
+      return <Square className="h-4 w-4 opacity-60" />;
+    case "cafe":
+      return <Coffee className="h-4 w-4" />;
     case "empty":
       return null;
   }
