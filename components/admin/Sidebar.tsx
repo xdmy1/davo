@@ -14,6 +14,7 @@ import {
   Settings,
   Globe,
   X,
+  Armchair,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessUI, type Role } from "@/lib/permissions";
@@ -31,6 +32,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     items: [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { label: "Rezervări", href: "/admin/bookings", icon: Ticket },
+      { label: "Schemă autocar", href: "/admin/seats", icon: Armchair },
       { label: "Curse", href: "/admin/trips", icon: CalendarClock },
     ],
   },

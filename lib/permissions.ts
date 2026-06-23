@@ -12,7 +12,7 @@ export type Role = "admin" | "admin2";
 // Paths de UI vizibile fiecărui rol (prefix-match, fără query string).
 const UI_PATHS_BY_ROLE: Record<Role, string[]> = {
   admin: ["/admin"], // tot
-  admin2: ["/admin/bookings", "/admin/clients"],
+  admin2: ["/admin/bookings", "/admin/clients", "/admin/seats"],
 };
 
 // API paths permise fiecărui rol (prefix-match).
