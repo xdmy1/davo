@@ -97,12 +97,13 @@ const ASTROMEGA_DECK2 = fromGrid(
   "rtl",
 );
 
-/* ──────────────── Autobuz 2: Van Hool TX 16 Alicron · ZNQ 374 ──────────────── */
+/* ──────────────── Autobuz 2: Van Hool TX 16 Alicron · ZNQ 874 ──────────────── */
 //
-// Single-deck, 4 coloane standard (2 + 2). Total: 51 locuri. WC + scară
-// (ieșire) împreună pe DREAPTA-mijloc între cele 2 jumătăți. Rândul scurt
-// din față zona mijlocului are doar 2 locuri pe stânga (lipsesc 2 pe dreapta,
-// fac loc casetei WC). Ultimul rând spate are 5 locuri pe toată lățimea.
+// Single-deck, 4 coloane standard (2 + 2). Total: 51 locuri.
+// Două ieșiri (simbol săgeți verticale) pe DREAPTA extremă: una sus
+// imediat după șofer, alta la mijloc lângă WC. Rândul cu WC are 2 locuri
+// pe stânga + WC + ieșire pe dreapta (fără locuri pe partea dreaptă).
+// Ultimul rând spate are 5 locuri pe toată lățimea.
 // Numerotare DREAPTA → STÂNGA (convenția europeană — ușa de îmbarcare pe
 // dreapta).
 
@@ -110,20 +111,19 @@ const ALICRON_DECK = fromGrid(
   [
     // 5 coloane: 2 pasageri | culoar | 2 pasageri
     ".D.C.", // sus: șofer + însoțitor
-    "..A..", // separator
+    "..A.X", // IEȘIRE 1 sus-dreapta (col 4)
     "SSASS", // rândul 1
     "SSASS", // rândul 2
     "SSASS", // rândul 3
     "SSASS", // rândul 4
     "SSASS", // rândul 5
     "SSASS", // rândul 6
-    "SS...", // rândul 7: doar 2 locuri pe stânga (locurile dreapta scoase)
-    "..AWX", // mijloc: gol stânga, culoar, WC + scară pe DREAPTA
-    "SSASS", // rândul 8 (după WC)
+    "SS.WX", // mijloc: 2 locuri stânga + WC + IEȘIRE 2 (col 4)
+    "SSASS", // rândul 7
+    "SSASS", // rândul 8
     "SSASS", // rândul 9
     "SSASS", // rândul 10
     "SSASS", // rândul 11
-    "SSASS", // rândul 12
     "SSSSS", // ultimul rând spate: 5 locuri pe toată lățimea
   ],
   "rtl",
@@ -153,10 +153,11 @@ export default function BusPreviewPage() {
 
       <BusCard
         name="Van Hool TX 16 Alicron"
-        plate="ZNQ 374"
+        plate="ZNQ 874"
         notes={[
-          "Single-deck, 4 coloane standard.",
-          "WC + scară (ieșire) la mijloc între cele 2 jumătăți.",
+          "Single-deck, 4 coloane standard. 51 locuri.",
+          "2 ieșiri pe DREAPTA extremă: una sus-dreapta lângă șofer, una la mijloc lângă WC.",
+          "Ultim rând spate cu 5 locuri pe toată lățimea.",
         ]}
         decks={[{ label: "Etaj unic", layout: ALICRON_DECK }]}
       />
