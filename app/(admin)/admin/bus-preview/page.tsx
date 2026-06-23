@@ -48,41 +48,54 @@ function countSeats(layout: SeatLayout): number {
 
 /* ──────────────── Autobuz 1: Van Hool TDX 27 Astromega · DAW 777 ──────────────── */
 //
-// Configurație 2 etaje. Etajul inferior = zonă VIP cu măsuțe + café + WC +
-// scară. Etajul superior = 4 coloane standard cu 2 ieșiri (scări) laterale.
-// Total: ~78 locuri. Numerotare: stânga → dreapta, sus → jos, etaj 1 înainte
-// de etaj 2.
+// Două etaje. Etajul inferior = VIP cu măsuțe face-to-face între primele 2
+// rânduri (locurile 1-8 sunt premium +30 €/£), café în față + WC + scară jos.
+// Etajul superior = 4 coloane standard, primele 4 locuri la geam sunt
+// premium +30 €/£, 2 ieșiri intercalate, rând spate cu 5 locuri.
+// Numerotare DREAPTA → STÂNGA pe fiecare rând (convenția UE).
 
-const ASTROMEGA_DECK1 = fromGrid([
-  // 5 coloane: 2 pasageri | culoar | 2 pasageri
-  ".D.C.", // șofer + însoțitor (echipaj)
-  "..A..", // separator (front bus)
-  "FFAFF", // două zone CAFÉ față-în-față (auxiliar)
-  "SSTSS", // rândul 1 VIP cu masă: 1 2 | T | 3 4
-  "SSASS", // rândul 2 VIP:           5 6 | 7 8
-  "SSTSS", // rândul 3 VIP cu masă:   9 10 | T | 11 12
-  "SSASS", // rândul 4 VIP:           13 14 | 15 16
-  "SSASS", // rândul 5 VIP:           17 18 | 19 20
-  "XWA..", // jos stânga: scară (←) + WC, dreapta gol
-]);
+const ASTROMEGA_DECK1 = fromGrid(
+  [
+    // 5 coloane: 2 pasageri | culoar | 2 pasageri
+    ".D.C.", // șofer + însoțitor (echipaj)
+    "..A..", // separator (front bus)
+    "FFAFF", // două zone CAFÉ față-în-față (auxiliar)
+    "SSASS", // rândul 1 VIP: locurile 1-4 (face-to-face cu rândul 2)
+    "TTATT", // masă orizontală între cele 2 rânduri VIP (8 locuri premium)
+    "SSASS", // rândul 2 VIP: locurile 5-8 (orientate spre rândul 1)
+    "SSASS", // rândul 3: locurile 9-12
+    "SSASS", // rândul 4: locurile 13-16
+    "SSASS", // rândul 5: locurile 17-20
+    "SSASS", // rândul 6 NOU: locurile 21-24
+    "XWA..", // jos: scară (sus) + WC, restul gol
+  ],
+  "rtl",
+);
 
-const ASTROMEGA_DECK2 = fromGrid([
-  // 5 coloane: 2 pasageri | culoar | 2 pasageri
-  "SSASS", // rândul 1 (premium 150€): 21 22 | 23 24
-  "SSASS", // 25 26 | 27 28
-  "SSASS", // 29 30 | 31 32
-  "SSXSS", // mijloc cu scară (ieșire dreaptă) între locuri pe culoar
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSXSS", // a doua scară (ieșire)
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSSSS", // ultimul rând (5 locuri lățime totală, fără culoar)
-]);
+const ASTROMEGA_DECK2 = fromGrid(
+  [
+    // 5 coloane: 2 pasageri | culoar | 2 pasageri
+    "SSASS", // rândul 1: locuri 1-4 (premium +30, toate 4 la geam)
+    "SSASS", // rândul 2: 5-8
+    "SSASS", // rândul 3: 9-12
+    "SSASS", // rândul 4: 13-16
+    "..X..", // IEȘIRE 1 (după 4 rânduri) — scară spre etaj 1, fără seats
+    "SSASS", // rândul 5: 17-20
+    "SSASS", // rândul 6: 21-24
+    "SSASS", // rândul 7: 25-28
+    "SSASS", // rândul 8: 29-32
+    "..X..", // IEȘIRE 2 (după alte 4 rânduri)
+    "SSASS", // rândul 9: 33-36
+    "SSASS", // rândul 10: 37-40
+    "SSASS", // rândul 11: 41-44
+    "SSASS", // rândul 12: 45-48
+    "SSASS", // rândul 13 NOU: 49-52
+    "SSASS", // rândul 14 NOU: 53-56
+    "SSASS", // rândul 15 NOU: 57-60
+    "SSSSS", // rândul spate: 61-65 (5 locuri pe toată lățimea)
+  ],
+  "rtl",
+);
 
 /* ──────────────── Autobuz 2: Van Hool TX 16 Alicron · ZNQ 374 ──────────────── */
 //
@@ -128,9 +141,9 @@ export default function BusPreviewPage() {
         name="Van Hool TDX 27 Astromega"
         plate="DAW 777"
         notes={[
-          "Etajul 1 — zonă VIP cu măsuțe + café + WC + scară jos.",
-          "Etajul 2 — 4 coloane standard, 2 ieșiri (scări).",
-          "Numerotare stânga → dreapta, etajul 1 înainte de etajul 2.",
+          "Etajul 1 — VIP: primele 2 rânduri (locurile 1-8) au masă între ele (face-to-face, +30 €/£). Café în față, WC + scară jos. 24 locuri.",
+          "Etajul 2 — standard: primele 4 locuri sunt premium la geam (+30 €/£). 2 ieșiri intercalate (după rândurile 4 și 8). Rândul spate are 5 locuri pe lățime. 65 locuri.",
+          "Numerotare dreapta → stânga pe fiecare rând. Total: 89 locuri.",
         ]}
         decks={[
           { label: "Etajul 1 (VIP)", layout: ASTROMEGA_DECK1 },
