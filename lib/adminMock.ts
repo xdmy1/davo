@@ -2,7 +2,21 @@
 // Numele cu prefixul `Mock` sunt păstrate pentru a minimiza churn-ul în imports —
 // semantica acum este "tipul pe care îl returnează API-ul".
 
-export type SeatKind = "seat" | "aisle" | "wc" | "driver" | "empty";
+// Elemente non-scaun pentru schemele realiste de autocar:
+// - stairs: scară între etaje (sau spre nivelul de bagaje)
+// - table: măsuță VIP (între locuri orientate față-în-față)
+// - cafe: zonă de café/bar (auxiliar pe etajul VIP)
+// - crew: scaun rezervat pentru însoțitorul de bord (nu se vinde)
+export type SeatKind =
+  | "seat"
+  | "aisle"
+  | "wc"
+  | "driver"
+  | "empty"
+  | "stairs"
+  | "table"
+  | "cafe"
+  | "crew";
 
 export type SeatLayout = { rows: number; cols: number; cells: SeatKind[] };
 
@@ -70,7 +84,6 @@ export type EmailStatus = "sent" | "failed" | "queued" | "scheduled";
 export type EmailType =
   | "confirmation"
   | "reminder_24h"
-  | "reminder_2h"
   | "cancellation";
 
 export type MockEmail = {

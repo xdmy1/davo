@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { SeatKind, SeatLayout } from "@/lib/adminMock";
-import { Armchair, Bath, Minus, User as UserIcon } from "lucide-react";
+import { Armchair, Bath, Minus, User as UserIcon, Coffee, MoveVertical, Square, Headset } from "lucide-react";
 
 export function SeatPicker({
   layout,
@@ -163,6 +163,10 @@ function Cell({
         kind === "aisle" && "border-dashed border-[color:var(--ink-200)] bg-[color:var(--ink-50)] text-[color:var(--ink-400)] cursor-default",
         kind === "wc" && "border-blue-300 bg-blue-100 text-blue-700 cursor-default",
         kind === "driver" && "border-[color:var(--navy-900)] bg-[color:var(--navy-900)] text-white cursor-default",
+        kind === "crew" && "border-[color:var(--navy-700)] bg-[color:var(--navy-50)] text-[color:var(--navy-900)] cursor-default",
+        kind === "stairs" && "border-amber-300 bg-amber-50 text-amber-700 cursor-default",
+        kind === "table" && "border-[color:var(--ink-300,rgba(11,38,83,0.18))] bg-[color:var(--ink-100)] text-[color:var(--ink-500)] cursor-default",
+        kind === "cafe" && "border-orange-300 bg-orange-50 text-orange-700 cursor-default",
         kind === "empty" && "border-dashed border-[color:var(--ink-200)] bg-transparent cursor-default",
         kind === "seat" && !taken && !selected &&
           "border-[color:var(--navy-500)]/40 bg-white text-[color:var(--navy-900)] hover:border-[color:var(--red-400)] hover:bg-[color:var(--red-50)] cursor-pointer",
@@ -197,6 +201,14 @@ function CellIcon({ kind }: { kind: SeatKind }) {
       return <Bath className="h-4 w-4" />;
     case "driver":
       return <UserIcon className="h-4 w-4" />;
+    case "crew":
+      return <Headset className="h-4 w-4" />;
+    case "stairs":
+      return <MoveVertical className="h-4 w-4" />;
+    case "table":
+      return <Square className="h-4 w-4 opacity-60" />;
+    case "cafe":
+      return <Coffee className="h-4 w-4" />;
     case "empty":
       return null;
   }

@@ -5,12 +5,20 @@ import { cn } from "@/lib/utils";
 import type { SeatKind } from "@/lib/adminMock";
 import { Armchair, User, Bath, Minus } from "lucide-react";
 
+// Ciclu pentru editorul vizual de layout: click pe celulă comută la următorul
+// kind. Pentru editorul existent (admin → autocare), păstrăm doar tipurile
+// "clasice" — cele specializate (cafe/table/stairs/crew) se setează prin
+// schițele predefinite în /admin/bus-preview, nu prin click manual.
 const cycle: Record<SeatKind, SeatKind> = {
   seat: "aisle",
   aisle: "wc",
   wc: "empty",
   empty: "driver",
   driver: "seat",
+  crew: "seat",
+  cafe: "seat",
+  table: "seat",
+  stairs: "seat",
 };
 
 type Layout = { rows: number; cols: number; cells: SeatKind[] };
