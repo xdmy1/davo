@@ -27,8 +27,20 @@ export function SeatPicker({
   const occupied = useMemo(() => new Set(occupiedSeats), [occupiedSeats]);
 
   const seatNumbers = useMemo(() => {
+    const dir = layout.direction ?? "ltr";
+    const result: (number | null)[] = new Array(layout.cells.length).fill(null);
     let n = 1;
-    return layout.cells.map((c) => (c === "seat" ? n++ : null));
+    for (let r = 0; r < layout.rows; r++) {
+      const cols = layout.cols;
+      const range = dir === "rtl"
+        ? Array.from({ length: cols }, (_, k) => cols - 1 - k) // dreapta → stânga
+        : Array.from({ length: cols }, (_, k) => k);           // stânga → dreapta
+      for (const c of range) {
+        const idx = r * cols + c;
+        if (layout.cells[idx] === "seat") result[idx] = n++;
+      }
+    }
+    return result;
   }, [layout]);
 
   const toggle = (num: number) => {

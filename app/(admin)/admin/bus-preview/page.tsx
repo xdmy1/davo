@@ -14,7 +14,7 @@ import type { SeatKind, SeatLayout } from "@/lib/adminMock";
 // celulă. Mai ușor de citit decât arrays imense.
 //   S = seat, A = aisle, W = wc, D = driver, C = crew, T = table, F = cafe,
 //   X = stairs, . = empty
-function fromGrid(grid: string[]): SeatLayout {
+function fromGrid(grid: string[], direction: "ltr" | "rtl" = "ltr"): SeatLayout {
   const rows = grid.length;
   const cols = grid[0]?.length ?? 0;
   const map: Record<string, SeatKind> = {
@@ -39,7 +39,7 @@ function fromGrid(grid: string[]): SeatLayout {
       cells.push(k);
     }
   }
-  return { rows, cols, cells };
+  return { rows, cols, cells, direction };
 }
 
 function countSeats(layout: SeatLayout): number {
@@ -86,29 +86,35 @@ const ASTROMEGA_DECK2 = fromGrid([
 
 /* ──────────────── Autobuz 2: Van Hool TX 16 Alicron · ZNQ 374 ──────────────── */
 //
-// Single-deck, 4 coloane standard (2 + 2). Total: ~50 locuri. Mijloc cu WC +
-// scară (ieșire) între cele 2 jumătăți. Numerotare: stânga → dreapta.
+// Single-deck, 4 coloane standard (2 + 2). Total: 51 locuri. WC + scară
+// (ieșire) împreună pe DREAPTA-mijloc între cele 2 jumătăți. Rândul scurt
+// din față zona mijlocului are doar 2 locuri pe stânga (lipsesc 2 pe dreapta,
+// fac loc casetei WC). Ultimul rând spate are 5 locuri pe toată lățimea.
+// Numerotare DREAPTA → STÂNGA (convenția europeană — ușa de îmbarcare pe
+// dreapta).
 
-const ALICRON_DECK = fromGrid([
-  // 5 coloane: 2 pasageri | culoar | 2 pasageri
-  ".D.C.", // sus: șofer + însoțitor
-  "..A..", // separator
-  "SSASS", // rândul 1: 1 2 | 3 4
-  "SSASS", // rândul 2: 5 6 | 7 8
-  "SSASS", // rândul 3
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  ".WAX.", // mijloc: WC + scară (ieșire)
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSASS",
-  "SSASS", // ultimul rând: 4 locuri
-]);
+const ALICRON_DECK = fromGrid(
+  [
+    // 5 coloane: 2 pasageri | culoar | 2 pasageri
+    ".D.C.", // sus: șofer + însoțitor
+    "..A..", // separator
+    "SSASS", // rândul 1
+    "SSASS", // rândul 2
+    "SSASS", // rândul 3
+    "SSASS", // rândul 4
+    "SSASS", // rândul 5
+    "SSASS", // rândul 6
+    "SS...", // rândul 7: doar 2 locuri pe stânga (locurile dreapta scoase)
+    "..AWX", // mijloc: gol stânga, culoar, WC + scară pe DREAPTA
+    "SSASS", // rândul 8 (după WC)
+    "SSASS", // rândul 9
+    "SSASS", // rândul 10
+    "SSASS", // rândul 11
+    "SSASS", // rândul 12
+    "SSSSS", // ultimul rând spate: 5 locuri pe toată lățimea
+  ],
+  "rtl",
+);
 
 export default function BusPreviewPage() {
   return (

@@ -18,7 +18,16 @@ export type SeatKind =
   | "cafe"
   | "crew";
 
-export type SeatLayout = { rows: number; cols: number; cells: SeatKind[] };
+export type SeatLayout = {
+  rows: number;
+  cols: number;
+  cells: SeatKind[];
+  // Direcția de numerotare în interiorul fiecărui rând:
+  //  - "ltr" (default): primul scaun stânga-sus = 1, apoi spre dreapta.
+  //  - "rtl": primul scaun dreapta-sus = 1 (convenția europeană uzuală
+  //    pentru autocarele cu ușa de îmbarcare pe partea dreaptă).
+  direction?: "ltr" | "rtl";
+};
 
 export type MockRoute = {
   id: string;
