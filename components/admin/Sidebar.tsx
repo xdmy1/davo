@@ -42,7 +42,6 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { label: "Țări & program", href: "/admin/countries", icon: Globe },
       { label: "Rute", href: "/admin/routes", icon: RouteIcon },
       { label: "Autocare", href: "/admin/buses", icon: BusIcon },
-      { label: "Schițe noi autocare", href: "/admin/bus-preview", icon: Armchair },
       { label: "Clienți", href: "/admin/clients", icon: Users },
     ],
   },
