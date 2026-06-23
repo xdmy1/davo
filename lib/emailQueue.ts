@@ -218,6 +218,13 @@ async function sendJob(job: EmailJob & { booking: Booking }) {
   const urls = await buildResponseUrls(booking.bookingNumber);
 
   if (type === "confirmation") {
+    // Bus + plate de pe cursa dus, ca să apară în email (rândul "Autocar").
+    const bus = booking.tripId
+      ? await prisma.trip.findUnique({
+          where: { id: booking.tripId },
+          select: { bus: { select: { label: true, plate: true } } },
+        })
+      : null;
     const result = await sendBookingConfirmation({
       bookingNumber: booking.bookingNumber,
       type: booking.type as "passenger" | "parcel",
@@ -237,6 +244,8 @@ async function sendJob(job: EmailJob & { booking: Booking }) {
       currency: booking.currency,
       ticketUrl: booking.ticketUrl || "",
       payMethod: booking.payMethod,
+      busLabel: bus?.bus.label ?? null,
+      busPlate: bus?.bus.plate ?? null,
       confirmUrl: urls.confirmUrl,
       cancelUrl: urls.cancelUrl,
       trackUrl: urls.trackUrl,

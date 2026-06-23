@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { SeatLayout } from "@/lib/adminMock";
+import type { BusLayout, MultiDeckLayout, SeatLayout } from "@/lib/adminMock";
 
-function safeLayout(raw: string): SeatLayout {
+function safeLayout(raw: string): BusLayout {
   try {
-    const l = JSON.parse(raw) as SeatLayout;
-    if (l && Array.isArray(l.cells)) return l;
+    const l = JSON.parse(raw);
+    if (l && Array.isArray((l as MultiDeckLayout).decks)) {
+      return l as MultiDeckLayout;
+    }
+    if (l && Array.isArray((l as SeatLayout).cells)) {
+      return l as SeatLayout;
+    }
   } catch {}
   return { rows: 1, cols: 1, cells: ["empty"] };
 }
@@ -36,6 +41,7 @@ export async function GET(
           select: {
             id: true,
             label: true,
+            plate: true,
             totalSeats: true,
             layoutJson: true,
           },
@@ -70,6 +76,7 @@ export async function GET(
         bus: {
           id: trip.bus.id,
           label: trip.bus.label,
+          plate: trip.bus.plate,
           totalSeats: trip.bus.totalSeats,
           layout,
         },

@@ -17,8 +17,8 @@ import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import { statusMeta } from "@/lib/adminLabels";
 import { destinations, moldovanCities } from "@/lib/data";
-import { SeatPicker } from "@/components/booking/SeatPicker";
-import type { SeatKind } from "@/lib/adminMock";
+import { BusSeatMap } from "@/components/booking/BusSeatMap";
+import type { BusLayout } from "@/lib/adminMock";
 
 type Booking = {
   id: string;
@@ -605,7 +605,7 @@ function ManualBookingModal({
     };
   }, []);
   type TripDetail = {
-    layout: { rows: number; cols: number; cells: SeatKind[] };
+    layout: BusLayout;
     occupiedSeats: number[];
   };
   const [tripDetail, setTripDetail] = useState<TripDetail | null>(null);
@@ -1019,7 +1019,7 @@ function ManualBookingModal({
                     <div className="mb-2 text-[11px] text-slate-600">
                       Alege exact <strong>{maxSeats}</strong> loc{maxSeats === 1 ? "" : "uri"} (= {adults} adulți + {children} copii). Selectate: {selectedSeats.length}. Click pe locurile ocupate ca să vezi cine le-a rezervat.
                     </div>
-                    <SeatPicker
+                    <BusSeatMap
                       layout={tripDetail.layout}
                       occupiedSeats={tripDetail.occupiedSeats}
                       selected={selectedSeats}

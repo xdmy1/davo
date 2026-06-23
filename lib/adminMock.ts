@@ -33,6 +33,29 @@ export type SeatLayout = {
   seatStart?: number;
 };
 
+// Autocarele pot avea mai multe etaje (ex: Van Hool Astromega). Fiecare etaj
+// e un SeatLayout independent, cu propria orientare și interval de scaune.
+// Pentru autocarele single-deck folosim direct SeatLayout (back-compat).
+export type MultiDeckLayout = {
+  decks: { label?: string; layout: SeatLayout }[];
+};
+
+export type BusLayout = SeatLayout | MultiDeckLayout;
+
+export function isMultiDeck(b: BusLayout): b is MultiDeckLayout {
+  return Array.isArray((b as MultiDeckLayout).decks);
+}
+
+export function countSeatsInLayout(b: BusLayout): number {
+  if (isMultiDeck(b)) {
+    return b.decks.reduce(
+      (s, d) => s + d.layout.cells.filter((c) => c === "seat").length,
+      0,
+    );
+  }
+  return b.cells.filter((c) => c === "seat").length;
+}
+
 export type MockRoute = {
   id: string;
   origin: string;

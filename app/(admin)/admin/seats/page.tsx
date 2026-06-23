@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Armchair, RefreshCw, Bus as BusIcon, ArrowLeftRight } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import EmptyState from "@/components/admin/EmptyState";
-import { SeatPicker } from "@/components/booking/SeatPicker";
+import { BusSeatMap } from "@/components/booking/BusSeatMap";
 import {
   CountryCityPicker,
   complementHide,
   getCountryFromValue,
 } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
-import type { SeatLayout } from "@/lib/adminMock";
+import type { BusLayout } from "@/lib/adminMock";
 
 // Pagină de vizualizare schemă autocar: admin / admin2 selectează ruta și
 // cursa, vede layout-ul autocarului cu locurile ocupate. Click pe un loc
@@ -69,7 +69,7 @@ export default function SeatsPage() {
   const [tripId, setTripId] = useState<string>("");
 
   const [tripDetail, setTripDetail] = useState<{
-    layout: SeatLayout;
+    layout: BusLayout;
     occupiedSeats: number[];
   } | null>(null);
   const [seatInfoMap, setSeatInfoMap] = useState<Record<number, SeatInfo>>({});
@@ -338,7 +338,7 @@ export default function SeatsPage() {
             </p>
           </div>
 
-          <SeatPicker
+          <BusSeatMap
             layout={tripDetail.layout}
             occupiedSeats={tripDetail.occupiedSeats}
             selected={[]}

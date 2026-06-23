@@ -15,15 +15,24 @@ function generateBookingNumber(): string {
   return `DAVO-${year}-${random}`
 }
 
-function safeLayout(raw: string): SeatLayout {
+type AnyLayout = SeatLayout | { decks: { layout: SeatLayout }[] }
+
+function safeLayout(raw: string): AnyLayout {
   try {
-    const l = JSON.parse(raw) as SeatLayout
-    if (l && Array.isArray(l.cells)) return l
+    const l = JSON.parse(raw)
+    if (l && Array.isArray((l as { decks: unknown[] }).decks)) return l as AnyLayout
+    if (l && Array.isArray((l as SeatLayout).cells)) return l as SeatLayout
   } catch {}
   return { rows: 1, cols: 1, cells: ['empty'] }
 }
 
-function countSeatCells(layout: SeatLayout) {
+function countSeatCells(layout: AnyLayout): number {
+  if ('decks' in layout) {
+    return layout.decks.reduce(
+      (s, d) => s + d.layout.cells.filter((c) => c === 'seat').length,
+      0,
+    )
+  }
   return layout.cells.filter((c) => c === 'seat').length
 }
 
@@ -245,6 +254,8 @@ export async function POST(request: NextRequest) {
       currency: booking.currency,
       ticketUrl,
       payMethod: booking.payMethod,
+      busLabel: outboundTrip?.bus.label ?? null,
+      busPlate: outboundTrip?.bus.plate ?? null,
       confirmUrl: bookingResponseUrl(appUrl, booking.bookingNumber, 'confirm', confirmToken),
       cancelUrl: bookingResponseUrl(appUrl, booking.bookingNumber, 'cancel', cancelToken),
       trackUrl: `${appUrl.replace(/\/$/, '')}/livrare?nr=${booking.bookingNumber}`,

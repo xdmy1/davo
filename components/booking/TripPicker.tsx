@@ -10,10 +10,11 @@ import {
   ChevronRight,
   Clock,
   Calendar as CalendarIcon,
+  Bus as BusIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SeatLayout } from "@/lib/adminMock";
-import { SeatPicker } from "./SeatPicker";
+import { BusSeatMap } from "./BusSeatMap";
+import type { BusLayout } from "@/lib/adminMock";
 
 export type PublicTrip = {
   id: string;
@@ -22,6 +23,7 @@ export type PublicTrip = {
   status: string;
   busId: string;
   busLabel: string;
+  busPlate?: string;
   totalSeats: number;
   bookedSeats: number;
   availableSeats: number;
@@ -33,7 +35,7 @@ type TripDetail = {
   id: string;
   departureAt: string;
   arrivalAt: string;
-  bus: { id: string; label: string; totalSeats: number; layout: SeatLayout };
+  bus: { id: string; label: string; plate?: string; totalSeats: number; layout: BusLayout };
   occupiedSeats: number[];
 };
 
@@ -378,10 +380,19 @@ export function TripPicker({
                     <div className="mt-1 font-[family-name:var(--font-montserrat)] text-lg font-extrabold text-[color:var(--navy-900)]">
                       {capitalize(weekdayFmt.format(dep))} · {dateFmt.format(dep)}
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[color:var(--ink-700)]">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[color:var(--ink-700)]">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3 w-3 text-[color:var(--red-500)]" />
                         Plecare {timeFmt.format(dep)}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <BusIcon className="h-3 w-3 text-[color:var(--red-500)]" />
+                        {t.busLabel}
+                        {t.busPlate && (
+                          <span className="font-mono text-[color:var(--ink-500)]">
+                            · {t.busPlate}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -412,7 +423,7 @@ export function TripPicker({
           >
             {detailLoading && <SeatLayoutSkeleton />}
             {!detailLoading && detail && (
-              <SeatPicker
+              <BusSeatMap
                 layout={detail.bus.layout}
                 occupiedSeats={detail.occupiedSeats}
                 selected={selectedSeats}

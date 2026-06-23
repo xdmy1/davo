@@ -248,6 +248,9 @@ export type ConfirmationData = {
   // afișăm exact ce vede admin-ul (ex: "07:00" pentru Anglia DUS).
   departureTime?: string | null;
   returnTime?: string | null;
+  // Autocarul atașat la cursa dus, dacă rezervarea e legată de un Trip.
+  busLabel?: string | null;
+  busPlate?: string | null;
 };
 
 function paxLine(adults: number, children: number): string {
@@ -297,6 +300,14 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
     rows.push({ label: "Colet", value: b.parcelDetails });
   } else if (!isParcel) {
     rows.push({ label: "Pasageri", value: paxLine(b.adults, b.children) });
+  }
+  // Autocar (când rezervarea e legată de un Trip). Util la îmbarcare ca
+  // pasagerul să-l recunoască vizual + nr. înmatriculare.
+  if (b.busLabel) {
+    rows.push({
+      label: "Autocar",
+      value: b.busPlate ? `${b.busLabel} · ${b.busPlate}` : b.busLabel,
+    });
   }
   rows.push({ label: "Total", value: formatPrice(b.price, b.currency) });
   rows.push({ label: "Plata", value: payLabel(b.payMethod) });

@@ -241,7 +241,7 @@ export async function GET(req: NextRequest) {
         departureAt: true,
         arrivalAt: true,
         status: true,
-        bus: { select: { id: true, label: true, totalSeats: true } },
+        bus: { select: { id: true, label: true, plate: true, totalSeats: true } },
         _count: { select: { seatBookings: true } },
       },
     });
@@ -262,6 +262,7 @@ export async function GET(req: NextRequest) {
           status: t.status,
           busId: t.bus.id,
           busLabel: t.bus.label,
+          busPlate: t.bus.plate,
           totalSeats: t.bus.totalSeats,
           bookedSeats: booked,
           availableSeats: t.bus.totalSeats - booked,

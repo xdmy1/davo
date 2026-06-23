@@ -19,6 +19,7 @@ import {
   Share2,
   CheckCircle2,
   XCircle,
+  Bus as BusIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { contactInfo } from "@/lib/data";
@@ -51,6 +52,9 @@ interface Booking {
   // o afișăm ca atare ca să nu depindem de fusul orar al browser-ului.
   departureTime?: string | null;
   returnTime?: string | null;
+  // Autocarul atașat la cursa rezervată (label + nr. înmatriculare). Apare
+  // pe bilet ca să poată să-l identifice la îmbarcare.
+  trip?: { bus?: { label?: string | null; plate?: string | null } | null } | null;
 }
 
 function parseManualDetails(parcelDetails: string | null | undefined): {
@@ -365,6 +369,16 @@ export default function TicketPage() {
             <DetailCell icon={<Clock className="h-3.5 w-3.5" />} label="Direcție">
               {booking.tripType === "round-trip" ? "Tur-retur" : "O direcție"}
             </DetailCell>
+            {booking.trip?.bus?.label && (
+              <DetailCell icon={<BusIcon className="h-3.5 w-3.5" />} label="Autocar">
+                {booking.trip.bus.label}
+                {booking.trip.bus.plate && (
+                  <span className="ml-1.5 font-mono text-xs text-[color:var(--ink-500)]">
+                    · {booking.trip.bus.plate}
+                  </span>
+                )}
+              </DetailCell>
+            )}
             {!isParcel && booking.outboundSeats && booking.outboundSeats.length > 0 && (
               <DetailCell icon={<User className="h-3.5 w-3.5" />} label="Locuri dus">
                 {booking.outboundSeats.join(", ")}

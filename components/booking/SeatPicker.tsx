@@ -171,7 +171,10 @@ function Cell({
           : kind
       }
       className={cn(
-        "relative flex h-10 w-10 items-center justify-center rounded-md border text-[10px] font-semibold transition",
+        // Responsive: 32px pe mobil mic, 36px pe tabletă, 40px pe desktop.
+        // Astfel un autocar cu 2 etaje (până la 89 locuri în Astromega) încape
+        // fără scroll orizontal pe ecranele mici.
+        "relative flex h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 items-center justify-center rounded-md border text-[10px] font-semibold transition",
         kind === "aisle" && "border-dashed border-[color:var(--ink-200)] bg-[color:var(--ink-50)] text-[color:var(--ink-400)] cursor-default",
         kind === "wc" && "border-blue-300 bg-blue-100 text-blue-700 cursor-default",
         kind === "driver" && "border-[color:var(--navy-900)] bg-[color:var(--navy-900)] text-white cursor-default",

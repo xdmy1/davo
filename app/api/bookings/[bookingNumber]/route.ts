@@ -18,6 +18,10 @@ export async function GET(
           select: { seatNumber: true, tripId: true },
           orderBy: { seatNumber: 'asc' },
         },
+        // Bus pe cursa dus — afișat pe bilet și în emailuri ("Van Hool ·
+        // DAW 77"). Returul are alt trip, dar UI-ul afișează doar busul
+        // principal al rezervării.
+        trip: { include: { bus: { select: { label: true, plate: true } } } },
       },
     })
 
