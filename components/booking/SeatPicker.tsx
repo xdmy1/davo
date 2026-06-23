@@ -29,7 +29,7 @@ export function SeatPicker({
   const seatNumbers = useMemo(() => {
     const dir = layout.direction ?? "ltr";
     const result: (number | null)[] = new Array(layout.cells.length).fill(null);
-    let n = 1;
+    let n = layout.seatStart ?? 1;
     for (let r = 0; r < layout.rows; r++) {
       const cols = layout.cols;
       const range = dir === "rtl"

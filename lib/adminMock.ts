@@ -27,6 +27,10 @@ export type SeatLayout = {
   //  - "rtl": primul scaun dreapta-sus = 1 (convenția europeană uzuală
   //    pentru autocarele cu ușa de îmbarcare pe partea dreaptă).
   direction?: "ltr" | "rtl";
+  // Numărul primului scaun (default 1). Util pentru autocarele cu mai
+  // multe etaje afișate ca SeatLayout-uri separate: etajul 2 poate
+  // continua numerotarea de la unde s-a terminat etajul 1.
+  seatStart?: number;
 };
 
 export type MockRoute = {

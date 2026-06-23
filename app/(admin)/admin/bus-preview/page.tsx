@@ -14,7 +14,11 @@ import type { SeatKind, SeatLayout } from "@/lib/adminMock";
 // celulă. Mai ușor de citit decât arrays imense.
 //   S = seat, A = aisle, W = wc, D = driver, C = crew, T = table, F = cafe,
 //   X = stairs, . = empty
-function fromGrid(grid: string[], direction: "ltr" | "rtl" = "ltr"): SeatLayout {
+function fromGrid(
+  grid: string[],
+  direction: "ltr" | "rtl" = "ltr",
+  seatStart = 1,
+): SeatLayout {
   const rows = grid.length;
   const cols = grid[0]?.length ?? 0;
   const map: Record<string, SeatKind> = {
@@ -39,7 +43,7 @@ function fromGrid(grid: string[], direction: "ltr" | "rtl" = "ltr"): SeatLayout 
       cells.push(k);
     }
   }
-  return { rows, cols, cells, direction };
+  return { rows, cols, cells, direction, seatStart };
 }
 
 function countSeats(layout: SeatLayout): number {
@@ -74,27 +78,29 @@ const ASTROMEGA_DECK1 = fromGrid(
 
 const ASTROMEGA_DECK2 = fromGrid(
   [
-    // 5 coloane: 2 pasageri | culoar | 2 pasageri
-    "SSASS", // rândul 1: locuri 1-4 (premium +30, toate 4 la geam)
-    "SSASS", // rândul 2: 5-8
-    "SSASS", // rândul 3: 9-12
-    "SSASS", // rândul 4: 13-16
+    // 5 coloane: 2 pasageri | culoar | 2 pasageri.
+    // Numerotare continuă: etajul 1 are 1-24, deci etajul 2 începe de la 25.
+    "SSASS", // rândul 1: locuri 25-28 (premium +30, toate 4 la geam)
+    "SSASS", // rândul 2: 29-32
+    "SSASS", // rândul 3: 33-36
+    "SSASS", // rândul 4: 37-40
     "..X..", // IEȘIRE 1 (după 4 rânduri) — scară spre etaj 1, fără seats
-    "SSASS", // rândul 5: 17-20
-    "SSASS", // rândul 6: 21-24
-    "SSASS", // rândul 7: 25-28
-    "SSASS", // rândul 8: 29-32
+    "SSASS", // rândul 5: 41-44
+    "SSASS", // rândul 6: 45-48
+    "SSASS", // rândul 7: 49-52
+    "SSASS", // rândul 8: 53-56
     "..X..", // IEȘIRE 2 (după alte 4 rânduri)
-    "SSASS", // rândul 9: 33-36
-    "SSASS", // rândul 10: 37-40
-    "SSASS", // rândul 11: 41-44
-    "SSASS", // rândul 12: 45-48
-    "SSASS", // rândul 13 NOU: 49-52
-    "SSASS", // rândul 14 NOU: 53-56
-    "SSASS", // rândul 15 NOU: 57-60
-    "SSSSS", // rândul spate: 61-65 (5 locuri pe toată lățimea)
+    "SSASS", // rândul 9: 57-60
+    "SSASS", // rândul 10: 61-64
+    "SSASS", // rândul 11: 65-68
+    "SSASS", // rândul 12: 69-72
+    "SSASS", // rândul 13: 73-76
+    "SSASS", // rândul 14: 77-80
+    "SSASS", // rândul 15: 81-84
+    "SSSSS", // rândul spate: 85-89 (5 locuri pe toată lățimea)
   ],
   "rtl",
+  25, // continuă numerotarea de la etajul 1 (1-24)
 );
 
 /* ──────────────── Autobuz 2: Van Hool TX 16 Alicron · ZNQ 874 ──────────────── */
@@ -141,9 +147,9 @@ export default function BusPreviewPage() {
         name="Van Hool TDX 27 Astromega"
         plate="DAW 777"
         notes={[
-          "Etajul 1 — VIP: primele 2 rânduri (locurile 1-8) au masă între ele (face-to-face, +30 €/£). Café în față, WC + scară jos. 24 locuri.",
-          "Etajul 2 — standard: primele 4 locuri sunt premium la geam (+30 €/£). 2 ieșiri intercalate (după rândurile 4 și 8). Rândul spate are 5 locuri pe lățime. 65 locuri.",
-          "Numerotare dreapta → stânga pe fiecare rând. Total: 89 locuri.",
+          "Etajul 1 — VIP: primele 2 rânduri (locurile 1-8) au masă între ele (face-to-face, +30 €/£). Café în față, WC + scară jos. 24 locuri (1-24).",
+          "Etajul 2 — standard: locurile 25-28 sunt premium la geam (+30 €/£). 2 ieșiri intercalate (după rândurile 4 și 8). Rândul spate are 5 locuri pe lățime. 65 locuri (25-89).",
+          "Numerotare continuă dreapta → stânga pe fiecare rând, etajul 1 înainte de etajul 2. Total: 89 locuri.",
         ]}
         decks={[
           { label: "Etajul 1 (VIP)", layout: ASTROMEGA_DECK1 },
