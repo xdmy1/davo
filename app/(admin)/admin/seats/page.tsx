@@ -1,27 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Armchair, RefreshCw, Bus as BusIcon } from "lucide-react";
+import { Armchair, RefreshCw, Bus as BusIcon, ArrowLeftRight } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import EmptyState from "@/components/admin/EmptyState";
 import { SeatPicker } from "@/components/booking/SeatPicker";
+import {
+  CountryCityPicker,
+  complementHide,
+  getCountryFromValue,
+} from "@/components/booking/CountryCityPicker";
+import { useLocale } from "@/lib/i18n/client";
 import type { SeatLayout } from "@/lib/adminMock";
 
 // Pagină de vizualizare schemă autocar: admin / admin2 selectează ruta și
 // cursa, vede layout-ul autocarului cu locurile ocupate. Click pe un loc
 // ocupat → detaliile pasagerului. Nu permite rezervare (read-only).
-
-type Route = {
-  id: string;
-  origin: string;
-  destination: string;
-  country: string;
-  basePrice: number;
-  currency: string;
-  originCityId: string;
-  destinationCityId: string;
-  active: boolean;
-};
 
 type TripRow = {
   id: string;
@@ -51,9 +45,13 @@ const fullDateFmt = new Intl.DateTimeFormat("ro-RO", {
 });
 
 export default function SeatsPage() {
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [routesLoading, setRoutesLoading] = useState(true);
-  const [routeId, setRouteId] = useState<string>("");
+  const locale = useLocale();
+
+  // Picker-e țară-oraș, ca pe site. Valorile sunt stringuri "Oraș, Țară" sau
+  // doar "Țară" cât timp orașul nu e ales încă. Inițial pornim cu MD →
+  // Anglia (default uzual operațional), userul poate inversa instant.
+  const [from, setFrom] = useState<string>("Chișinău, Moldova");
+  const [to, setTo] = useState<string>("");
 
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [tripsLoading, setTripsLoading] = useState(false);
@@ -67,28 +65,62 @@ export default function SeatsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [inspectedSeat, setInspectedSeat] = useState<number | null>(null);
 
-  // Listă rute o singură dată; o sortez ca să fie ușor de scanat.
+  // Constraint MD ↔ străinătate (cum e și pe site): cursele DAVO merg mereu
+  // între Moldova și o țară străină, niciodată Moldova-Moldova sau
+  // foreign-foreign. Picker-ul opus ascunde țările incompatibile.
+  const fromCountry = getCountryFromValue(from);
+  const toCountry = getCountryFromValue(to);
+  const fromHide = useMemo(() => complementHide(toCountry), [toCountry]);
+  const toHide = useMemo(() => complementHide(fromCountry), [fromCountry]);
+
+  // Map nume oraș (lowercase) → ID din DB. Endpoint-ul de curse cere UUID,
+  // deci trebuie să rezolvăm înainte de fetch. Cache la nivel de mount.
+  const [cityIndex, setCityIndex] = useState<Record<string, string> | null>(null);
   useEffect(() => {
-    setRoutesLoading(true);
-    fetch("/api/admin/routes")
+    let cancelled = false;
+    fetch("/api/public/cities")
       .then((r) => r.json())
       .then((d) => {
-        if (d?.success) {
-          const sorted = [...(d.routes as Route[])]
-            .filter((r) => r.active)
-            .sort((a, b) =>
-              `${a.origin} ${a.destination}`.localeCompare(`${b.origin} ${b.destination}`, "ro"),
-            );
-          setRoutes(sorted);
+        if (cancelled || !d?.success) return;
+        const map: Record<string, string> = {};
+        for (const c of [...(d.origins ?? []), ...(d.destinations ?? [])]) {
+          map[String(c.name).trim().toLowerCase()] = String(c.id);
         }
+        setCityIndex(map);
       })
-      .finally(() => setRoutesLoading(false));
+      .catch(() => {
+        if (!cancelled) setCityIndex({});
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const selectedRoute = useMemo(
-    () => routes.find((r) => r.id === routeId) ?? null,
-    [routes, routeId],
-  );
+  function fromCity(v: string): string {
+    const idx = v.indexOf(",");
+    return idx > 0 ? v.slice(0, idx).trim() : "";
+  }
+
+  // Rezolvare nume → ID pe baza valorii curente a picker-elor.
+  const originCityId = useMemo(() => {
+    if (!cityIndex) return null;
+    const city = fromCity(from).toLowerCase();
+    return city ? cityIndex[city] ?? null : null;
+  }, [from, cityIndex]);
+  const destCityId = useMemo(() => {
+    if (!cityIndex) return null;
+    const city = fromCity(to).toLowerCase();
+    return city ? cityIndex[city] ?? null : null;
+  }, [to, cityIndex]);
+
+  function swapDirection() {
+    setFrom(to);
+    setTo(from);
+    setTripId("");
+    setTripDetail(null);
+    setSeatInfoMap({});
+    setInspectedSeat(null);
+  }
 
   // Cursele pe ruta aleasă — public/trips răspunde cu calendar de curse.
   useEffect(() => {
@@ -97,13 +129,13 @@ export default function SeatsPage() {
     setTripDetail(null);
     setSeatInfoMap({});
     setInspectedSeat(null);
-    if (!selectedRoute) return;
+    if (!originCityId || !destCityId) return;
     const ac = new AbortController();
     setTripsLoading(true);
     const params = new URLSearchParams({
-      originCityId: selectedRoute.originCityId,
-      destCityId: selectedRoute.destinationCityId,
-      limit: "20",
+      originCityId,
+      destCityId,
+      limit: "30",
     });
     fetch(`/api/public/trips?${params.toString()}`, { signal: ac.signal })
       .then((r) => r.json())
@@ -113,7 +145,7 @@ export default function SeatsPage() {
       .catch(() => setTrips([]))
       .finally(() => setTripsLoading(false));
     return () => ac.abort();
-  }, [selectedRoute]);
+  }, [originCityId, destCityId]);
 
   // Detaliul cursei selectate: layout + locuri ocupate + identitate per loc.
   useEffect(() => {
@@ -185,43 +217,67 @@ export default function SeatsPage() {
       />
 
       {/* Selectori rută + cursă */}
-      <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Ruta
-          </span>
-          <select
-            value={routeId}
-            onChange={(e) => setRouteId(e.target.value)}
-            disabled={routesLoading}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="relative grid gap-3 sm:grid-cols-2">
+          <div>
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Plecare
+            </div>
+            <CountryCityPicker
+              value={from}
+              onChange={setFrom}
+              locale={locale}
+              hideCountries={fromHide}
+            />
+          </div>
+          <div>
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Destinație
+            </div>
+            <CountryCityPicker
+              value={to}
+              onChange={setTo}
+              locale={locale}
+              hideCountries={toHide}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={swapDirection}
+            aria-label="Inversează direcția"
+            title="Inversează plecarea cu destinația"
+            className="hidden sm:flex absolute left-1/2 top-1/2 z-10 h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition-all hover:scale-105 hover:border-orange-300 hover:text-orange-600"
           >
-            <option value="">{routesLoading ? "Se încarcă rutele…" : "Alege rută…"}</option>
-            {routes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.origin} → {r.destination} ({r.country})
-              </option>
-            ))}
-          </select>
-        </label>
+            <ArrowLeftRight className="h-4 w-4" />
+          </button>
+        </div>
 
-        <label className="block">
+        {/* Buton swap pentru mobile (sub picker-e, cu lățime întreagă) */}
+        <button
+          type="button"
+          onClick={swapDirection}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:hidden"
+        >
+          <ArrowLeftRight className="h-3.5 w-3.5" /> Inversează plecarea cu destinația
+        </button>
+
+        <label className="mt-3 block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
             Cursa
           </span>
           <select
             value={tripId}
             onChange={(e) => setTripId(e.target.value)}
-            disabled={!selectedRoute || tripsLoading || trips.length === 0}
+            disabled={!originCityId || !destCityId || tripsLoading || trips.length === 0}
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:opacity-60"
           >
             <option value="">
-              {!selectedRoute
-                ? "Alege întâi o rută"
+              {!originCityId || !destCityId
+                ? "Alege întâi plecarea și destinația"
                 : tripsLoading
                   ? "Caut cursele…"
                   : trips.length === 0
-                    ? "Nicio cursă programată"
+                    ? "Nicio cursă programată pe această rută"
                     : "Alege cursă…"}
             </option>
             {trips.map((t) => (
@@ -238,7 +294,7 @@ export default function SeatsPage() {
         <EmptyState
           icon={Armchair}
           title="Selectează o cursă"
-          description="Alege ruta și apoi cursa concretă din lista de mai sus. Vei vedea schema autocarului cu locurile ocupate. Click pe un loc ocupat pentru a vedea cine l-a rezervat."
+          description="Alege plecarea și destinația, apoi cursa concretă. Vei vedea schema autocarului cu locurile ocupate. Click pe un loc ocupat pentru a vedea cine l-a rezervat."
         />
       ) : detailLoading || !tripDetail ? (
         <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-16">
@@ -249,11 +305,9 @@ export default function SeatsPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
               <BusIcon className="h-4 w-4 text-orange-500" />
-              {selectedRoute && (
-                <span className="font-semibold text-slate-900">
-                  {selectedRoute.origin} → {selectedRoute.destination}
-                </span>
-              )}
+              <span className="font-semibold text-slate-900">
+                {fromCity(from)} → {fromCity(to)}
+              </span>
               <span className="text-slate-300">·</span>
               <span>{trips.find((t) => t.id === tripId)?.busLabel ?? ""}</span>
               <span className="text-slate-300">·</span>
