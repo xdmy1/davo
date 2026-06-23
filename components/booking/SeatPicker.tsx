@@ -11,12 +11,18 @@ export function SeatPicker({
   selected,
   onSelect,
   max,
+  onSeatInspect,
 }: {
   layout: SeatLayout;
   occupiedSeats: number[];
   selected: number[];
   onSelect: (nums: number[]) => void;
   max: number;
+  /** Opțional, admin-only: callback la click pe un loc ocupat. Când e setat,
+   *  locurile ocupate devin click-abile (cursor + hover) iar componenta-părinte
+   *  poate afișa cine a făcut rezervarea. Public flow nu trimite acest prop, deci
+   *  comportamentul rămâne neschimbat pentru pasageri. */
+  onSeatInspect?: (seatNumber: number) => void;
 }) {
   const occupied = useMemo(() => new Set(occupiedSeats), [occupiedSeats]);
 
@@ -72,7 +78,15 @@ export function SeatPicker({
                     num={num}
                     taken={taken}
                     selected={sel}
-                    onClick={() => isSeat && !taken && toggle(num!)}
+                    inspectable={isSeat && taken && !!onSeatInspect}
+                    onClick={() => {
+                      if (!isSeat) return;
+                      if (taken) {
+                        if (onSeatInspect) onSeatInspect(num!);
+                        return;
+                      }
+                      toggle(num!);
+                    }}
                   />
                 );
               })}
@@ -117,16 +131,20 @@ function Cell({
   num,
   taken,
   selected,
+  inspectable,
   onClick,
 }: {
   kind: SeatKind;
   num: number | null;
   taken: boolean;
   selected: boolean;
+  inspectable: boolean;
   onClick: () => void;
 }) {
   const isSeat = kind === "seat" && num !== null;
-  const isDisabled = !isSeat || taken;
+  // Locurile ocupate sunt disabled în mod public (cursor-not-allowed). În mod
+  // admin (inspectable), permitem click ca să afișăm tooltipul cu pasager.
+  const isDisabled = !isSeat || (taken && !inspectable);
 
   return (
     <button
@@ -148,8 +166,10 @@ function Cell({
         kind === "empty" && "border-dashed border-[color:var(--ink-200)] bg-transparent cursor-default",
         kind === "seat" && !taken && !selected &&
           "border-[color:var(--navy-500)]/40 bg-white text-[color:var(--navy-900)] hover:border-[color:var(--red-400)] hover:bg-[color:var(--red-50)] cursor-pointer",
-        kind === "seat" && taken &&
+        kind === "seat" && taken && !inspectable &&
           "border-[color:var(--ink-200)] bg-[color:var(--ink-100)] text-[color:var(--ink-400)] cursor-not-allowed",
+        kind === "seat" && taken && inspectable &&
+          "border-[color:var(--ink-200)] bg-[color:var(--ink-100)] text-[color:var(--ink-400)] cursor-pointer hover:bg-orange-50 hover:border-orange-300",
         kind === "seat" && selected &&
           "border-[color:var(--red-500)] bg-[color:var(--red-500)] text-white shadow-[0_4px_12px_-4px_rgba(225,30,43,0.5)]"
       )}

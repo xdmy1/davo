@@ -670,22 +670,58 @@ function ManualBookingModal({
   }, [originCity, destCity, departureDate, cityIndex]);
 
   // Detaliul cursei (layout autocar + locuri ocupate) — folosit de SeatPicker.
+  // Sub-fetch în paralel: detalii admin pe scaune (cine a rezervat fiecare).
+  type SeatInfo = {
+    bookingNumber: string;
+    passengerName: string;
+    phone: string;
+    email: string;
+    status: string;
+    bookingId: string;
+  };
+  const [seatInfoMap, setSeatInfoMap] = useState<Record<number, SeatInfo>>({});
+  const [inspectedSeat, setInspectedSeat] = useState<number | null>(null);
+
   useEffect(() => {
     setTripDetail(null);
     setSelectedSeats([]);
+    setSeatInfoMap({});
+    setInspectedSeat(null);
     if (!selectedTripId) return;
     const ac = new AbortController();
     setTripDetailLoading(true);
-    fetch(`/api/public/trips/${selectedTripId}`, { signal: ac.signal })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d?.success || !d.trip?.bus) return;
-        setTripDetail({
-          layout: d.trip.bus.layout,
-          occupiedSeats: d.trip.occupiedSeats ?? [],
-        });
+    Promise.all([
+      fetch(`/api/public/trips/${selectedTripId}`, { signal: ac.signal })
+        .then((r) => r.json())
+        .catch(() => null),
+      fetch(`/api/admin/trips/${selectedTripId}/seats`, { signal: ac.signal })
+        .then((r) => r.json())
+        .catch(() => null),
+    ])
+      .then(([trip, seats]) => {
+        if (trip?.success && trip.trip?.bus) {
+          setTripDetail({
+            layout: trip.trip.bus.layout,
+            occupiedSeats: trip.trip.occupiedSeats ?? [],
+          });
+        }
+        if (seats?.success && Array.isArray(seats.seats)) {
+          const map: Record<number, SeatInfo> = {};
+          for (const s of seats.seats) {
+            if (s.booking) {
+              map[s.seatNumber] = {
+                bookingId: s.booking.id,
+                bookingNumber: s.booking.bookingNumber,
+                passengerName: s.booking.passengerName,
+                phone: s.booking.phone,
+                email: s.booking.email,
+                status: s.booking.status,
+              };
+            }
+          }
+          setSeatInfoMap(map);
+        }
       })
-      .catch(() => setTripDetail(null))
       .finally(() => setTripDetailLoading(false));
     return () => ac.abort();
   }, [selectedTripId]);
@@ -981,7 +1017,7 @@ function ManualBookingModal({
                 ) : (
                   <>
                     <div className="mb-2 text-[11px] text-slate-600">
-                      Alege exact <strong>{maxSeats}</strong> loc{maxSeats === 1 ? "" : "uri"} (= {adults} adulți + {children} copii). Selectate: {selectedSeats.length}.
+                      Alege exact <strong>{maxSeats}</strong> loc{maxSeats === 1 ? "" : "uri"} (= {adults} adulți + {children} copii). Selectate: {selectedSeats.length}. Click pe locurile ocupate ca să vezi cine le-a rezervat.
                     </div>
                     <SeatPicker
                       layout={tripDetail.layout}
@@ -989,7 +1025,15 @@ function ManualBookingModal({
                       selected={selectedSeats}
                       onSelect={setSelectedSeats}
                       max={maxSeats}
+                      onSeatInspect={(n) => setInspectedSeat(n)}
                     />
+                    {inspectedSeat !== null && (
+                      <SeatInspector
+                        seatNumber={inspectedSeat}
+                        info={seatInfoMap[inspectedSeat] ?? null}
+                        onClose={() => setInspectedSeat(null)}
+                      />
+                    )}
                   </>
                 )}
               </div>
@@ -1544,6 +1588,64 @@ function EditBookingModal({
             </div>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Mic panou inline ce apare sub SeatPicker când admin a făcut click pe un
+// loc ocupat. Decuplat de modal-ul propriu-zis ca să nu suprapună restul
+// formularului.
+function SeatInspector({
+  seatNumber,
+  info,
+  onClose,
+}: {
+  seatNumber: number;
+  info: {
+    bookingNumber: string;
+    passengerName: string;
+    phone: string;
+    email: string;
+    status: string;
+    bookingId: string;
+  } | null;
+  onClose: () => void;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-orange-700">
+            Loc {seatNumber} — ocupat
+          </div>
+          {info ? (
+            <div className="mt-1 space-y-0.5 text-slate-700">
+              <div className="font-semibold text-slate-900">{info.passengerName || "(fără nume)"}</div>
+              <div className="text-xs">
+                Rezervare <span className="font-mono font-semibold">{info.bookingNumber}</span> ·{" "}
+                <span className="font-medium">{info.status}</span>
+              </div>
+              <div className="text-xs">
+                <a href={`tel:${info.phone}`} className="text-orange-700 hover:underline">{info.phone}</a>
+                <span className="mx-1.5 text-slate-300">·</span>
+                <a href={`mailto:${info.email}`} className="text-orange-700 hover:underline">{info.email}</a>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-1 text-xs text-slate-600">
+              Loc rezervat fără pasager asociat în DB (date legacy sau rezervare anulată în curs).
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-md px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-orange-100"
+          aria-label="Închide panoul"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
