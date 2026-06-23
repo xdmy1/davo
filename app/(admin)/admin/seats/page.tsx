@@ -34,6 +34,17 @@ type SeatInfo = {
   status: string;
 };
 
+type UnassignedBooking = {
+  id: string;
+  bookingNumber: string;
+  passengerName: string;
+  phone: string;
+  email: string;
+  status: string;
+  type: string;
+  paxCount: number;
+};
+
 const fullDateFmt = new Intl.DateTimeFormat("ro-RO", {
   weekday: "long",
   day: "numeric",
@@ -62,6 +73,7 @@ export default function SeatsPage() {
     occupiedSeats: number[];
   } | null>(null);
   const [seatInfoMap, setSeatInfoMap] = useState<Record<number, SeatInfo>>({});
+  const [unassigned, setUnassigned] = useState<UnassignedBooking[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [inspectedSeat, setInspectedSeat] = useState<number | null>(null);
 
@@ -151,6 +163,7 @@ export default function SeatsPage() {
   useEffect(() => {
     setTripDetail(null);
     setSeatInfoMap({});
+    setUnassigned([]);
     setInspectedSeat(null);
     if (!tripId) return;
     const ac = new AbortController();
@@ -185,6 +198,9 @@ export default function SeatsPage() {
             }
           }
           setSeatInfoMap(map);
+        }
+        if (seats?.success && Array.isArray(seats.unassigned)) {
+          setUnassigned(seats.unassigned as UnassignedBooking[]);
         }
       })
       .finally(() => setDetailLoading(false));
@@ -339,6 +355,60 @@ export default function SeatsPage() {
               info={seatInfoMap[inspectedSeat] ?? null}
               onClose={() => setInspectedSeat(null)}
             />
+          )}
+
+          {/* Pasageri atașați la cursă dar fără SeatBooking asociat — pot apărea
+              când o rezervare manuală a fost legată de cursă, dar admin n-a
+              ales locurile concrete în modal. Îi listăm separat ca să nu fie
+              invizibili pentru operator. */}
+          {unassigned.length > 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                Atașate la cursă, fără loc selectat ({unassigned.length})
+              </div>
+              <p className="mt-1 text-xs text-amber-900/80">
+                Aceste rezervări sunt pe cursa selectată dar nu au un loc concret atribuit.
+                Asigură-te că pasagerii vor încăpea în autocar.
+              </p>
+              <div className="mt-3 space-y-2">
+                {unassigned.map((u) => (
+                  <div
+                    key={u.id}
+                    className="rounded-xl bg-white border border-amber-200 p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-slate-900">
+                          {u.passengerName || "(fără nume)"}
+                          <span className="ml-2 text-[10px] uppercase font-semibold text-amber-700">
+                            {u.type === "parcel" || u.type === "colet_la_cheie" ? "Colet" : `${u.paxCount} pax`}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 text-xs text-slate-600">
+                          Rezervare <span className="font-mono">{u.bookingNumber}</span> ·{" "}
+                          <span className="uppercase tracking-wider">{u.status}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600">
+                          <a href={`tel:${u.phone}`} className="text-orange-700 hover:underline">
+                            {u.phone}
+                          </a>
+                          <span className="mx-1.5 text-slate-300">·</span>
+                          <a href={`mailto:${u.email}`} className="text-orange-700 hover:underline">
+                            {u.email}
+                          </a>
+                        </div>
+                      </div>
+                      <a
+                        href={`/admin/bookings?search=${u.bookingNumber}`}
+                        className="shrink-0 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100"
+                      >
+                        Deschide →
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
