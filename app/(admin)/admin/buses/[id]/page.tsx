@@ -6,7 +6,8 @@ import { ArrowLeft, Save } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import Badge from "@/components/admin/Badge";
 import SeatMapEditor from "@/components/admin/SeatMapEditor";
-import type { MockBus, SeatLayout } from "@/lib/adminMock";
+import { BusSeatMap } from "@/components/booking/BusSeatMap";
+import { isMultiDeck, type BusLayout, type MockBus, type SeatLayout } from "@/lib/adminMock";
 
 export default function BusDetailPage({
   params,
@@ -15,7 +16,7 @@ export default function BusDetailPage({
 }) {
   const { id } = use(params);
   const [bus, setBus] = useState<MockBus | null>(null);
-  const [layout, setLayout] = useState<SeatLayout | null>(null);
+  const [layout, setLayout] = useState<BusLayout | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -91,9 +92,11 @@ export default function BusDetailPage({
         actions={
           <>
             <Badge variant={bus.active ? "green" : "slate"}>{bus.active ? "Activ" : "Inactiv"}</Badge>
-            <button onClick={save} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 disabled:opacity-60">
-              <Save className="h-3.5 w-3.5" /> {saving ? "Salvez…" : "Salvează layout"}
-            </button>
+            {!isMultiDeck(layout) && (
+              <button onClick={save} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 disabled:opacity-60">
+                <Save className="h-3.5 w-3.5" /> {saving ? "Salvez…" : "Salvează layout"}
+              </button>
+            )}
           </>
         }
       />
@@ -101,12 +104,26 @@ export default function BusDetailPage({
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-slate-900">Editor layout scaune</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {isMultiDeck(layout) ? "Schema autocar (multi-etaj)" : "Editor layout scaune"}
+            </h2>
             <p className="text-xs text-slate-500">
-              Click pe celulă pentru a cicla tipurile, sau alege o unealtă pentru a picta mai rapid.
+              {isMultiDeck(layout)
+                ? "Autocarul are mai multe etaje. Layout-ul se editează doar prin script (vezi scripts/migrate-astromega-multideck.ts); aici e doar preview."
+                : "Click pe celulă pentru a cicla tipurile, sau alege o unealtă pentru a picta mai rapid."}
             </p>
           </div>
-          <SeatMapEditor initial={layout} onChange={setLayout} />
+          {isMultiDeck(layout) ? (
+            <BusSeatMap
+              layout={layout}
+              occupiedSeats={[]}
+              selected={[]}
+              onSelect={() => {}}
+              max={0}
+            />
+          ) : (
+            <SeatMapEditor initial={layout as SeatLayout} onChange={setLayout} />
+          )}
         </section>
 
         <aside className="space-y-4">

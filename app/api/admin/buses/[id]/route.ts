@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { SeatKind, SeatLayout } from "@/lib/adminMock";
+import { countSeatsInLayout, type BusLayout, type MultiDeckLayout, type SeatLayout } from "@/lib/adminMock";
 
-function safeLayout(raw: string): SeatLayout {
+function safeLayout(raw: string): BusLayout {
   try {
-    const l = JSON.parse(raw) as SeatLayout;
-    if (l && Array.isArray(l.cells)) return l;
+    const l = JSON.parse(raw);
+    if (l && Array.isArray((l as MultiDeckLayout).decks)) return l as MultiDeckLayout;
+    if (l && Array.isArray((l as SeatLayout).cells)) return l as SeatLayout;
   } catch {}
   return { rows: 1, cols: 1, cells: ["empty"] };
 }
@@ -54,9 +55,9 @@ export async function PATCH(
     if (body.year !== undefined) data.year = Number(body.year);
     if (body.active !== undefined) data.active = !!body.active;
     if (body.layout !== undefined) {
-      const layout = body.layout as SeatLayout;
+      const layout = body.layout as BusLayout;
       data.layoutJson = JSON.stringify(layout);
-      data.totalSeats = layout.cells.filter((c: SeatKind) => c === "seat").length;
+      data.totalSeats = countSeatsInLayout(layout);
     }
 
     const bus = await prisma.bus.update({ where: { id }, data });
