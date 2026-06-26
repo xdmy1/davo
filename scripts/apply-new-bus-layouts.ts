@@ -41,6 +41,7 @@ type SeatLayout = {
   cells: SeatKind[];
   direction?: "ltr" | "rtl";
   seatStart?: number;
+  seatOverrides?: Record<number, number>;
 };
 
 function fromGrid(
@@ -169,6 +170,11 @@ const ALTANO = fromGrid(
   ],
   "ltr",
 );
+// Rândul 3 de scaune e numerotat fizic invers față-spate: dreapta = 7,8 și
+// stânga = 9,10 (vezi stickerele reale din autocar). Ancorăm cu override-uri:
+// idx 20 (stânga) → 9, idx 23 (dreapta) → 7, idx 25 (rândul următor) → 11 ca
+// numerotarea automată să revină normal după swap. Restul rămâne 11…54.
+ALTANO.seatOverrides = { 20: 9, 23: 7, 25: 11 };
 
 // Mapare plate → noul layout + label
 const updates: { plate: string; label: string; layout: SeatLayout }[] = [
