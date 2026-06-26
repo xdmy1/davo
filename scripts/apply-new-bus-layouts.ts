@@ -4,7 +4,7 @@
  *
  *   - DAW 777 → Van Hool TDX 27 Astromega · 89 locuri (etaj 1 + etaj 2 într-un
  *     singur layout vertical, separate vizual cu un rând empty).
- *   - DAW 077 → Van Hool Altano · 52 locuri (1 etaj, 4 locuri spate).
+ *   - DAW 077 → Van Hool Altano · 54 locuri (1 etaj, ltr, ușă + WC dreapta).
  *   - ZNQ 874 → Van Hool Alicron · 51 locuri (1 etaj, WC + 2 ieșiri pe dreapta).
  *
  * Înainte de update, scriptul verifică dacă vreo rezervare existentă pe
@@ -32,7 +32,8 @@ type SeatKind =
   | "stairs"
   | "table"
   | "cafe"
-  | "crew";
+  | "crew"
+  | "exit";
 
 type SeatLayout = {
   rows: number;
@@ -58,6 +59,7 @@ function fromGrid(
     T: "table",
     F: "cafe",
     X: "stairs",
+    E: "exit",
     ".": "empty",
   };
   const cells: SeatKind[] = [];
@@ -140,26 +142,32 @@ const ALICRON = fromGrid(
   "rtl",
 );
 
-/* ──────────────── Altano DAW 077 — 52 locuri ──────────────── */
+/* ──────────────── Altano DAW 077 — 54 locuri ──────────────── */
+// Layout conform pozei reale a autocarului: numerotare stânga→dreapta (ltr),
+// pereche stânga apoi pereche dreapta pe fiecare rând. Ușa față-dreapta +
+// o ușă pe rândul următor, gol pe dreapta la rândul 5/6, WC pe dreapta la
+// dreptul locurilor 31/32.
 const ALTANO = fromGrid(
   [
-    ".D.C.",
-    "..A..",
+    ".D.E.", // șofer (stânga) + ușă față-dreapta
+    "..A.E", // culoar + ușă
     "SSASS", // 1-4
-    "SSASS", // 5-8
-    "SSASS", // 9-12
-    "SSASS", // 13-16
-    "SSASS", // 17-20
-    "SSASS", // 21-24
-    "SSASS", // 25-28
-    "SSASS", // 29-32
-    "SSASS", // 33-36
-    "SSASS", // 37-40
-    "SSASS", // 41-44
-    "SSASS", // 45-48
-    "SS.SS", // spate 49-52 (4 locuri, gol mijloc)
+    "SSA..", // 5-6 (dreapta gol)
+    "SSASS", // 7-10
+    "SSASS", // 11-14
+    "SSASS", // 15-18
+    "SSASS", // 19-22
+    "SSASS", // 23-26
+    "SSASS", // 27-30
+    "SSAW.", // 31-32 + WC pe dreapta
+    "SSA..", // 33-34 (dreapta gol)
+    "SSASS", // 35-38
+    "SSASS", // 39-42
+    "SSASS", // 43-46
+    "SSASS", // 47-50
+    "SSASS", // 51-54
   ],
-  "rtl",
+  "ltr",
 );
 
 // Mapare plate → noul layout + label
