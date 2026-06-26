@@ -176,9 +176,13 @@ const ALTANO = fromGrid(
 // numerotarea automată să revină normal după swap. Restul rămâne 11…54.
 ALTANO.seatOverrides = { 20: 9, 23: 7, 25: 11 };
 
-// Mapare plate → noul layout + label
+// Mapare plate → noul layout + label.
+// ATENȚIE: DAW 777 (Astromega) e multi-deck și se gestionează EXCLUSIV prin
+// scripts/migrate-astromega-multideck.ts. NU îl adăuga aici — un SeatLayout
+// single-deck i-ar suprascrie cele 2 etaje. (`ASTROMEGA` de mai sus rămâne
+// doar ca referință istorică.)
+void ASTROMEGA;
 const updates: { plate: string; label: string; layout: SeatLayout }[] = [
-  { plate: "DAW 777", label: "Van Hool TDX 27 Astromega", layout: ASTROMEGA },
   { plate: "ZNQ 874", label: "Van Hool Alicron", layout: ALICRON },
   { plate: "DAW 077", label: "Van Hool Altano", layout: ALTANO },
 ];
