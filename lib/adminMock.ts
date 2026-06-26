@@ -156,6 +156,7 @@ export type EmailStatus = "sent" | "failed" | "queued" | "scheduled";
 export type EmailType =
   | "confirmation"
   | "reminder_24h"
+  | "reminder_2h"
   | "cancellation";
 
 export type MockEmail = {
