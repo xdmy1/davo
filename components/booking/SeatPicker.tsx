@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import type { SeatKind, SeatLayout } from "@/lib/adminMock";
-import { Armchair, Bath, Minus, User as UserIcon, Coffee, MoveVertical, Square, Headset } from "lucide-react";
+import { computeSeatNumbers, type SeatKind, type SeatLayout } from "@/lib/adminMock";
+import { Armchair, Bath, Minus, User as UserIcon, Coffee, MoveVertical, Square, Headset, DoorOpen } from "lucide-react";
 
 export function SeatPicker({
   layout,
@@ -26,22 +26,7 @@ export function SeatPicker({
 }) {
   const occupied = useMemo(() => new Set(occupiedSeats), [occupiedSeats]);
 
-  const seatNumbers = useMemo(() => {
-    const dir = layout.direction ?? "ltr";
-    const result: (number | null)[] = new Array(layout.cells.length).fill(null);
-    let n = layout.seatStart ?? 1;
-    for (let r = 0; r < layout.rows; r++) {
-      const cols = layout.cols;
-      const range = dir === "rtl"
-        ? Array.from({ length: cols }, (_, k) => cols - 1 - k) // dreapta → stânga
-        : Array.from({ length: cols }, (_, k) => k);           // stânga → dreapta
-      for (const c of range) {
-        const idx = r * cols + c;
-        if (layout.cells[idx] === "seat") result[idx] = n++;
-      }
-    }
-    return result;
-  }, [layout]);
+  const seatNumbers = useMemo(() => computeSeatNumbers(layout), [layout]);
 
   const toggle = (num: number) => {
     if (selected.includes(num)) {
@@ -182,6 +167,7 @@ function Cell({
         kind === "stairs" && "border-amber-300 bg-amber-50 text-amber-700 cursor-default",
         kind === "table" && "border-[color:var(--ink-300,rgba(11,38,83,0.18))] bg-[color:var(--ink-100)] text-[color:var(--ink-500)] cursor-default",
         kind === "cafe" && "border-orange-300 bg-orange-50 text-orange-700 cursor-default",
+        kind === "exit" && "border-emerald-300 bg-emerald-50 text-emerald-700 cursor-default",
         kind === "empty" && "border-dashed border-[color:var(--ink-200)] bg-transparent cursor-default",
         kind === "seat" && !taken && !selected &&
           "border-[color:var(--navy-500)]/40 bg-white text-[color:var(--navy-900)] hover:border-[color:var(--red-400)] hover:bg-[color:var(--red-50)] cursor-pointer",
@@ -224,6 +210,8 @@ function CellIcon({ kind }: { kind: SeatKind }) {
       return <Square className="h-4 w-4 opacity-60" />;
     case "cafe":
       return <Coffee className="h-4 w-4" />;
+    case "exit":
+      return <DoorOpen className="h-4 w-4" />;
     case "empty":
       return null;
   }

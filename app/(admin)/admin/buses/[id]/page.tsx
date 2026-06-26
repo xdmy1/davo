@@ -144,7 +144,11 @@ export default function BusDetailPage({
               <li className="flex items-center gap-2"><span className="inline-block h-4 w-4 rounded border border-dashed border-slate-300 bg-slate-100" /> Culoar</li>
               <li className="flex items-center gap-2"><span className="inline-block h-4 w-4 rounded border border-blue-300 bg-blue-100" /> Toaletă (WC)</li>
               <li className="flex items-center gap-2"><span className="inline-block h-4 w-4 rounded bg-slate-900" /> Poziție șofer</li>
+              <li className="flex items-center gap-2"><span className="inline-block h-4 w-4 rounded border border-emerald-300 bg-emerald-50" /> Ieșire / ușă</li>
+              <li className="flex items-center gap-2"><span className="inline-block h-4 w-4 rounded border border-amber-300 bg-amber-50" /> Scări</li>
+              <li className="flex items-center gap-2"><span className="inline-block h-4 w-4 rounded border border-orange-300 bg-orange-50" /> Cafea / bar</li>
               <li className="flex items-center gap-2"><span className="inline-block h-4 w-4 rounded border border-dashed border-slate-200" /> Spațiu gol</li>
+              <li className="flex items-center gap-2"><span className="inline-flex h-4 w-4 items-center justify-center rounded border border-rose-300 bg-rose-50 text-[9px] font-bold text-rose-600">47</span> Număr setat manual</li>
             </ul>
           </div>
         </aside>

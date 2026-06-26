@@ -7,6 +7,7 @@
 // - table: măsuță VIP (între locuri orientate față-în-față)
 // - cafe: zonă de café/bar (auxiliar pe etajul VIP)
 // - crew: scaun rezervat pentru însoțitorul de bord (nu se vinde)
+// - exit: ușă / ieșire (punct de îmbarcare-debarcare, nu se vinde)
 export type SeatKind =
   | "seat"
   | "aisle"
@@ -16,7 +17,8 @@ export type SeatKind =
   | "stairs"
   | "table"
   | "cafe"
-  | "crew";
+  | "crew"
+  | "exit";
 
 export type SeatLayout = {
   rows: number;
@@ -31,7 +33,41 @@ export type SeatLayout = {
   // multe etaje afișate ca SeatLayout-uri separate: etajul 2 poate
   // continua numerotarea de la unde s-a terminat etajul 1.
   seatStart?: number;
+  // Suprascrieri manuale de numerotare, cheie = indexul celulei în `cells`.
+  // Un scaun cu override devine "ancoră": numerotarea automată continuă de la
+  // acel număr înainte (ex: dacă scaunul #4 e setat la 99, următoarele devin
+  // 100, 101…). Permite potrivirea cu numerotarea fizică reală a autocarului.
+  seatOverrides?: Record<number, number>;
 };
+
+// Calculează numărul afișat pentru fiecare celulă, respectând direcția de
+// numerotare, scaunul de start și suprascrierile manuale. Returnează un array
+// paralel cu `cells`: numărul scaunului sau `null` pentru celulele non-scaun.
+// Folosit identic de SeatPicker (public) și de editorul admin, ca să nu existe
+// divergențe între ce vede adminul și ce vede pasagerul.
+export function computeSeatNumbers(layout: SeatLayout): (number | null)[] {
+  const dir = layout.direction ?? "ltr";
+  const overrides = layout.seatOverrides ?? {};
+  const result: (number | null)[] = new Array(layout.cells.length).fill(null);
+  let n = layout.seatStart ?? 1;
+  for (let r = 0; r < layout.rows; r++) {
+    const cols = layout.cols;
+    const range =
+      dir === "rtl"
+        ? Array.from({ length: cols }, (_, k) => cols - 1 - k) // dreapta → stânga
+        : Array.from({ length: cols }, (_, k) => k); // stânga → dreapta
+    for (const c of range) {
+      const idx = r * cols + c;
+      if (layout.cells[idx] === "seat") {
+        const override = overrides[idx];
+        if (override != null) n = override; // ancoră: repornește secvența
+        result[idx] = n;
+        n++;
+      }
+    }
+  }
+  return result;
+}
 
 // Autocarele pot avea mai multe etaje (ex: Van Hool Astromega). Fiecare etaj
 // e un SeatLayout independent, cu propria orientare și interval de scaune.
