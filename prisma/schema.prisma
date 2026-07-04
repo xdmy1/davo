@@ -195,6 +195,15 @@ model Booking {
   emailSent     Boolean   @default(false)
   emailSentAt   DateTime?
 
+  // Panou operatori (davo-operatori). Aditiv: rândurile vechi primesc source='site',
+  // restul rămân null. Nimic existent nu se schimbă, davo nu setează aceste câmpuri.
+  source         String    @default("site") // site | operator | admin
+  manualBusId    String?                     // Bus.id atribuit manual din panoul operatorilor (grupare pe cursă fizică). Aditiv/nullable — davo îl ignoră.
+  createdById    String?                     // Operator.id (gol pentru rezervări de pe site)
+  createdByName  String?                     // snapshot nume (afișat și pe davo, fără join)
+  createdBy      Operator? @relation(fields: [createdById], references: [id])
+  archivedAt     DateTime?                    // cursa a trecut → iese din panou, rămâne salvată
+
   // relații noi, OPȚIONALE (pentru a nu sparge bookings existente)
   clientId       String?
   client         Client?   @relation(fields: [clientId], references: [id])
@@ -212,6 +221,25 @@ model Booking {
   @@index([createdAt])
   @@index([clientId])
   @@index([tripId])
+  @@index([source])
+  @@index([archivedAt])
+  @@index([createdById])
+}
+
+// ===== Operatori (panou davo-operatori — login cu PIN 4 cifre) =====
+
+model Operator {
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique // adrian, olga, dumitru, alexandru, ghenadie, catalin, gabriela
+  pinHash   String             // bcrypt al PIN-ului de 4 cifre
+  role      String    @default("operator") // operator | supervisor
+  active    Boolean   @default(true)
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  bookings  Booking[]
 }
 
 // ===== Emailuri automate =====
