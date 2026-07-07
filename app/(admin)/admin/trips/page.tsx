@@ -296,7 +296,7 @@ export default function TripsPage() {
       )}
 
       {viewingTripId && (
-        <TripPassengersModal tripId={viewingTripId} onClose={() => setViewingTripId(null)} />
+        <TripPassengersModal tripId={viewingTripId} buses={buses} onClose={() => setViewingTripId(null)} />
       )}
     </div>
   );
@@ -329,10 +329,47 @@ type Manifest = {
   passengers: ManifestPassenger[];
 };
 
-function TripPassengersModal({ tripId, onClose }: { tripId: string; onClose: () => void }) {
+function TripPassengersModal({ tripId, buses, onClose }: { tripId: string; buses: MockBus[]; onClose: () => void }) {
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  // Schimbare autocar (remapează locurile + anunță pasagerii).
+  const [newBusId, setNewBusId] = useState("");
+  const [notify, setNotify] = useState(true);
+  const [changing, setChanging] = useState(false);
+  const [changeMsg, setChangeMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const activeBuses = buses.filter((b) => b.active);
+
+  const changeBus = async () => {
+    if (!newBusId) return;
+    if (!confirm(notify ? "Schimbi autobuzul și trimiți email tuturor pasagerilor cu locul nou?" : "Schimbi autobuzul (fără email)?")) return;
+    setChanging(true);
+    setChangeMsg(null);
+    try {
+      const res = await fetch(`/api/admin/trips/${tripId}/change-bus`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ busId: newBusId, notify }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        const parts = [`${d.passengers} pasageri`, `${d.seatsKept} locuri păstrate`];
+        if (d.seatsChanged) parts.push(`${d.seatsChanged} mutate`);
+        if (d.unseated) parts.push(`${d.unseated} fără loc`);
+        if (notify) parts.push(`${d.emailsSent} emailuri trimise${d.emailsFailed ? ` · ${d.emailsFailed} eșuate` : ""}`);
+        setChangeMsg({ ok: true, text: `Autocar schimbat: ${d.busLabel}. ${parts.join(" · ")}.` });
+        setNewBusId("");
+        setReloadKey((k) => k + 1);
+      } else {
+        setChangeMsg({ ok: false, text: d.error || "Eroare" });
+      }
+    } catch {
+      setChangeMsg({ ok: false, text: "Eroare de rețea" });
+    } finally {
+      setChanging(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -351,7 +388,7 @@ function TripPassengersModal({ tripId, onClose }: { tripId: string; onClose: () 
     return () => {
       cancelled = true;
     };
-  }, [tripId]);
+  }, [tripId, reloadKey]);
 
   const totalPax = manifest?.passengers.reduce((s, p) => s + p.paxCount, 0) ?? 0;
   const totalSeats = manifest?.passengers.reduce((s, p) => s + p.seats.length, 0) ?? 0;
@@ -420,6 +457,42 @@ function TripPassengersModal({ tripId, onClose }: { tripId: string; onClose: () 
                 </span>
               } />
               <Stat label="Total încasat" value={revenueLabel} />
+            </div>
+
+            {/* Schimbă autocarul — remapează locurile + anunță pasagerii */}
+            <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-orange-700">Schimbă autocarul</div>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Locurile se mută pe același număr (sau altul liber dacă nu există){manifest.passengers.length > 0 ? "; pasagerii primesc email cu locul nou" : ""}.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <select
+                  value={newBusId}
+                  onChange={(e) => setNewBusId(e.target.value)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-orange-500 focus:outline-none"
+                >
+                  <option value="">— alege autocarul nou —</option>
+                  {activeBuses.map((b) => (
+                    <option key={b.id} value={b.id}>{b.label}{b.plate ? ` · ${b.plate}` : ""} ({b.totalSeats} locuri)</option>
+                  ))}
+                </select>
+                <label className="inline-flex items-center gap-1.5 text-sm text-slate-700">
+                  <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="h-4 w-4 accent-orange-500" />
+                  Anunță pasagerii prin email
+                </label>
+                <button
+                  onClick={changeBus}
+                  disabled={!newBusId || changing}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {changing ? "Se schimbă…" : "Schimbă autocarul"}
+                </button>
+              </div>
+              {changeMsg && (
+                <div className={`mt-3 rounded-lg px-3 py-2 text-sm ${changeMsg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                  {changeMsg.text}
+                </div>
+              )}
             </div>
 
             {/* Passengers table */}

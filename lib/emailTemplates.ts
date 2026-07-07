@@ -400,6 +400,50 @@ export function cancellationHtml(b: Booking): string {
   });
 }
 
+// ----- Schimbare autocar (anunț pasageri) -----
+
+export type BusChangeData = {
+  firstName: string;
+  departureCity: string;
+  arrivalCity: string;
+  departureDate: Date;
+  bookingNumber: string;
+  busLabel: string;
+  busPlate?: string | null;
+  newSeats: string; // ex. "12" sau "12, 13"
+  seatChanged: boolean; // locul a fost mutat (autobuz mai mic / ocupat)
+};
+
+export function busChangeHtml(d: BusChangeData): string {
+  const multi = d.newSeats.includes(",");
+  const apology = d.seatChanged
+    ? `Din motive operaționale a fost nevoie să-ți schimbăm ${multi ? "locurile" : "locul"}. Ne cerem sincer scuze pentru neplăcere — restul rezervării rămâne neschimbat.`
+    : `${multi ? "Locurile tale rămân aceleași" : "Locul tău rămâne același"}.`;
+  const body = `
+    ${headline(`${d.firstName}, s-a schimbat autobuzul cursei tale.`)}
+    ${intro(`Ruta rămâne aceeași și pleci conform programului — se schimbă doar autocarul cursei <strong style="color:${C.navy900};">${d.departureCity} → ${d.arrivalCity}</strong>. ${apology}`)}
+    ${detailsCard([
+      { label: "Cursa", value: `${d.departureCity} → ${d.arrivalCity}` },
+      { label: "Plecare", value: formatDate(d.departureDate) },
+      { label: "Autocar nou", value: `${d.busLabel}${d.busPlate ? ` · ${d.busPlate}` : ""}` },
+      { label: multi ? "Locurile tale noi" : "Locul tău nou", value: d.newSeats },
+      { label: "Nr. rezervare", value: d.bookingNumber },
+    ])}
+    <p style="margin:0;font-family:${FONT_BODY};font-size:14px;color:${C.ink700};line-height:1.6;">
+      Orice întrebare — suntem lângă tine la
+      <a href="tel:+37368065699" style="color:${C.red500};font-weight:700;text-decoration:none;">+373 68 065 699</a>
+      sau <a href="mailto:info@davo.md" style="color:${C.red500};font-weight:700;text-decoration:none;">info@davo.md</a>.
+    </p>
+  `;
+  return layout({
+    preheader: `Autocar schimbat · ${multi ? "locurile tale" : "locul tău"}: ${d.newSeats}`,
+    title: "Autocar schimbat",
+    eyebrow: "Autocar schimbat",
+    eyebrowColor: "rgba(255,255,255,0.7)",
+    body,
+  });
+}
+
 // ----- Admin notification -----
 
 export function adminNotificationHtml(b: ConfirmationData): string {
