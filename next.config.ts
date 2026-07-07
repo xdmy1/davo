@@ -29,6 +29,16 @@ const nextConfig: NextConfig = {
         destination: "/rechizitele-bancare",
         permanent: true,
       },
+      {
+        source: "/servicii",
+        destination: "/serviciile-noastre",
+        permanent: true,
+      },
+      {
+        source: "/servicii/:slug*",
+        destination: "/serviciile-noastre/:slug*",
+        permanent: true,
+      },
     ];
   },
 };

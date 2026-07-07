@@ -213,6 +213,76 @@ export async function processEmailQueue(limit = 50): Promise<{
   return results;
 }
 
+/**
+ * Retrimite/forțează un singur EmailJob (folosit de butonul din admin — inclusiv
+ * pentru job-urile `failed`, pe care `processEmailQueue` nu le mai ridică singur).
+ * Trimite acum via Resend, resetează statusul și scrie în EmailLog.
+ */
+export async function sendSingleJob(
+  jobId: string
+): Promise<{ success: boolean; error?: string }> {
+  const job = await prisma.emailJob.findUnique({
+    where: { id: jobId },
+    include: { booking: true },
+  });
+  if (!job) return { success: false, error: "Job inexistent" };
+  if (!job.booking) return { success: false, error: "Rezervarea asociată lipsește" };
+
+  try {
+    await sendJob(job);
+    await prisma.emailJob.update({
+      where: { id: job.id },
+      data: { status: "sent", sentAt: new Date(), attempts: job.attempts + 1, lastError: null },
+    });
+    await prisma.emailLog.create({
+      data: {
+        to: job.booking.email,
+        subject: subjectForType(job.type, job.booking.bookingNumber),
+        template: job.type,
+        status: "sent",
+        relatedId: job.bookingId,
+      },
+    });
+    return { success: true };
+  } catch (error) {
+    const msg = (error instanceof Error ? error.message : String(error)).slice(0, 500);
+    await prisma.emailJob.update({
+      where: { id: job.id },
+      data: { attempts: job.attempts + 1, status: "failed", lastError: msg },
+    });
+    await prisma.emailLog.create({
+      data: {
+        to: job.booking.email,
+        subject: subjectForType(job.type, job.booking.bookingNumber),
+        template: job.type,
+        status: "failed",
+        relatedId: job.bookingId,
+        error: msg,
+      },
+    });
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Reîncearcă TOATE job-urile eșuate: le resetează la `queued` (attempts la 0) și
+ * rulează coada. Folosit de butonul "Reîncearcă eșuate" din admin.
+ */
+export async function retryFailedJobs(): Promise<{
+  reset: number;
+  processed: number;
+  sent: number;
+  failed: number;
+  retried: number;
+}> {
+  const reset = await prisma.emailJob.updateMany({
+    where: { status: "failed" },
+    data: { status: "queued", attempts: 0, sendAt: new Date(), lastError: null },
+  });
+  const results = await processEmailQueue();
+  return { reset: reset.count, ...results };
+}
+
 async function sendJob(job: EmailJob & { booking: Booking }) {
   const { type, booking } = job;
   const urls = await buildResponseUrls(booking.bookingNumber);

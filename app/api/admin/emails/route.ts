@@ -43,8 +43,6 @@ function subjectForType(type: string, bookingNumber: string) {
       return `Confirmare rezervare #${bookingNumber}`;
     case "reminder_24h":
       return "Mâine pleci în călătorie cu DAVO";
-    case "reminder_2h":
-      return "Cursa ta pleacă în 2 ore";
     case "cancellation":
       return `Rezervarea ta #${bookingNumber} a fost anulată`;
     default:

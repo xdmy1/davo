@@ -78,6 +78,7 @@ export const destinations: Destination[] = [
       { id: "g26", name: "Düsseldorf", slug: "dusseldorf" },
       { id: "g27", name: "Wuppertal", slug: "wuppertal" },
       { id: "g28", name: "Essen", slug: "essen" },
+      { id: "g31", name: "Dortmund", slug: "dortmund" },
       { id: "g29", name: "Münster", slug: "munster" },
       { id: "g30", name: "Osnabrück", slug: "osnabruck" },
     ],
@@ -327,10 +328,10 @@ export const navItems: NavItem[] = [
   { label: "Trimite colet", href: "/rezervare?mode=colet" },
   {
     label: "Servicii oferite",
-    href: "/servicii",
+    href: "/serviciile-noastre",
     children: services.map((s) => ({
       label: s.title,
-      href: `/servicii/${s.slug}`,
+      href: `/serviciile-noastre/${s.slug}`,
     })),
   },
   {

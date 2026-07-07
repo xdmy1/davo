@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import {
   confirmationHtml,
   reminder24hHtml,
-  reminder2hHtml,
   cancellationHtml,
   type ConfirmationData,
 } from "@/lib/emailTemplates";
@@ -18,12 +17,11 @@ export const dynamic = "force-dynamic";
 // Usage:
 //   /api/admin/bookings/DAVO-2026-XXX/preview-email
 //   /api/admin/bookings/DAVO-2026-XXX/preview-email?type=reminder_24h
-//   /api/admin/bookings/DAVO-2026-XXX/preview-email?type=reminder_2h
 //   /api/admin/bookings/DAVO-2026-XXX/preview-email?type=cancellation
 //
-// Tipuri valide: confirmation (default) | reminder_24h | reminder_2h | cancellation
+// Tipuri valide: confirmation (default) | reminder_24h | cancellation
 
-const VALID_TYPES = ["confirmation", "reminder_24h", "reminder_2h", "cancellation"] as const;
+const VALID_TYPES = ["confirmation", "reminder_24h", "cancellation"] as const;
 type EmailType = (typeof VALID_TYPES)[number];
 
 export async function GET(
@@ -81,8 +79,6 @@ export async function GET(
     html = confirmationHtml(data, { confirmUrl, cancelUrl });
   } else if (type === "reminder_24h") {
     html = reminder24hHtml(booking, { confirmUrl, cancelUrl });
-  } else if (type === "reminder_2h") {
-    html = reminder2hHtml(booking, { confirmUrl, cancelUrl });
   } else {
     html = cancellationHtml(booking);
   }
@@ -98,7 +94,6 @@ export async function GET(
   <div style="display:flex;gap:6px;">
     <a href="?type=confirmation" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "confirmation" ? "700" : "400"};">confirmation</a>
     <a href="?type=reminder_24h" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "reminder_24h" ? "700" : "400"};">24h</a>
-    <a href="?type=reminder_2h" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "reminder_2h" ? "700" : "400"};">2h</a>
     <a href="?type=cancellation" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "cancellation" ? "700" : "400"};">cancel</a>
   </div>
 </div>

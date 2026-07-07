@@ -32,12 +32,6 @@ const templates: { type: EmailType; subject: string; preview: string; trigger: s
     trigger: "Programat la confirmare: departureAt - 24h.",
   },
   {
-    type: "reminder_2h",
-    subject: "Cursa ta pleacă în 2 ore",
-    preview: "{firstName}, în 2 ore pleacă cursa {routeLabel}. Șoferul este {driverName}, telefon {driverPhone}. Drum bun!",
-    trigger: "Programat la confirmare: departureAt - 2h.",
-  },
-  {
     type: "cancellation",
     subject: "Rezervarea ta #{bookingNumber} a fost anulată",
     preview: "Am înregistrat anularea rezervării tale. Suma de {amount} {currency} va fi rambursată în 5-7 zile lucrătoare pe aceeași metodă de plată.",
@@ -54,6 +48,8 @@ export default function EmailsPage() {
   const [loading, setLoading] = useState(true);
 
   const [running, setRunning] = useState(false);
+  const [retryingFailed, setRetryingFailed] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -85,6 +81,39 @@ export default function EmailsPage() {
     }
   }
 
+  async function retryFailed() {
+    if (!confirm("Reîncerci toate emailurile eșuate?")) return;
+    setRetryingFailed(true);
+    try {
+      const res = await fetch("/api/admin/emails/retry-failed", { method: "POST" });
+      const data = await res.json();
+      if (data?.success) {
+        alert(`Reîncercate: ${data.reset} · trimise acum: ${data.sent} · încă eșuate: ${data.failed}`);
+        load();
+      } else {
+        alert(data?.error ?? "Eroare la reîncercare");
+      }
+    } finally {
+      setRetryingFailed(false);
+    }
+  }
+
+  async function resend(id: string) {
+    setResendingId(id);
+    try {
+      const res = await fetch(`/api/admin/emails/${id}`, { method: "POST" });
+      const data = await res.json();
+      if (data?.success) {
+        alert("Email trimis.");
+        load();
+      } else {
+        alert(data?.error ?? "Trimiterea a eșuat");
+      }
+    } finally {
+      setResendingId(null);
+    }
+  }
+
   useEffect(() => { load(); }, []);
 
   return (
@@ -97,6 +126,15 @@ export default function EmailsPage() {
             <button onClick={load} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
               <RefreshCw className="h-3.5 w-3.5" /> Actualizare
             </button>
+            {stats.failed > 0 && (
+              <button
+                onClick={retryFailed}
+                disabled={retryingFailed}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-600 disabled:opacity-60"
+              >
+                <AlertCircle className="h-3.5 w-3.5" /> {retryingFailed ? "Reîncerc…" : `Reîncearcă eșuate (${stats.failed})`}
+              </button>
+            )}
             <button
               onClick={runQueue}
               disabled={running}
@@ -133,7 +171,7 @@ export default function EmailsPage() {
             <EmptyState
               icon={Mail}
               title="Niciun email în coadă"
-              description="Email-urile automate apar aici după confirmarea primei rezervări (confirmation + reminder_24h + reminder_2h)."
+              description="Email-urile automate apar aici după confirmarea primei rezervări (confirmation + reminder_24h)."
             />
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -165,8 +203,17 @@ export default function EmailsPage() {
                         </td>
                         <td className="px-5 py-3">
                           <div className="flex items-center justify-end gap-1">
-                            <button className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-orange-600" title={e.status === "sent" ? "Retrimite" : "Trimite acum"}>
-                              <Send className="h-3.5 w-3.5" />
+                            <button
+                              onClick={() => resend(e.id)}
+                              disabled={resendingId === e.id}
+                              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-orange-600 disabled:opacity-50"
+                              title={e.status === "sent" ? "Retrimite" : e.status === "failed" ? "Reîncearcă" : "Trimite acum"}
+                            >
+                              {resendingId === e.id ? (
+                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Send className="h-3.5 w-3.5" />
+                              )}
                             </button>
                           </div>
                         </td>

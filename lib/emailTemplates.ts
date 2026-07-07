@@ -368,24 +368,6 @@ export function reminder24hHtml(b: Booking, urls?: ResponseUrls, scheduledDepart
   });
 }
 
-export function reminder2hHtml(b: Booking, urls?: ResponseUrls): string {
-  const body = `
-    ${headline(`${b.firstName}, e timpul să pornești.`)}
-    ${intro(`Cursa <strong style="color:${C.navy900};">${b.departureCity} → ${b.arrivalCity}</strong> pleacă la ora <strong style="color:${C.red500};">${formatTime(b.departureDate)}</strong>. Pleacă acum spre îmbarcare.`)}
-    ${urls ? vxButtons(urls, "Dacă ceva s-a schimbat, anunță-ne acum cu un click.") : ""}
-    ${ticketButton(b.bookingNumber)}
-    <p style="margin:24px 0 0;font-family:${FONT_BODY};font-size:13px;color:${C.ink500};">
-      Nr. rezervare: <strong style="color:${C.navy900};">${b.bookingNumber}</strong>
-    </p>
-  `;
-  return layout({
-    preheader: `Cursa ${b.bookingNumber} pleacă la ${formatTime(b.departureDate)}`,
-    title: "Cursa ta pleacă în 2 ore",
-    eyebrow: "Pleci în 2 ore",
-    body,
-  });
-}
-
 // ----- Cancellation -----
 
 export function cancellationHtml(b: Booking): string {
