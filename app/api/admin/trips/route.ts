@@ -8,8 +8,8 @@ export async function GET() {
       include: {
         route: {
           include: {
-            originCity: true,
-            destinationCity: true,
+            originCity: { include: { country: true } },
+            destinationCity: { include: { country: true } },
           },
         },
         bus: true,
@@ -25,8 +25,11 @@ export async function GET() {
           id: t.id,
           routeId: t.routeId,
           routeLabel: `${t.route.originCity.name} → ${t.route.destinationCity.name}`,
+          originCountry: t.route.originCity.country?.name ?? "",
+          destinationCountry: t.route.destinationCity.country?.name ?? "",
           busId: t.busId,
           busLabel: t.bus.label,
+          busPlate: t.bus.plate ?? null,
           departureAt: t.departureAt.toISOString(),
           arrivalAt: t.arrivalAt.toISOString(),
           status: t.status,

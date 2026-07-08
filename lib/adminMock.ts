@@ -128,8 +128,11 @@ export type MockTrip = {
   id: string;
   routeId: string;
   routeLabel: string;
+  originCountry?: string;
+  destinationCountry?: string;
   busId: string;
   busLabel: string;
+  busPlate?: string | null;
   departureAt: string;
   arrivalAt: string;
   status: TripStatus;

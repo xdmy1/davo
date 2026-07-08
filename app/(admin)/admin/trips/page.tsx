@@ -75,12 +75,31 @@ export default function TripsPage() {
     return true;
   });
 
-  async function setStatus(id: string, status: TripStatus) {
-    await fetch(`/api/admin/trips/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+  // Grupare pe CURSĂ FIZICĂ (autocar + zi + direcție), afișată pe ȚARĂ — ca
+  // panoul operatorilor. O cursă cuprinde toate orașele/țările acelui autocar în
+  // ziua aia (poate mai multe țări).
+  const cursMap = new Map<string, {
+    key: string; tripIds: string[]; anyTripId: string; busLabel: string; busPlate: string | null;
+    departureAt: string; inbound: boolean; _c: Set<string>; booked: number; capacity: number; statuses: Set<TripStatus>;
+  }>();
+  for (const t of visible) {
+    const inbound = /moldova/i.test(t.destinationCountry || "");
+    const country = (inbound ? t.originCountry : t.destinationCountry) || "";
+    const dk = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Chisinau", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t.departureAt));
+    const key = `${dk}|${t.busId}|${inbound ? 1 : 0}`;
+    let c = cursMap.get(key);
+    if (!c) { c = { key, tripIds: [], anyTripId: t.id, busLabel: t.busLabel, busPlate: t.busPlate ?? null, departureAt: t.departureAt, inbound, _c: new Set(), booked: 0, capacity: t.capacity, statuses: new Set() }; cursMap.set(key, c); }
+    c.tripIds.push(t.id);
+    if (country && !/moldova/i.test(country)) c._c.add(country);
+    c.booked += t.booked; c.statuses.add(t.status);
+    if (t.departureAt < c.departureAt) c.departureAt = t.departureAt;
+  }
+  const curse = [...cursMap.values()]
+    .map((c) => ({ ...c, countries: [...c._c].sort((a, b) => a.localeCompare(b, "ro")) }))
+    .sort((a, b) => a.departureAt.localeCompare(b.departureAt));
+
+  async function setCursaStatus(ids: string[], status: TripStatus) {
+    await Promise.all(ids.map((id) => fetch(`/api/admin/trips/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) })));
     load();
   }
 
@@ -219,70 +238,63 @@ export default function TripsPage() {
           description="Creează prima cursă alegând o rută, un autocar și o dată de plecare."
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-5 py-3 text-left">Rută</th>
-                <th className="px-5 py-3 text-left">Plecare</th>
-                <th className="px-5 py-3 text-left">Autocar</th>
-                <th className="px-5 py-3 text-left">Ocupare</th>
-                <th className="px-5 py-3 text-left">Status</th>
-                <th className="px-5 py-3 text-right">Acțiuni</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visible.map((t) => {
-                const meta = tripStatusMeta[t.status];
-                const pct = t.capacity > 0 ? Math.round((t.booked / t.capacity) * 100) : 0;
-                return (
-                  <tr
-                    key={t.id}
-                    onClick={() => setViewingTripId(t.id)}
-                    className="hover:bg-slate-50 cursor-pointer"
-                    title="Click pentru a vedea pasagerii înregistrați"
-                  >
-                    <td className="px-5 py-3">
-                      <div className="font-semibold text-slate-900">{t.routeLabel}</div>
-                      <div className="text-xs text-slate-500">ID {t.id.slice(0, 8)}</div>
-                    </td>
-                    <td className="px-5 py-3 text-slate-700">{dateFmt.format(new Date(t.departureAt))}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <BusIcon className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-slate-700">{t.busLabel}</span>
+        <div className="space-y-3">
+          {curse.map((c) => {
+            const pct = c.capacity > 0 ? Math.round((c.booked / c.capacity) * 100) : 0;
+            const dest = c.countries.join(", ") || "—";
+            const routeStr = c.inbound ? `${dest} → Chișinău` : `Chișinău → ${dest}`;
+            const uniform = c.statuses.size === 1 ? [...c.statuses][0] : null;
+            const meta = uniform ? tripStatusMeta[uniform] : null;
+            return (
+              <div
+                key={c.key}
+                onClick={() => setViewingTripId(c.anyTripId)}
+                className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-300 hover:shadow"
+                title="Click pentru pasageri și schimbarea autocarului"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <BusIcon className="h-3.5 w-3.5 text-orange-500" />
+                      <span>{c.busLabel}{c.busPlate ? ` · ${c.busPlate}` : ""}</span>
+                      <span className="text-slate-300">·</span>
+                      <span>{new Date(c.departureAt).toLocaleDateString("ro-RO", { weekday: "short", day: "numeric", month: "long", timeZone: "Europe/Chisinau" })}</span>
+                    </div>
+                    <div className="mt-1 truncate text-base font-bold text-slate-900">{routeStr}</div>
+                    <div className="text-xs text-slate-500">{c.tripIds.length} {c.tripIds.length === 1 ? "oraș/rută" : "orașe/rute"}</div>
+                  </div>
+                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-orange-500" style={{ width: `${pct}%` }} />
                       </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full rounded-full bg-orange-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-xs font-semibold text-slate-700">{t.booked}/{t.capacity}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                      <select value={t.status} onChange={(e) => setStatus(t.id, e.target.value as TripStatus)} className="rounded-md border border-transparent bg-transparent text-xs font-semibold focus:outline-none">
+                      <span className="text-xs font-semibold text-slate-700">{c.booked}/{c.capacity}</span>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <select
+                        value={uniform ?? ""}
+                        onChange={(e) => e.target.value && setCursaStatus(c.tripIds, e.target.value as TripStatus)}
+                        className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold focus:outline-none"
+                      >
+                        {!uniform && <option value="">— mixt —</option>}
                         {(Object.keys(tripStatusMeta) as TripStatus[]).map((s) => (
                           <option key={s} value={s}>{tripStatusMeta[s].label}</option>
                         ))}
                       </select>
-                      <div className="mt-1"><Badge variant={meta.variant}>{meta.label}</Badge></div>
-                    </td>
-                    <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => sendManifest(t.id)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-orange-600"
-                        title="Trimite manifest pe email admin"
-                      >
-                        <Mail className="h-3.5 w-3.5" /> Manifest
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {meta && <Badge variant={meta.variant}>{meta.label}</Badge>}
+                    </div>
+                    <button
+                      onClick={() => sendManifest(c.anyTripId)}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-orange-600"
+                      title="Trimite manifest pe email admin"
+                    >
+                      <Mail className="h-3.5 w-3.5" /> Manifest
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
