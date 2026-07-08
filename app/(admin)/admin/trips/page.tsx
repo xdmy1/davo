@@ -343,7 +343,7 @@ function TripPassengersModal({ tripId, buses, onClose }: { tripId: string; buses
 
   const changeBus = async () => {
     if (!newBusId) return;
-    if (!confirm(notify ? "Schimbi autobuzul și trimiți email tuturor pasagerilor cu locul nou?" : "Schimbi autobuzul (fără email)?")) return;
+    if (!confirm(notify ? "Schimbi autobuzul pentru TOATĂ cursa (toate orașele acestei zile) și trimiți email tuturor pasagerilor cu locul nou?" : "Schimbi autobuzul pentru TOATĂ cursa (toate orașele), fără email?")) return;
     setChanging(true);
     setChangeMsg(null);
     try {
@@ -354,7 +354,7 @@ function TripPassengersModal({ tripId, buses, onClose }: { tripId: string; buses
       });
       const d = await res.json();
       if (d.success) {
-        const parts = [`${d.passengers} pasageri`, `${d.seatsKept} locuri păstrate`];
+        const parts = [`${d.tripsChanged} curse (toate orașele)`, `${d.passengers} pasageri`, `${d.seatsKept} locuri păstrate`];
         if (d.seatsChanged) parts.push(`${d.seatsChanged} mutate`);
         if (d.unseated) parts.push(`${d.unseated} fără loc`);
         if (notify) parts.push(`${d.emailsSent} emailuri trimise${d.emailsFailed ? ` · ${d.emailsFailed} eșuate` : ""}`);
@@ -461,9 +461,9 @@ function TripPassengersModal({ tripId, buses, onClose }: { tripId: string; buses
 
             {/* Schimbă autocarul — remapează locurile + anunță pasagerii */}
             <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-orange-700">Schimbă autocarul</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-orange-700">Schimbă autocarul (toată cursa)</div>
               <p className="mt-0.5 text-xs text-slate-500">
-                Locurile se mută pe același număr (sau altul liber dacă nu există){manifest.passengers.length > 0 ? "; pasagerii primesc email cu locul nou" : ""}.
+                Afectează TOATĂ cursa fizică — toate orașele acestui autocar în ziua &amp; direcția asta. Locurile tuturor se mută pe același număr (sau altul liber){manifest.passengers.length > 0 ? "; pasagerii primesc email cu locul nou" : ""}.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <select
