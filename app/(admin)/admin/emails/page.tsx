@@ -189,7 +189,8 @@ export default function EmailsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {jobs.map((e) => {
-                    const meta = emailStatusMeta[e.status];
+                    // Fallback defensiv: orice status necunoscut nu mai crapă pagina.
+                    const meta = emailStatusMeta[e.status] ?? { label: e.status, variant: "slate" as const };
                     return (
                       <tr key={e.id} className="hover:bg-slate-50">
                         <td className="px-5 py-3 text-xs font-semibold text-slate-600">{emailTypeLabel[e.type]}</td>

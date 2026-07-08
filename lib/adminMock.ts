@@ -155,7 +155,7 @@ export type MockClient = {
   routes?: string[];
 };
 
-export type EmailStatus = "sent" | "failed" | "queued" | "scheduled";
+export type EmailStatus = "sent" | "failed" | "queued" | "scheduled" | "cancelled";
 export type EmailType =
   | "confirmation"
   | "reminder_24h"

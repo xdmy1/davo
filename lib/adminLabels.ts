@@ -29,6 +29,7 @@ export const emailStatusMeta: Record<EmailStatus, { label: string; variant: Badg
   failed: { label: "Eșuat", variant: "red" },
   queued: { label: "În coadă", variant: "yellow" },
   scheduled: { label: "Programat", variant: "blue" },
+  cancelled: { label: "Anulat", variant: "slate" },
 };
 
 export const emailTypeLabel: Record<EmailType, string> = {
