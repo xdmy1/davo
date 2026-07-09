@@ -19,3 +19,11 @@ export function busPlateForRun(originCountry?: string | null, destCountry?: stri
   const nonMD = isMD(originCountry) ? destCountry : originCountry;
   return busPlateForCountry(nonMD ?? "");
 }
+
+// Zile SUPLIMENTARE de plecare (dus), peste programul Country. Belgia mai pleacă
+// și joi cu DAW 077 (pe lângă vineri cu ZNQ 874).
+export function extraOutboundDays(country: string): Array<{ weekday: number; time: string; durationHours: number; plate: string }> {
+  const c = (country || "").trim().toLowerCase();
+  if (c === "belgia") return [{ weekday: 4, time: "07:00", durationHours: 28, plate: "DAW 077" }];
+  return [];
+}
