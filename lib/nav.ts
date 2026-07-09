@@ -47,6 +47,7 @@ export function getNavItems(locale: Locale): NavItem[] {
         { label: d.nav.bankDetails, href: lp("/rechizitele-bancare") },
       ],
     },
+    { label: d.nav.blog, href: lp("/blog") },
     { label: d.nav.contacts, href: lp("/contact") },
   ];
 }

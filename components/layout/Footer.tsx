@@ -215,6 +215,7 @@ export default function Footer() {
                 <FooterLink href={lp("/informatii-utile")}>{t.footer.links.socialDavo}</FooterLink>
                 <FooterLink href={lp("/rezervare")}>{t.footer.links.bookings}</FooterLink>
                 <FooterLink href={lp("/despre-noi")}>{t.footer.links.about}</FooterLink>
+                <FooterLink href={lp("/blog")}>{t.footer.links.blog}</FooterLink>
                 <FooterLink href={lp("/contact")}>{t.footer.links.contacts}</FooterLink>
                 <FooterLink href={lp("/rechizitele-bancare")}>{t.footer.links.bankDetails}</FooterLink>
                 <FooterLink href={lp("/harta-site")}>{t.footer.links.sitemap}</FooterLink>

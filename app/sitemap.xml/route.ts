@@ -1,4 +1,5 @@
 import { destinations, services } from "@/lib/data";
+import { getAllPosts } from "@/lib/blog/posts";
 import { countryLandingUrl, cityPageUrl } from "@/lib/utils";
 import { locales, localePath, type Locale } from "@/lib/i18n/config";
 
@@ -23,6 +24,7 @@ const STATIC_ROUTES: { path: string; priority: number; changefreq: ChangeFreq }[
   { path: "/serviciile-noastre", priority: 0.8, changefreq: "monthly" },
   { path: "/despre-noi", priority: 0.7, changefreq: "monthly" },
   { path: "/informatii-utile", priority: 0.7, changefreq: "monthly" },
+  { path: "/blog", priority: 0.7, changefreq: "weekly" },
   { path: "/contact", priority: 0.6, changefreq: "monthly" },
   { path: "/livrare", priority: 0.5, changefreq: "monthly" },
   { path: "/colet-la-cheie", priority: 0.6, changefreq: "monthly" },
@@ -73,6 +75,10 @@ function buildEntries(base: string, isoNow: string): SitemapEntry[] {
 
   for (const s of services) {
     addRouteAllLocales(base, `/serviciile-noastre/${s.slug}`, isoNow, 0.7, "monthly", entries);
+  }
+
+  for (const post of getAllPosts()) {
+    addRouteAllLocales(base, `/blog/${post.slug}`, isoNow, 0.6, "monthly", entries);
   }
 
   for (const d of destinations) {
