@@ -1,7 +1,8 @@
 // Blog content model. Posts are authored as an array of typed blocks so the
 // renderer stays declarative and every article shares the same styling. Slugs
-// are locale-agnostic (like the rest of the site); UI chrome is translated via
-// the `blogChrome` map, article bodies are authored per language when available.
+// are locale-agnostic (like the rest of the site); the translatable body lives
+// per-locale in `i18n`, while metadata shared across languages (date, reading
+// time, source) stays at the top level.
 
 import type { Locale } from "@/lib/i18n/config";
 
@@ -27,8 +28,8 @@ export type Block =
 
 export type FaqItem = { q: string; a: string };
 
-export type BlogPost = {
-  slug: string;
+// The translatable part of a post — one object per language.
+export type PostContent = {
   /** Short category label shown as an eyebrow chip, e.g. "Reglementări". */
   category: string;
   title: string;
@@ -36,19 +37,33 @@ export type BlogPost = {
   excerpt: string;
   metaTitle: string;
   metaDescription: string;
+  author: string;
+  /** 3–5 bullet takeaways surfaced at the top of the article. */
+  keyTakeaways: string[];
+  content: Block[];
+  faq: FaqItem[];
+};
+
+export type BlogPost = {
+  slug: string;
   /** ISO date (YYYY-MM-DD). */
   date: string;
   /** ISO date of last substantive update, if any. */
   updated?: string;
   readingMinutes: number;
-  author: string;
-  /** 3–5 bullet takeaways surfaced at the top of the article. */
-  keyTakeaways: string[];
-  /** Section headings collected for the table of contents. */
-  content: Block[];
-  faq: FaqItem[];
   source?: { name: string; url: string };
   /** Locales this post is authored in; used for hreflang alternates. */
+  locales: Locale[];
+  i18n: Record<Locale, PostContent>;
+};
+
+// Flattened single-locale view consumed by the pages.
+export type ResolvedPost = PostContent & {
+  slug: string;
+  date: string;
+  updated?: string;
+  readingMinutes: number;
+  source?: { name: string; url: string };
   locales: Locale[];
 };
 

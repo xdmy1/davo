@@ -14,7 +14,7 @@ import {
 import FAQ from "@/components/sections/FAQ";
 import ArticleBody from "@/components/blog/ArticleBody";
 import { Reveal } from "@/components/ui/Reveal";
-import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog/posts";
+import { getAllPosts, getLocalizedPost, getRelatedPosts } from "@/lib/blog/posts";
 import { blogChrome } from "@/lib/blog/types";
 import { formatBlogDate } from "@/lib/blog/format";
 import { contactInfo } from "@/lib/data";
@@ -39,7 +39,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang, slug } = await params;
   if (!isLocale(lang)) return {};
-  const post = getPostBySlug(slug);
+  const post = getLocalizedPost(slug, lang);
   if (!post) return {};
 
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://davo.md").replace(/\/$/, "");
@@ -77,14 +77,14 @@ export default async function BlogPostPage({
   const { lang, slug } = await params;
   if (!isLocale(lang)) notFound();
   const locale: Locale = lang;
-  const post = getPostBySlug(slug);
+  const post = getLocalizedPost(slug, locale);
   if (!post) notFound();
 
   const c = blogChrome[locale];
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://davo.md").replace(/\/$/, "");
   const postUrl = `${baseUrl}${localePath(locale, `/blog/${post.slug}`)}`;
   const toc = post.content.filter((b): b is Extract<typeof b, { type: "h2" }> => b.type === "h2");
-  const related = getRelatedPosts(post.slug);
+  const related = getRelatedPosts(post.slug, locale);
 
   const blogPostingLd = {
     "@context": "https://schema.org",

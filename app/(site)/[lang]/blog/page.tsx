@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowRight, Clock, CalendarDays } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
-import { getAllPosts } from "@/lib/blog/posts";
+import { getLocalizedPosts } from "@/lib/blog/posts";
 import { blogChrome } from "@/lib/blog/types";
 import { formatBlogDate } from "@/lib/blog/format";
 import { isLocale, localePath, type Locale } from "@/lib/i18n/config";
@@ -46,7 +46,7 @@ export default async function BlogIndex({
   if (!isLocale(lang)) notFound();
   const locale: Locale = lang;
   const c = blogChrome[locale];
-  const posts = getAllPosts();
+  const posts = getLocalizedPosts(locale);
   const [featured, ...rest] = posts;
 
   return (
