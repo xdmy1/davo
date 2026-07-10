@@ -374,6 +374,18 @@ function RezervareContent() {
     if (step === 1 && trip === "return") {
       return !!returnTripId && returnSeats.length === passengers;
     }
+    // Pasul Pasageri: nume + prenume + telefon + email obligatorii — serverul
+    // oricum respinge fără ele; nu lăsăm clientul să ajungă la Plată degeaba.
+    if ((step === 1 && trip === "one") || (step === 2 && trip === "return")) {
+      const extras = extraPassengers.slice(0, Math.max(0, passengers - 1));
+      return (
+        !!person.firstName.trim() &&
+        !!person.lastName.trim() &&
+        !!person.phone.trim() &&
+        !!person.email.trim() &&
+        extras.every((p) => !!p.firstName.trim() && !!p.lastName.trim())
+      );
+    }
     return true;
   })();
 
