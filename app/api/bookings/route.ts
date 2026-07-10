@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { sendBookingConfirmation, sendAdminNotification, BookingConfirmationData } from '@/lib/email'
-import { calculatePrice, calculatePriceFromRoute } from '@/lib/pricing'
+import { calculatePrice, calculatePriceFromRoute, seatSurcharge } from '@/lib/pricing'
 import { autoLinkTripAndClient } from '@/lib/bookingLink'
 import { enqueueRemindersOnly } from '@/lib/emailQueue'
 import { createBookingToken, bookingResponseUrl } from '@/lib/bookingToken'
@@ -145,6 +145,9 @@ export async function POST(request: NextRequest) {
       })
       price = res.price
       currency = res.currency
+      // Locuri premium (ex. DAW 777: 1–8, 25–28 = +30/loc) — pe fiecare segment.
+      price += seatSurcharge(outboundTrip.bus.plate, seatNumbers)
+      if (returnTrip) price += seatSurcharge(returnTrip.bus.plate, returnSeatNumbers)
     } else {
       const res = calculatePrice({
         departureCity: body.departureCity,

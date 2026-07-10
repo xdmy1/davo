@@ -13,6 +13,7 @@ import {
   Bus as BusIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { premiumSeatRule } from "@/lib/pricing";
 import { BusSeatMap } from "./BusSeatMap";
 import type { BusLayout } from "@/lib/adminMock";
 
@@ -423,13 +424,23 @@ export function TripPicker({
           >
             {detailLoading && <SeatLayoutSkeleton />}
             {!detailLoading && detail && (
-              <BusSeatMap
-                layout={detail.bus.layout}
-                occupiedSeats={detail.occupiedSeats}
-                selected={selectedSeats}
-                onSelect={updateSeats}
-                max={maxSeats}
-              />
+              <>
+                <BusSeatMap
+                  layout={detail.bus.layout}
+                  occupiedSeats={detail.occupiedSeats}
+                  selected={selectedSeats}
+                  onSelect={updateSeats}
+                  max={maxSeats}
+                />
+                {(() => {
+                  const rule = premiumSeatRule(detail.bus.plate);
+                  return rule ? (
+                    <p className="mt-3 rounded-lg bg-[color:var(--ink-50)] px-3 py-2 text-xs font-semibold text-[color:var(--ink-700)]">
+                      ⭐ Locurile 1–8 și 25–28 sunt premium: +{rule.amount}€/loc.
+                    </p>
+                  ) : null;
+                })()}
+              </>
             )}
           </motion.div>
         )}
