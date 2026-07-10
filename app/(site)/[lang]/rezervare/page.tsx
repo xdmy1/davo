@@ -286,14 +286,24 @@ function RezervareContent() {
   // ambele câmpuri fiindcă la direcția EU→MD `from` poate fi "London, Anglia".
   const fromCityName = from.split(",")[0].trim();
   const toCityName = to.split(",")[0].trim();
+  // Chișinău e HUB-ul: toate cursele trec prin Chișinău. Orașele din Moldova
+  // (Comrat, Bălți...) sunt puncte de îmbarcare/coborâre pe ACEEAȘI cursă, deci
+  // pentru căutarea cursei mapăm partea Moldova → Chișinău; orașul real rămâne pe
+  // rezervare (departureCity/arrivalCity = fromCityName/toCityName).
+  const chisinauId = useMemo(() => {
+    if (!cityIndex) return null;
+    return cityIndex["chișinău"]?.id ?? cityIndex["chisinau"]?.id ?? null;
+  }, [cityIndex]);
   const originCityId = useMemo(() => {
     if (!cityIndex) return null;
+    if (direction === "md-to-eu") return chisinauId;
     return cityIndex[fromCityName.toLowerCase()]?.id ?? null;
-  }, [cityIndex, fromCityName]);
+  }, [cityIndex, fromCityName, direction, chisinauId]);
   const destCityId = useMemo(() => {
     if (!cityIndex) return null;
+    if (direction === "eu-to-md") return chisinauId;
     return cityIndex[toCityName.toLowerCase()]?.id ?? null;
-  }, [cityIndex, toCityName]);
+  }, [cityIndex, toCityName, direction, chisinauId]);
 
   const total = useMemo(() => {
     if (mode === "colet") {

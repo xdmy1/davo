@@ -31,7 +31,8 @@ function findCity(cityName: string) {
 }
 
 const DEFAULT_BASE_PRICE = 100;
-const ROUND_TRIP_MULTIPLIER = 1.8;
+// Tur-retur = dus + retur plătite integral (fără reducere): ×2.
+const ROUND_TRIP_MULTIPLIER = 2;
 const CHILD_DISCOUNT = 0.5;
 const PARCEL_BASE = 30;
 const PARCEL_PER_KG_FRACTION = 0.3;
