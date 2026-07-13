@@ -27,7 +27,7 @@ import { useLocale } from "@/lib/i18n/client";
 import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
-import { getOutboundWeekday, getReturnWeekday } from "@/lib/countrySchedule";
+import { getOutboundWeekdays, getReturnWeekdays } from "@/lib/countrySchedule";
 import RouteHero from "@/components/booking/RouteHero";
 import { StepBar } from "@/components/booking/StepBar";
 import { TripPicker, type PublicTrip } from "@/components/booking/TripPicker";
@@ -533,11 +533,11 @@ function RezervareContent() {
                               }}
                               // MD→EU = ziua de plecare din MD (outbound al țării destinație);
                               // EU→MD = ziua de retur din EU.
-                              allowedWeekday={
+                              allowedWeekdays={
                                 matchedCountry
                                   ? direction === "md-to-eu"
-                                    ? getOutboundWeekday(matchedCountry.slug)
-                                    : getReturnWeekday(matchedCountry.slug)
+                                    ? getOutboundWeekdays(matchedCountry.slug)
+                                    : getReturnWeekdays(matchedCountry.slug)
                                   : null
                               }
                             />
@@ -563,11 +563,11 @@ function RezervareContent() {
                           }}
                           // Returul are direcția inversă față de cursul dus —
                           // dacă userul a luat dus MD→EU, returul e EU→MD = ziua de retur.
-                          allowedWeekday={
+                          allowedWeekdays={
                             matchedCountry
                               ? direction === "md-to-eu"
-                                ? getReturnWeekday(matchedCountry.slug)
-                                : getOutboundWeekday(matchedCountry.slug)
+                                ? getReturnWeekdays(matchedCountry.slug)
+                                : getOutboundWeekdays(matchedCountry.slug)
                               : null
                           }
                         />
@@ -643,11 +643,11 @@ function RezervareContent() {
                                 setOutboundTripId(tripId);
                                 if (tripInfo !== undefined) setOutboundTripInfo(tripInfo ?? null);
                               }}
-                              allowedWeekday={
+                              allowedWeekdays={
                                 matchedCountry
                                   ? direction === "md-to-eu"
-                                    ? getOutboundWeekday(matchedCountry.slug)
-                                    : getReturnWeekday(matchedCountry.slug)
+                                    ? getOutboundWeekdays(matchedCountry.slug)
+                                    : getReturnWeekdays(matchedCountry.slug)
                                   : null
                               }
                             />
