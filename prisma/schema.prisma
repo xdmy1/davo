@@ -316,6 +316,7 @@ model FuelEntry {
   id            String   @id @default(uuid())
   kind          String   // refill = adăugare în rezervor | dispense = alimentare vehicul
   liters        Float    // întotdeauna pozitiv; `kind` decide semnul asupra stocului
+  pricePerLiter Float?   // preț achiziție per litru (lei), doar la reumplere; total = liters * pricePerLiter
   plate         String?  // număr înmatriculare (la alimentare vehicul)
   vehicle       String?  // ce mașină / etichetă
   notes         String?  // notițe (mașină personală / a altcuiva etc.)

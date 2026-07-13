@@ -10,6 +10,7 @@ import {
   TrendingDown,
   TrendingUp,
   Gauge,
+  Wallet,
   X,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
@@ -20,6 +21,7 @@ type Entry = {
   id: string;
   kind: "refill" | "dispense";
   liters: number;
+  pricePerLiter: number | null;
   plate: string | null;
   vehicle: string | null;
   notes: string | null;
@@ -27,10 +29,17 @@ type Entry = {
   createdByName: string | null;
   createdAt: string;
 };
-type Stats = { dispensedThisMonth: number; refilledThisMonth: number; opsThisMonth: number };
+type Stats = {
+  dispensedThisMonth: number;
+  refilledThisMonth: number;
+  opsThisMonth: number;
+  totalSpent: number;
+};
 
 const nf = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 1 });
 const fmtL = (n: number) => `${nf.format(n)} l`;
+const money = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 2 });
+const fmtLei = (n: number) => `${money.format(n)} lei`;
 
 // Numerele de înmatriculare ale vehiculelor care se alimentează din rezervor.
 // Lista fixă (fără duplicate). Adaugă/scoate aici dacă se schimbă flota.
@@ -142,13 +151,20 @@ export default function FuelPage() {
           <TankGauge tank={tank} pct={pct} />
 
           {/* Stats */}
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Stoc curent"
               value={tank ? fmtL(tank.liters) : "—"}
               icon={Gauge}
               tone="orange"
               hint={tank ? `din ${fmtL(tank.capacity)} capacitate` : undefined}
+            />
+            <StatCard
+              label="Cheltuit total"
+              value={stats ? fmtLei(stats.totalSpent) : "—"}
+              icon={Wallet}
+              tone="green"
+              hint="pe motorina achiziționată"
             />
             <StatCard
               label="Alimentat luna asta"
@@ -288,6 +304,7 @@ function EntryRow({ entry, onDelete }: { entry: Entry; onDelete: () => void }) {
         <div className="mt-0.5 text-[11px] text-slate-400">
           {dateStr}
           {entry.createdByName ? ` · ${entry.createdByName}` : ""} · rămas {fmtL(entry.balanceAfter)}
+          {isRefill && entry.pricePerLiter ? ` · ${money.format(entry.pricePerLiter)} lei/l` : ""}
         </div>
       </div>
 
@@ -296,6 +313,11 @@ function EntryRow({ entry, onDelete }: { entry: Entry; onDelete: () => void }) {
           {isRefill ? "+" : "−"}
           {fmtL(entry.liters)}
         </div>
+        {isRefill && entry.pricePerLiter ? (
+          <div className="mt-0.5 text-xs font-semibold text-emerald-600">
+            {fmtLei(entry.liters * entry.pricePerLiter)}
+          </div>
+        ) : null}
       </div>
 
       <button
@@ -438,14 +460,22 @@ function RefillModal({
   onSubmit: (p: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [liters, setLiters] = useState("");
+  const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const free = tank ? Math.max(0, tank.capacity - tank.liters) : 0;
 
+  const litersNum = Number(liters);
+  const priceNum = Number(price);
+  const total =
+    Number.isFinite(litersNum) && litersNum > 0 && Number.isFinite(priceNum) && priceNum > 0
+      ? litersNum * priceNum
+      : null;
+
   async function handle(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const ok = await onSubmit({ kind: "refill", liters: Number(liters), notes });
+    const ok = await onSubmit({ kind: "refill", liters: litersNum, pricePerLiter: priceNum, notes });
     if (!ok) setSaving(false);
   }
 
@@ -456,25 +486,46 @@ function RefillModal({
       onClose={onClose}
     >
       <form className="grid gap-4 px-5 py-4" onSubmit={handle}>
-        <Field label="Litri adăugați în rezervor">
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            value={liters}
-            onChange={(e) => setLiters(e.target.value)}
-            className={inputCls}
-            required
-            autoFocus
-            placeholder="ex. 2000"
-          />
-        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Litri adăugați">
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              value={liters}
+              onChange={(e) => setLiters(e.target.value)}
+              className={inputCls}
+              required
+              autoFocus
+              placeholder="ex. 5100"
+            />
+          </Field>
+          <Field label="Preț per litru (lei)">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className={inputCls}
+              placeholder="ex. 24,3"
+            />
+          </Field>
+        </div>
+
+        {total !== null && (
+          <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Total achiziție</span>
+            <span className="text-lg font-bold text-emerald-700">{fmtLei(total)}</span>
+          </div>
+        )}
+
         <Field label="Notițe">
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className={inputCls}
-            placeholder="ex. furnizor, bon, preț/litru..."
+            placeholder="ex. furnizor, nr. bon..."
           />
         </Field>
         <div className="mt-2 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">

@@ -51,6 +51,13 @@ export async function GET() {
       .filter((e) => e.kind === "refill")
       .reduce((s, e) => s + e.liters, 0);
 
+    // Total cheltuit (toate reumplerile cu preț setat): Σ litri × preț/litru.
+    const pricedRefills = await prisma.fuelEntry.findMany({
+      where: { kind: "refill", pricePerLiter: { not: null } },
+      select: { liters: true, pricePerLiter: true },
+    });
+    const totalSpent = pricedRefills.reduce((s, e) => s + e.liters * (e.pricePerLiter ?? 0), 0);
+
     return NextResponse.json({
       success: true,
       tank: { capacity: tank.capacity, liters: tank.liters },
@@ -59,6 +66,7 @@ export async function GET() {
         dispensedThisMonth,
         refilledThisMonth,
         opsThisMonth: monthEntries.length,
+        totalSpent: round(totalSpent),
       },
     });
   } catch (error) {
@@ -72,6 +80,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const kind = body?.kind === "refill" ? "refill" : "dispense";
     const liters = Number(body?.liters);
+    const priceRaw = Number(body?.pricePerLiter);
+    const pricePerLiter = Number.isFinite(priceRaw) && priceRaw > 0 ? round(priceRaw) : null;
     const plate = typeof body?.plate === "string" ? body.plate.trim() : "";
     const vehicle = typeof body?.vehicle === "string" ? body.vehicle.trim() : "";
     const notes = typeof body?.notes === "string" ? body.notes.trim() : "";
@@ -111,6 +121,7 @@ export async function POST(req: NextRequest) {
         data: {
           kind,
           liters: round(liters),
+          pricePerLiter: kind === "refill" ? pricePerLiter : null,
           plate: kind === "dispense" ? plate || null : null,
           vehicle: kind === "dispense" ? vehicle || null : null,
           notes: notes || null,
