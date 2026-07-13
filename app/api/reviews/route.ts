@@ -31,6 +31,8 @@ async function authorize(nr: string, t: string) {
       review: { select: { rating: true, comment: true } },
     },
   });
+  // Rezervările anulate nu lasă recenzii (tokenul de 120 zile rămâne altfel valid).
+  if (booking?.status === "cancelled") return null;
   return booking;
 }
 
