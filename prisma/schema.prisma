@@ -298,3 +298,31 @@ model Settings {
   key   String @unique
   value String
 }
+
+// ===== Rezervor motorină (fuel) =====
+// Pagină admin-only: gestionăm un rezervor mare de motorină care alimentează
+// autobuzele/autocarele. `FuelTank` e un singleton (id="1"), iar fiecare
+// operație (adăugare în rezervor sau alimentare vehicul) e un `FuelEntry`.
+
+model FuelTank {
+  id        String   @id @default("1") // singleton
+  capacity  Float    @default(9000)    // capacitate maximă (litri)
+  liters    Float    @default(0)       // stoc curent (litri)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FuelEntry {
+  id            String   @id @default(uuid())
+  kind          String   // refill = adăugare în rezervor | dispense = alimentare vehicul
+  liters        Float    // întotdeauna pozitiv; `kind` decide semnul asupra stocului
+  plate         String?  // număr înmatriculare (la alimentare vehicul)
+  vehicle       String?  // ce mașină / etichetă
+  notes         String?  // notițe (mașină personală / a altcuiva etc.)
+  balanceAfter  Float    // stocul rezervorului după această operație (snapshot audit)
+  createdByName String?  // numele adminului care a înregistrat
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([kind])
+}

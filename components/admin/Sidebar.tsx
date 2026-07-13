@@ -15,6 +15,7 @@ import {
   Globe,
   X,
   Armchair,
+  Fuel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessUI, type Role } from "@/lib/permissions";
@@ -43,6 +44,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { label: "Rute", href: "/admin/routes", icon: RouteIcon },
       { label: "Autocare", href: "/admin/buses", icon: BusIcon },
       { label: "Clienți", href: "/admin/clients", icon: Users },
+      { label: "Rezervor motorină", href: "/admin/fuel", icon: Fuel },
     ],
   },
   {
