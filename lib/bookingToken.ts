@@ -54,13 +54,27 @@ export type BookingTokenPayload = {
 export async function verifyBookingToken(
   token: string
 ): Promise<BookingTokenPayload | null> {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || !token) return null;
+  if (!token) return null;
   const [payloadB64, sig] = token.split(".");
   if (!payloadB64 || !sig) return null;
 
-  const expected = await hmac(payloadB64, secret);
-  if (sig !== expected) return null;
+  // Tokenul poate fi semnat de ORICARE din cele două deployment-uri (davo.md
+  // sau panoul operatorilor). Panoul semnează cu env SESSION_SECRET sau, dacă
+  // lipsește, cu Settings.session_secret din DB-ul comun — verificăm ambele.
+  const candidates: string[] = [];
+  if (process.env.SESSION_SECRET) candidates.push(process.env.SESSION_SECRET);
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const row = await prisma.settings.findUnique({ where: { key: "session_secret" } });
+    if (row?.value && !candidates.includes(row.value)) candidates.push(row.value);
+  } catch {}
+  if (candidates.length === 0) return null;
+
+  let matched = false;
+  for (const secret of candidates) {
+    if (sig === (await hmac(payloadB64, secret))) { matched = true; break; }
+  }
+  if (!matched) return null;
 
   try {
     const decoded = fromBase64Url(payloadB64);
