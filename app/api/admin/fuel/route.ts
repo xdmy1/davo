@@ -19,6 +19,17 @@ async function currentAdminName(req: NextRequest): Promise<string | null> {
   return user?.name ?? null;
 }
 
+// Prețul lotului curent = ultima reumplere cu preț setat. Merge atât cu
+// clientul global cât și cu clientul de tranzacție.
+async function getLastRefillPrice(client: Pick<typeof prisma, "fuelEntry">): Promise<number | null> {
+  const last = await client.fuelEntry.findFirst({
+    where: { kind: "refill", pricePerLiter: { not: null } },
+    orderBy: { createdAt: "desc" },
+    select: { pricePerLiter: true },
+  });
+  return last?.pricePerLiter ?? null;
+}
+
 // Asigură existența singleton-ului rezervorului (idempotent).
 async function ensureTank() {
   return prisma.fuelTank.upsert({
@@ -58,15 +69,30 @@ export async function GET() {
     });
     const totalSpent = pricedRefills.reduce((s, e) => s + e.liters * (e.pricePerLiter ?? 0), 0);
 
+    // Prețul lotului curent = prețul ultimei reumpleri cu preț setat. Folosit
+    // pentru a evalua în lei alimentările și pierderile.
+    const lastRefillPrice = await getLastRefillPrice(prisma);
+
+    // Total pierdut (furt/lipsă) evaluat la prețul de la momentul înregistrării.
+    const losses = await prisma.fuelEntry.findMany({
+      where: { kind: "loss" },
+      select: { liters: true, pricePerLiter: true },
+    });
+    const lostLiters = losses.reduce((s, e) => s + e.liters, 0);
+    const lostValue = losses.reduce((s, e) => s + e.liters * (e.pricePerLiter ?? 0), 0);
+
     return NextResponse.json({
       success: true,
       tank: { capacity: tank.capacity, liters: tank.liters },
       entries,
+      lastRefillPrice,
       stats: {
         dispensedThisMonth,
         refilledThisMonth,
         opsThisMonth: monthEntries.length,
         totalSpent: round(totalSpent),
+        lostLiters: round(lostLiters),
+        lostValue: round(lostValue),
       },
     });
   } catch (error) {
@@ -78,12 +104,12 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const kind = body?.kind === "refill" ? "refill" : "dispense";
+    const kind: "refill" | "dispense" | "loss" =
+      body?.kind === "refill" ? "refill" : body?.kind === "loss" ? "loss" : "dispense";
     const liters = Number(body?.liters);
     const priceRaw = Number(body?.pricePerLiter);
     const pricePerLiter = Number.isFinite(priceRaw) && priceRaw > 0 ? round(priceRaw) : null;
     const plate = typeof body?.plate === "string" ? body.plate.trim() : "";
-    const vehicle = typeof body?.vehicle === "string" ? body.vehicle.trim() : "";
     const notes = typeof body?.notes === "string" ? body.notes.trim() : "";
 
     if (!Number.isFinite(liters) || liters <= 0) {
@@ -100,6 +126,9 @@ export async function POST(req: NextRequest) {
       });
 
       let nextLiters: number;
+      // Prețul de referință pentru evaluarea în lei a alimentărilor/pierderilor.
+      const refPrice = kind === "refill" ? pricePerLiter : await getLastRefillPrice(tx);
+
       if (kind === "refill") {
         nextLiters = tank.liters + liters;
         if (nextLiters > tank.capacity + 0.001) {
@@ -108,6 +137,7 @@ export async function POST(req: NextRequest) {
           );
         }
       } else {
+        // dispense (alimentare vehicul) și loss (pierdere/lipsă) scad din stoc.
         if (liters > tank.liters + 0.001) {
           throw new Error(
             `Stoc insuficient. În rezervor sunt ${round(tank.liters)} l, ai cerut ${round(liters)} l.`
@@ -121,9 +151,9 @@ export async function POST(req: NextRequest) {
         data: {
           kind,
           liters: round(liters),
-          pricePerLiter: kind === "refill" ? pricePerLiter : null,
+          // refill: prețul de achiziție; dispense/loss: prețul lotului curent (snapshot).
+          pricePerLiter: refPrice,
           plate: kind === "dispense" ? plate || null : null,
-          vehicle: kind === "dispense" ? vehicle || null : null,
           notes: notes || null,
           balanceAfter: nextLiters,
           createdByName,
