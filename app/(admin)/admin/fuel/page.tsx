@@ -28,16 +28,35 @@ type Entry = {
   createdAt: string;
 };
 type Stats = { dispensedThisMonth: number; refilledThisMonth: number; opsThisMonth: number };
-type BusOption = { plate: string; label: string };
 
 const nf = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 1 });
 const fmtL = (n: number) => `${nf.format(n)} l`;
+
+// Numerele de înmatriculare ale vehiculelor care se alimentează din rezervor.
+// Lista fixă (fără duplicate). Adaugă/scoate aici dacă se schimbă flota.
+const PLATES = [
+  "QQS 979",
+  "OKK 525",
+  "TUR 999",
+  "LOK 889",
+  "VXU 828",
+  "LCX 593",
+  "ZNQ 874",
+  "NVP 821",
+  "DAV 077",
+  "DAW 077",
+  "INS 840",
+  "MIY 525",
+  "DAW 777",
+  "NUX 023",
+  "BMB 993",
+  "AVD 092",
+];
 
 export default function FuelPage() {
   const [tank, setTank] = useState<Tank | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [buses, setBuses] = useState<BusOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<null | "refill" | "dispense">(null);
 
@@ -58,12 +77,6 @@ export default function FuelPage() {
 
   useEffect(() => {
     load();
-    fetch("/api/admin/buses")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.success) setBuses(d.buses.map((b: { plate: string; label: string }) => ({ plate: b.plate, label: b.label })));
-      })
-      .catch(() => {});
   }, []);
 
   async function submit(payload: Record<string, unknown>) {
@@ -180,7 +193,7 @@ export default function FuelPage() {
       )}
 
       {modal === "dispense" && (
-        <DispenseModal buses={buses} onClose={() => setModal(null)} onSubmit={submit} />
+        <DispenseModal onClose={() => setModal(null)} onSubmit={submit} />
       )}
       {modal === "refill" && (
         <RefillModal tank={tank} onClose={() => setModal(null)} onSubmit={submit} />
@@ -270,7 +283,6 @@ function EntryRow({ entry, onDelete }: { entry: Entry; onDelete: () => void }) {
               {entry.plate}
             </span>
           )}
-          {entry.vehicle && <span className="text-sm text-slate-500">· {entry.vehicle}</span>}
         </div>
         {entry.notes && <p className="mt-0.5 truncate text-xs text-slate-500">{entry.notes}</p>}
         <div className="mt-0.5 text-[11px] text-slate-400">
@@ -329,32 +341,22 @@ function ModalShell({
 const NOTE_CHIPS = ["Autobuz DAVO", "Autocar DAVO", "Mașină personală", "Mașina altcuiva"];
 
 function DispenseModal({
-  buses,
   onClose,
   onSubmit,
 }: {
-  buses: BusOption[];
   onClose: () => void;
   onSubmit: (p: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [liters, setLiters] = useState("");
   const [plate, setPlate] = useState("");
-  const [vehicle, setVehicle] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function handle(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const ok = await onSubmit({ kind: "dispense", liters: Number(liters), plate, vehicle, notes });
+    const ok = await onSubmit({ kind: "dispense", liters: Number(liters), plate, notes });
     if (!ok) setSaving(false);
-  }
-
-  // Când alegi o placă de autocar cunoscută, completăm automat modelul.
-  function onPlate(v: string) {
-    setPlate(v);
-    const match = buses.find((b) => b.plate.toLowerCase() === v.trim().toLowerCase());
-    if (match && !vehicle) setVehicle(match.label);
   }
 
   return (
@@ -375,35 +377,21 @@ function DispenseModal({
         </Field>
 
         <Field label="Număr înmatriculare">
-          <input
+          <select
             value={plate}
-            onChange={(e) => onPlate(e.target.value)}
+            onChange={(e) => setPlate(e.target.value)}
             className={inputCls}
-            list="fuel-plates"
-            placeholder="ex. CJ 12 DAV"
-          />
-          <datalist id="fuel-plates">
-            {buses.map((b) => (
-              <option key={b.plate} value={b.plate}>
-                {b.label}
+            required
+          >
+            <option value="" disabled>
+              Alege numărul...
+            </option>
+            {PLATES.map((p) => (
+              <option key={p} value={p}>
+                {p}
               </option>
             ))}
-          </datalist>
-        </Field>
-
-        <Field label="Ce mașină / vehicul">
-          <input
-            value={vehicle}
-            onChange={(e) => setVehicle(e.target.value)}
-            className={inputCls}
-            list="fuel-vehicles"
-            placeholder="ex. Setra S 516 HD"
-          />
-          <datalist id="fuel-vehicles">
-            {buses.map((b) => (
-              <option key={b.plate} value={b.label} />
-            ))}
-          </datalist>
+          </select>
         </Field>
 
         <Field label="Notițe">
