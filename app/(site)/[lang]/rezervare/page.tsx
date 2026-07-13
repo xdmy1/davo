@@ -430,6 +430,8 @@ function RezervareContent() {
               returnTripId: trip === "return" ? returnTripId || undefined : undefined,
               returnSeatNumbers: trip === "return" ? returnSeats : undefined,
               payMethod,
+              // Observațiile se salvează pe rezervare (Booking.notes).
+              note: person.note.trim() || undefined,
             }
           : {
               type: "parcel",

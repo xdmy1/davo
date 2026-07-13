@@ -204,6 +204,15 @@ model Booking {
   createdBy      Operator? @relation(fields: [createdById], references: [id])
   archivedAt     DateTime?                    // cursa a trecut → iese din panou, rămâne salvată
 
+  // Notiță internă a operatorului (Observații din formularul de rezervare).
+  notes          String?
+  // Îmbarcare (scanner QR din panoul operatorilor): cine/când + surplus bagaj.
+  boardedAt      DateTime?
+  boardedBy      String?
+  baggageSurplus String?
+
+  review         Review?
+
   // relații noi, OPȚIONALE (pentru a nu sparge bookings existente)
   clientId       String?
   client         Client?   @relation(fields: [clientId], references: [id])
@@ -326,4 +335,20 @@ model FuelEntry {
 
   @@index([createdAt])
   @@index([kind])
+}
+
+// Recenzie lăsată de client după cursă (email trimis la 2 zile de la sosire,
+// link cu token → pagina /recenzie cu numele + cursa precompletate).
+model Review {
+  id            String   @id @default(uuid())
+  bookingId     String   @unique
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  bookingNumber String
+  name          String
+  rating        Int      // 1..5 stele
+  comment       String?
+  tripLabel     String?  // "Bonn → Chișinău · 9 aug 2026" (snapshot pentru afișare)
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
 }
