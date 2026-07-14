@@ -45,15 +45,18 @@ export default function FleetMap({
   vehicles,
   selectedId,
   onSelect,
+  track,
 }: {
   vehicles: MapVehicle[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  track?: { lat: number; lon: number }[] | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const LRef = useRef<typeof L | null>(null);
   const markersRef = useRef<Map<number, L.Marker>>(new Map());
+  const trackLayerRef = useRef<L.LayerGroup | null>(null);
   const didFitRef = useRef(false);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -96,16 +99,44 @@ export default function FleetMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicles, selectedId]);
 
-  // Fly to selected vehicle.
+  // Fly to selected vehicle (doar când nu e afișat un traseu).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || selectedId === null) return;
+    if (!map || selectedId === null || (track && track.length > 0)) return;
     const v = vehicles.find((x) => x.id === selectedId);
     if (v && v.lat !== null && v.lon !== null) {
       map.flyTo([v.lat, v.lon], Math.max(map.getZoom(), 14), { duration: 0.6 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  // Draw / clear the track route.
+  useEffect(() => {
+    const leaflet = LRef.current;
+    const map = mapRef.current;
+    if (!leaflet || !map) return;
+
+    trackLayerRef.current?.remove();
+    trackLayerRef.current = null;
+    if (!track || track.length === 0) return;
+
+    const latlngs = track.map((p) => [p.lat, p.lon] as [number, number]);
+    const group = leaflet.layerGroup();
+    leaflet.polyline(latlngs, { color: "#f97316", weight: 4, opacity: 0.9 }).addTo(group);
+    const dot = (color: string) =>
+      leaflet.divIcon({
+        html: `<div style="width:14px;height:14px;border-radius:999px;background:${color};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
+        className: "fleet-marker",
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+    leaflet.marker(latlngs[0], { icon: dot("#10b981") }).addTo(group); // start
+    leaflet.marker(latlngs[latlngs.length - 1], { icon: dot("#ef4444") }).addTo(group); // end
+    group.addTo(map);
+    trackLayerRef.current = group;
+    map.fitBounds(leaflet.latLngBounds(latlngs), { padding: [40, 40] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track]);
 
   function renderMarkers() {
     const leaflet = LRef.current;

@@ -181,6 +181,7 @@ export type VehicleDetail = Vehicle & {
   imei: string | null;
   hwName: string | null;
   createdAt: number | null;
+  address: string | null;
   rawParams: RawParams;
 };
 
@@ -195,11 +196,233 @@ export async function getVehicleDetail(id: number): Promise<VehicleDetail | null
   };
   const nowSec = Math.floor(Date.now() / 1000);
   const base = normalizeUnit(u, nowSec);
+  const address = base.lat !== null && base.lon !== null ? await reverseGeocode(base.lat, base.lon) : null;
   return {
     ...base,
     imei: u.imei ?? null,
     hwName: u.hwType?.name ?? null,
     createdAt: u.createdAt ?? null,
+    address,
     rawParams: (u.lastMsg?.params || {}) as RawParams,
   };
+}
+
+// ===== Adresă (reverse geocoding via OpenStreetMap Nominatim) =====
+
+const addrCache = new Map<string, string | null>();
+
+export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+  const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  if (addrCache.has(key)) return addrCache.get(key) ?? null;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=ro&zoom=16`,
+      { headers: { "User-Agent": "DAVO-Admin/1.0 (fleet monitoring)" }, cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as { display_name?: string };
+    const addr = j.display_name ?? null;
+    addrCache.set(key, addr);
+    return addr;
+  } catch {
+    return null;
+  }
+}
+
+// ===== Istoric traseu (route replay via report engine) =====
+
+let unitsTemplateId: number | null = null;
+
+async function getUnitsReportTemplateId(): Promise<number> {
+  if (unitsTemplateId) return unitsTemplateId;
+  const res = await geliosFetch("/api/v1/reports/templates");
+  if (res.ok) {
+    const data = (await res.json()) as { items?: { id: number; type?: { type?: string } }[] };
+    const items = data.items || [];
+    const t = items.find((x) => x.type?.type === "units") || items[0];
+    if (t?.id) {
+      unitsTemplateId = t.id;
+      return t.id;
+    }
+  }
+  unitsTemplateId = 115; // fallback la template-ul de sistem "Complex"
+  return unitsTemplateId;
+}
+
+export type TrackPoint = { lat: number; lon: number; t: number | null };
+export type TripStats = {
+  mileageKm: number;
+  movingSec: number; // trip duration (mișcare)
+  parkingSec: number;
+  maxSpeed: number; // km/h
+  avgSpeed: number; // km/h (mileage / trip duration)
+  timeStart: number | null;
+  timeEnd: number | null;
+};
+export type ReportTable = { name: string; columns: string[]; rows: string[][] };
+export type Analytics = { points: TrackPoint[]; stats: TripStats; tables: ReportTable[] };
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Indexuri de coloană în tabelul "Statistics" al template-ului units (vezi /docs).
+const STAT_COL = { timeStart: 0, timeEnd: 1, mileage: 2, tripDuration: 5, parking: 6, maxSpeed: 7 };
+
+// Formatează o celulă de raport în funcție de tipul coloanei Gelios.
+function formatCell(cell: { val?: unknown; invalid?: boolean } | undefined, type: string): string {
+  if (!cell || cell.invalid || cell.val === null || cell.val === undefined || cell.val === "") return "—";
+  const v = cell.val;
+  const n = Number(v);
+  switch (type) {
+    case "timestamp_datetime":
+    case "timestamp":
+      return Number.isFinite(n)
+        ? new Date(n * 1000).toLocaleString("ro-RO", {
+            timeZone: "Europe/Chisinau",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : String(v);
+    case "distance":
+    case "distance_odo":
+      return `${Math.round(n * 10) / 10} km`;
+    case "speed":
+      return `${Math.round(n)} km/h`;
+    case "volume":
+      return `${Math.round(n * 10) / 10} l`;
+    case "duration": {
+      const s = Math.round(n);
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+    case "duration_hours":
+      return `${Math.round(n * 10) / 10} h`;
+    case "fuel-economy":
+      return String(Math.round(n * 100) / 100);
+    default:
+      return typeof v === "number" ? String(Math.round(v * 100) / 100) : String(v);
+  }
+}
+
+export async function getAnalytics(unitId: number, fromSec: number, toSec: number): Promise<Analytics> {
+  const reportId = await getUnitsReportTemplateId();
+  const post = await geliosFetch("/api/v1/reports", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      report_id: reportId,
+      unit_ids: [unitId],
+      time_from: fromSec,
+      time_to: toSec,
+      language: "en",
+      user_timezone: 180,
+      track_mode: "all",
+      map_markers: [],
+    }),
+  });
+  if (!post.ok) throw new Error(`Gelios report failed (${post.status})`);
+  const { uuid } = (await post.json()) as { uuid: string };
+
+  // Așteaptă ca raportul să fie complet generat înainte să tragem date, altfel
+  // maps/track întoarce 200 dar gol. Polling pe /status până toate tabelele sunt ready.
+  type StatusResp = {
+    struct?: { tables?: { id: number; name: string; ready?: boolean | string }[] };
+    statistic?: { status?: string; percentage_of_completion?: number };
+  };
+  let defs: { id: number; name: string }[] = [];
+  for (let i = 0; i < 25; i++) {
+    const stRes = await geliosFetch(`/api/v1/reports/${uuid}/status`);
+    if (stRes.ok) {
+      const status = (await stRes.json()) as StatusResp;
+      const t = status.struct?.tables || [];
+      defs = t.map((x) => ({ id: x.id, name: x.name }));
+      const pct = status.statistic?.percentage_of_completion;
+      const allReady = t.length > 0 && t.every((x) => x.ready === true || x.ready === "True" || x.ready === "true");
+      if (status.statistic?.status === "ready" || pct === 100 || allReady) break;
+    }
+    await sleep(700);
+  }
+
+  // Traseul (după ce raportul e gata).
+  type TrackRaw = { tracks?: { coordinates?: number[][]; timestamps?: number[] }[] };
+  let trackRaw: TrackRaw | null = null;
+  for (let i = 0; i < 8; i++) {
+    const tr = await geliosFetch(`/api/v1/reports/${uuid}/maps/track?unit_id=${unitId}`);
+    if (tr.ok) {
+      trackRaw = (await tr.json()) as TrackRaw;
+      if ((trackRaw.tracks?.length ?? 0) > 0) break;
+    }
+    await sleep(500);
+  }
+
+  const points: TrackPoint[] = [];
+  for (const seg of trackRaw?.tracks || []) {
+    const coords = seg.coordinates || [];
+    const ts = seg.timestamps || [];
+    for (let i = 0; i < coords.length; i++) {
+      const c = coords[i];
+      if (!c || c.length < 2) continue;
+      points.push({ lat: c[1], lon: c[0], t: ts[i] ?? null });
+    }
+  }
+
+  let stats: TripStats = {
+    mileageKm: 0,
+    movingSec: 0,
+    parkingSec: 0,
+    maxSpeed: 0,
+    avgSpeed: 0,
+    timeStart: null,
+    timeEnd: null,
+  };
+  const tables: ReportTable[] = [];
+
+  try {
+    // Tabelele raportului (Statistics, Trips, Parkings, Filling/drain, ...).
+    for (const def of defs) {
+      const res = await geliosFetch(
+        `/api/v1/reports/${uuid}?table_id=${def.id}&row_start=0&rows_count=300`
+      );
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        data?: { data?: { val?: unknown; invalid?: boolean }[] }[];
+        table_header?: { name?: string; columns?: { name?: string; data_type?: string }[] };
+      };
+      const cols = data.table_header?.columns || [];
+      const rows = data.data || [];
+
+      if (def.id === STAT_COL.timeStart /* table 0 = Statistics */) {
+        const r = rows[0]?.data;
+        if (r) {
+          const cell = (i: number) => (r[i]?.invalid ? 0 : Number(r[i]?.val) || 0);
+          const mileageKm = Math.round(cell(STAT_COL.mileage) * 10) / 10;
+          const movingSec = cell(STAT_COL.tripDuration);
+          stats = {
+            mileageKm,
+            movingSec,
+            parkingSec: cell(STAT_COL.parking),
+            maxSpeed: Math.round(cell(STAT_COL.maxSpeed)),
+            avgSpeed: movingSec > 0 ? Math.round((mileageKm / (movingSec / 3600)) * 10) / 10 : 0,
+            timeStart: cell(STAT_COL.timeStart) || null,
+            timeEnd: cell(STAT_COL.timeEnd) || null,
+          };
+        }
+        continue; // Statisticile se afișează ca metrici, nu ca tabel brut.
+      }
+
+      if (rows.length === 0) continue;
+      tables.push({
+        name: data.table_header?.name || def.name,
+        columns: cols.map((c) => c.name || ""),
+        rows: rows.map((row) => (row.data || []).map((c, i) => formatCell(c, cols[i]?.data_type || ""))),
+      });
+    }
+  } catch {
+    /* best-effort; traseul rămâne valid chiar dacă statistica pică */
+  }
+
+  return { points, stats, tables };
 }
