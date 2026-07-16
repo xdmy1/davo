@@ -263,9 +263,6 @@ export const testimonials: Testimonial[] = [
 export const contactInfo = {
   phone: "+373 68 065 699",
   phoneSecondary: "+373 76 041 855",
-  phoneBelgium: "+32 484 47 64 46",
-  phoneBelgium2: "+32 470 27 59 22",
-  phoneUK: "+44 744 748 0276",
   whatsapp: "+373 68 065 699",
   viber: "+373 68 065 699",
   telegram: "+373 68 065 699",
@@ -283,6 +280,18 @@ export const contactInfo = {
     handleTikTok: "@davo.trans",
   },
 };
+
+// Numere de contact dedicate pe țară — afișate cu drapel în Contacte, footer și
+// pe pagina țării. `slug` corespunde slug-ului de destinație (vezi `destinations`)
+// și e folosit și pentru drapel prin `destinationSlugToCode`.
+export const countryPhones: { slug: string; label: string; phone: string }[] = [
+  { slug: "anglia", label: "Anglia", phone: "+44 7447480276" },
+  { slug: "belgia", label: "Belgia", phone: "+32 470275922" },
+];
+
+export function countryPhoneFor(slug: string): string | undefined {
+  return countryPhones.find((p) => p.slug === slug)?.phone;
+}
 
 // Orar punct de colectare colete + îmbarcare la sediul DAVO (Calea Ieșilor 11/3, Chișinău)
 export const pickupSchedule: { day: string; hours: string }[] = [

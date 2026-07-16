@@ -12,7 +12,7 @@ import {
   CalendarDays,
   RotateCcw,
 } from "lucide-react";
-import { contactInfo, destinations } from "@/lib/data";
+import { contactInfo, countryPhoneFor, destinations } from "@/lib/data";
 import {
   CITY_URL_DIAMOND,
   cityPageSlug,
@@ -165,6 +165,8 @@ function CountryLanding({ destination, locale }: { destination: Destination; loc
   const sched = getCountrySchedule(destination.slug);
   const countryUrl = `${baseUrl}${localePath(locale, countryLandingUrl(destination))}`;
   const country = localizeDestinationName(destination.slug, locale, destination.name);
+  // Număr dedicat pe țară (dacă există) — altfel numărul principal Moldova.
+  const heroPhone = countryPhoneFor(destination.slug) ?? contactInfo.phone;
 
   const travelAgencyLd = {
     "@context": "https://schema.org",
@@ -243,11 +245,12 @@ function CountryLanding({ destination, locale }: { destination: Destination; loc
                   {td.bookTicket} <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a
-                  href={`tel:${contactInfo.phone.replace(/\s/g, "")}`}
+                  href={`tel:${heroPhone.replace(/\s/g, "")}`}
                   className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-6 py-3.5 font-semibold text-white hover:bg-white/10 transition-colors"
                 >
                   <Phone className="h-4 w-4" />
-                  {contactInfo.phone}
+                  {code && <CountryFlag code={code} className="h-3.5 w-[22px]" rounded="sm" />}
+                  {heroPhone}
                 </a>
               </div>
             </Reveal>

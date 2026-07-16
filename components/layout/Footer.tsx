@@ -3,8 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Phone, Mail, MapPin, ArrowRight, MessageCircle, Clock } from "lucide-react";
-import { contactInfo, destinations, services } from "@/lib/data";
+import { contactInfo, countryPhones, destinations, services } from "@/lib/data";
 import { countryLandingUrl } from "@/lib/utils";
+import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
 import { Reveal } from "@/components/ui/Reveal";
 import { useLocale } from "@/lib/i18n/client";
 import { dict } from "@/lib/i18n/dict";
@@ -186,6 +187,21 @@ export default function Footer() {
                     </span>
                   </span>
                 </a>
+              </div>
+
+              {/* Numere dedicate pe țară (sursa unică: `countryPhones`) cu drapel. */}
+              <div className="mt-5 space-y-2 text-sm">
+                {countryPhones.map((c) => (
+                  <a
+                    key={c.slug}
+                    href={`tel:${c.phone.replace(/\s/g, "")}`}
+                    className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+                  >
+                    <CountryFlag code={destinationSlugToCode[c.slug]} className="h-3.5 w-[22px]" rounded="sm" />
+                    <span className="text-white/55">{localizeDestinationName(c.slug, locale, c.label)}</span>
+                    <span className="font-semibold">{c.phone}</span>
+                  </a>
+                ))}
               </div>
             </Reveal>
 

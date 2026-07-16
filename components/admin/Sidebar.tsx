@@ -17,6 +17,7 @@ import {
   Armchair,
   Fuel,
   MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessUI, type Role } from "@/lib/permissions";
@@ -174,6 +175,23 @@ export default function Sidebar({
               </div>
             </div>
           ))}
+
+          {/* Legătură externă către panoul operatorilor (rezervari.davo.md) — tab nou. */}
+          <div>
+            <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Extern
+            </div>
+            <a
+              href="https://rezervari.davo.md/panou"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="flex-1 truncate">Panou operatori</span>
+            </a>
+          </div>
         </nav>
       </aside>
     </>

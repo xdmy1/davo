@@ -11,11 +11,13 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { contactInfo, pickupSchedule } from "@/lib/data";
+import { contactInfo, countryPhones, pickupSchedule } from "@/lib/data";
 import { Reveal } from "@/components/ui/Reveal";
+import { CountryFlag, destinationSlugToCode, type CountryCode } from "@/components/ui/CountryFlag";
 import { useLocale } from "@/lib/i18n/client";
 import { dict } from "@/lib/i18n/dict";
 import { localizeDay } from "@/lib/i18n";
+import { localizeDestinationName } from "@/lib/i18n/dataI18n";
 
 export default function ContactPage() {
   const locale = useLocale();
@@ -23,11 +25,15 @@ export default function ContactPage() {
   const cp = t.contactPage;
   const [sent, setSent] = useState(false);
 
-  const phones = [
-    { label: cp.phones.moldova1, value: contactInfo.phone },
-    { label: cp.phones.moldova2, value: contactInfo.phoneSecondary },
-    { label: cp.phones.belgium, value: contactInfo.phoneBelgium },
-    { label: cp.phones.uk, value: contactInfo.phoneUK },
+  const phones: { label: string; value?: string; code: CountryCode }[] = [
+    { label: cp.phones.moldova1, value: contactInfo.phone, code: "md" },
+    { label: cp.phones.moldova2, value: contactInfo.phoneSecondary, code: "md" },
+    // Numere dedicate pe țară (sursa unică: `countryPhones`), afișate cu drapel.
+    ...countryPhones.map((c) => ({
+      label: localizeDestinationName(c.slug, locale, c.label),
+      value: c.phone,
+      code: destinationSlugToCode[c.slug],
+    })),
   ];
 
   return (
@@ -158,7 +164,8 @@ export default function ContactPage() {
                         href={`tel:${p.value.replace(/\s/g, "")}`}
                         className="rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm hover:bg-white/10 transition-colors"
                       >
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-white/55">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-white/55">
+                          <CountryFlag code={p.code} className="h-3 w-[18px]" rounded="sm" />
                           {p.label}
                         </div>
                         <div className="font-semibold text-white mt-0.5">{p.value}</div>
