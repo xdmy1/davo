@@ -45,6 +45,7 @@ export const ro = {
     destinations: "Destinații",
     sendParcel: "Trimite colet",
     services: "Servicii oferite",
+    facilities: "Facilități",
     usefulInfo: "Informații utile",
     blog: "Blog",
     contacts: "Contacte",
@@ -68,7 +69,7 @@ export const ro = {
     tripsToday: "Curse astăzi",
     stats: [
       { k: "12+", v: "ani experiență" },
-      { k: "150+", v: "destinații" },
+      { k: "90+", v: "destinații" },
       { k: "50k+", v: "călători/an" },
     ],
     tabs: {
@@ -125,6 +126,62 @@ export const ro = {
     ],
   },
 
+  // Pagină dedicată „/facilitati" — toate facilitățile la bord, adunate într-un
+  // singur loc, pentru a fi trimisă clienților ca link.
+  facilitatiPage: {
+    metaTitle: "Facilități la bord — DAVO Group | Autocar Moldova–Europa",
+    metaDescription:
+      "Toate facilitățile DAVO Group într-un singur loc: Internet Starlink, prânz gratuit, scaune reclinabile, prize USB, însoțitoare 24/24 și 35 kg bagaj inclus.",
+    eyebrow: "Facilități la bord",
+    title: "Tot confortul, într-un singur autocar",
+    description:
+      "De la internet prin satelit la prânz cald și însoțitoare 24/24 — am adunat toate facilitățile DAVO Group într-o singură pagină. Iată ce te așteaptă la fiecare cursă.",
+    stats: [
+      { value: "4,8★", label: "Rating pasageri" },
+      { value: "12 ani", label: "de experiență" },
+      { value: "90+", label: "destinații în Europa" },
+      { value: "24/7", label: "însoțitoare la bord" },
+    ],
+    groups: [
+      {
+        title: "Confort & spațiu",
+        items: [
+          { title: "Autocare moderne", body: "Flotă clasa Business 3★, verificată tehnic înainte de fiecare cursă." },
+          { title: "Scaune reclinabile", body: "Spațiu generos pentru picioare și scaune care se lasă pe spate." },
+          { title: "Climatizare reglabilă", body: "Aer condiționat pe tot parcursul, temperatură plăcută în orice sezon." },
+          { title: "Sistem multimedia", body: "Ecrane și divertisment personal pentru drum." },
+        ],
+      },
+      {
+        title: "Mâncare & băutură",
+        items: [
+          { title: "Prânz gratuit", body: "Masă caldă din partea companiei, inclusă pentru fiecare pasager." },
+          { title: "Ceai & cafea naturală", body: "Servire nelimitată pe toată durata cursei." },
+        ],
+      },
+      {
+        title: "Conectat pe drum",
+        items: [
+          { title: "Internet Starlink nelimitat", body: "Conexiune prin satelit, fără restricții, pe toată ruta." },
+          { title: "Prize USB", body: "Încărcare la fiecare scaun, pentru telefon și gadget-uri." },
+        ],
+      },
+      {
+        title: "Bagaje & liniște",
+        items: [
+          { title: "35 kg bagaj de cală", body: "Incluse gratuit pentru fiecare pasager." },
+          { title: "5 kg bagaj de mână", body: "Îl ții lângă tine pe tot drumul, gratuit." },
+          { title: "Însoțitoare 24/24", body: "Asistență permanentă pe tot parcursul călătoriei." },
+          { title: "Șoferi profesioniști", body: "Echipă experimentată, instruită impecabil, cu pauze regulate." },
+        ],
+      },
+    ],
+    ctaTitle: "Gata de drum?",
+    ctaDescription: "Rezervă-ți locul în câteva minute sau sună-ne — îți răspundem non-stop.",
+    ctaBook: "Rezervă bilet",
+    ctaCall: "Sună acum",
+  },
+
   destinationsPick: {
     badge: "Destinații",
     title: "Alege destinații",
@@ -147,7 +204,7 @@ export const ro = {
       "Operator de transport internațional cu peste 12 ani de experiență. Legăm Moldova de cele mai importante orașe europene printr-un serviciu construit pe încredere, punctualitate și confort.",
     cards: [
       { title: "Autocare moderne", body: "Clasa 3★, confort premium" },
-      { title: "Acoperire Europa", body: "5 țări, 150+ destinații" },
+      { title: "Acoperire Europa", body: "5 țări, 90+ destinații" },
       { title: "12 ani experiență", body: "Operator licențiat integral" },
     ],
     cta: "Mai multe despre noi",
@@ -215,6 +272,7 @@ export const ro = {
     },
     links: {
       findBooking: "Caută rezervare",
+      facilities: "Facilități la bord",
       socialDavo: "Social DAVO Group",
       bookings: "Rezervări",
       about: "Despre noi",
@@ -313,7 +371,7 @@ export const ro = {
     metaDescription: "Toate destinațiile DAVO Group din Moldova spre Europa.",
     eyebrow: "Destinații",
     titleA: "Cinci țări,",
-    titleB: "150+ orașe",
+    titleB: "90+ orașe",
     description:
       "Toată Europa la îndemână, cu plecări regulate din Moldova. Alege țara, alege orașul — alege DAVO.",
     moldovaTo: (country: string) => `Moldova → ${country}`,
@@ -381,7 +439,7 @@ export const ro = {
     contactUs: "Contactează-ne",
     stats: [
       { k: "12+", v: "ani experiență" },
-      { k: "150+", v: "destinații" },
+      { k: "90+", v: "destinații" },
       { k: "50k+", v: "pasageri/an" },
       { k: "30+", v: "autocare moderne" },
     ],
@@ -391,7 +449,7 @@ export const ro = {
       { title: "Siguranță", body: "Autocare verificate, șoferi profesioniști, rute atent planificate." },
       { title: "Clienți în centru", body: "Experiența ta contează — de la rezervare până la destinație." },
       { title: "Pasiune", body: "Iubim ceea ce facem și asta se simte în fiecare cursă." },
-      { title: "Europa aproape", body: "Conectăm Moldova cu 5 țări și peste 150 de orașe." },
+      { title: "Europa aproape", body: "Conectăm Moldova cu 5 țări și peste 90 de orașe." },
     ],
   },
 
@@ -542,7 +600,7 @@ export const ro = {
   sitemapPage: {
     metaTitle: "Harta site-ului",
     metaDescription:
-      "Toate paginile DAVO Group: destinații (5 țări, 150+ orașe), servicii, rezervare, contact, informații utile. Navighează rapid spre orice secțiune.",
+      "Toate paginile DAVO Group: destinații (5 țări, 90+ orașe), servicii, rezervare, contact, informații utile. Navighează rapid spre orice secțiune.",
     eyebrow: "Harta site",
     titleA: "Toate paginile,",
     titleB: "într-un singur loc",

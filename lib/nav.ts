@@ -39,6 +39,7 @@ export function getNavItems(locale: Locale): NavItem[] {
         href: lp(`/serviciile-noastre/${s.slug}`),
       })),
     },
+    { label: d.nav.facilities, href: lp("/facilitati") },
     {
       label: d.nav.usefulInfo,
       href: lp("/informatii-utile"),

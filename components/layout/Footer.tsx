@@ -228,6 +228,7 @@ export default function Footer() {
             <Reveal delay={0.15} className="md:col-span-3">
               <FooterColumn title={t.footer.cols.useful}>
                 <FooterLink href={lp("/livrare")}>{t.footer.links.findBooking}</FooterLink>
+                <FooterLink href={lp("/facilitati")}>{t.footer.links.facilities}</FooterLink>
                 <FooterLink href={lp("/informatii-utile")}>{t.footer.links.socialDavo}</FooterLink>
                 <FooterLink href={lp("/rezervare")}>{t.footer.links.bookings}</FooterLink>
                 <FooterLink href={lp("/despre-noi")}>{t.footer.links.about}</FooterLink>
