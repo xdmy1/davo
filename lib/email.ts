@@ -49,7 +49,7 @@ export async function sendBookingConfirmation(
     const { error } = await getResend().emails.send({
       from: process.env.EMAIL_FROM || "DAVO Group <info@davo.md>",
       to: enriched.email,
-      subject: subjectForType("confirmation", enriched.bookingNumber),
+      subject: subjectForType("confirmation", enriched.bookingNumber, enriched.type),
       html,
     });
 

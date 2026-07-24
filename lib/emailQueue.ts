@@ -187,7 +187,7 @@ export async function processEmailQueue(limit = 50): Promise<{
       await prisma.emailLog.create({
         data: {
           to: job.booking.email,
-          subject: subjectForType(job.type, job.booking.bookingNumber),
+          subject: subjectForType(job.type, job.booking.bookingNumber, job.booking.type),
           template: job.type,
           status: "sent",
           relatedId: job.bookingId,
@@ -211,7 +211,7 @@ export async function processEmailQueue(limit = 50): Promise<{
       await prisma.emailLog.create({
         data: {
           to: job.booking.email,
-          subject: subjectForType(job.type, job.booking.bookingNumber),
+          subject: subjectForType(job.type, job.booking.bookingNumber, job.booking.type),
           template: job.type,
           status: "failed",
           relatedId: job.bookingId,
@@ -250,7 +250,7 @@ export async function sendSingleJob(
     await prisma.emailLog.create({
       data: {
         to: job.booking.email,
-        subject: subjectForType(job.type, job.booking.bookingNumber),
+        subject: subjectForType(job.type, job.booking.bookingNumber, job.booking.type),
         template: job.type,
         status: "sent",
         relatedId: job.bookingId,
@@ -266,7 +266,7 @@ export async function sendSingleJob(
     await prisma.emailLog.create({
       data: {
         to: job.booking.email,
-        subject: subjectForType(job.type, job.booking.bookingNumber),
+        subject: subjectForType(job.type, job.booking.bookingNumber, job.booking.type),
         template: job.type,
         status: "failed",
         relatedId: job.bookingId,
@@ -358,7 +358,7 @@ async function sendJob(job: EmailJob & { booking: Booking }) {
   const { error } = await getResend().emails.send({
     from: process.env.EMAIL_FROM || "DAVO Group <info@davo.md>",
     to: booking.email,
-    subject: subjectForType(type, booking.bookingNumber),
+    subject: subjectForType(type, booking.bookingNumber, booking.type),
     html,
   });
   if (error) throw new Error(error.message || "Resend returned error");

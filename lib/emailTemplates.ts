@@ -1,5 +1,5 @@
 import type { Booking } from "@prisma/client";
-import { appUrl } from "@/lib/appUrl";
+import { appUrl, publicAppUrl } from "@/lib/appUrl";
 
 // Ora plecării/întoarcerii e introdusă mereu în ora locală Moldovei (admin +
 // flow public). Serverul (Vercel) rulează în UTC, deci fără `timeZone` ar
@@ -21,7 +21,10 @@ const timeFmt = new Intl.DateTimeFormat("ro-RO", {
 });
 
 function logoUrl(): string {
-  return `${appUrl()}/images/logo-davo.png`;
+  // `publicAppUrl` (nu `appUrl`) — logoul e un asset public afișat în inbox-ul
+  // clientului; nu trebuie să pointeze niciodată la `localhost` (ex: la trimiteri
+  // de test / din dev), altfel imaginea nu se încarcă.
+  return `${publicAppUrl()}/images/logo-davo.png`;
 }
 
 function ticketUrlFor(bookingNumber: string): string {
@@ -118,13 +121,13 @@ function vxButtons(urls: ResponseUrls, intro?: string): string {
   </div>`;
 }
 
-function ticketButton(bookingNumber: string): string {
+function ticketButton(bookingNumber: string, label: string = "Vezi biletul electronic →"): string {
   const href = ticketUrlFor(bookingNumber);
   return `
   <div style="margin:0 0 8px;text-align:center;">
     <a href="${href}"
        style="display:inline-block;background:${C.navy900};color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:999px;font-family:${FONT_DISPLAY};font-weight:800;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;">
-      Vezi biletul electronic →
+      ${label}
     </a>
   </div>`;
 }
@@ -133,33 +136,22 @@ function ticketButton(bookingNumber: string): string {
 
 function hero(opts: { eyebrow: string; eyebrowColor?: string }): string {
   const eyebrowColor = opts.eyebrowColor ?? C.red400;
+  // Logoul DAVO e color (albastru + roșu) pe fundal transparent → invizibil
+  // direct pe navy. Îl punem pe un „chip" alb rotunjit ca să fie mereu vizibil,
+  // iar `alt` acoperă cazul în care clientul de email blochează imaginile.
   return `
   <tr>
     <td style="background:${C.red500};height:6px;line-height:6px;font-size:0;">&nbsp;</td>
   </tr>
   <tr>
-    <td style="background:${C.navy900};padding:0;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <td style="background:${C.navy900};padding:34px 32px 32px;">
+      <div style="font-family:${FONT_DISPLAY};font-size:11px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:${eyebrowColor};margin-bottom:16px;">
+        ${opts.eyebrow}
+      </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding:36px 32px 32px;vertical-align:middle;">
-            <div style="font-family:${FONT_DISPLAY};font-size:11px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:${eyebrowColor};margin-bottom:14px;">
-              ${opts.eyebrow}
-            </div>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td style="vertical-align:middle;padding-right:16px;">
-                  <div style="font-family:${FONT_DISPLAY};font-size:38px;font-weight:900;letter-spacing:-0.01em;color:#ffffff;line-height:0.95;">
-                    DAVO
-                  </div>
-                  <div style="font-family:${FONT_DISPLAY};font-size:13px;font-weight:700;letter-spacing:0.4em;color:rgba(255,255,255,0.7);text-transform:uppercase;margin-top:6px;">
-                    Group
-                  </div>
-                </td>
-                <td style="vertical-align:middle;padding-left:18px;border-left:2px solid rgba(255,255,255,0.15);">
-                  <img src="${logoUrl()}" alt="" width="100" height="27" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:100px;opacity:0.85;">
-                </td>
-              </tr>
-            </table>
+          <td bgcolor="#ffffff" style="background:#ffffff;border-radius:10px;padding:11px 16px;">
+            <img src="${logoUrl()}" alt="DAVO GROUP" width="150" height="40" style="display:block;border:0;outline:none;text-decoration:none;width:150px;height:40px;">
           </td>
         </tr>
       </table>
@@ -258,12 +250,12 @@ function paxLine(adults: number, children: number): string {
   return children > 0 ? `${a}, ${children} ${children === 1 ? "copil" : "copii"}` : a;
 }
 
-function payLabel(payMethod?: string | null): string {
-  if (payMethod === "card_on_pickup") return "Card la îmbarcare (POS la șofer)";
-  if (payMethod === "cash_on_pickup") return "Cash la îmbarcare";
+function payLabel(payMethod?: string | null, isParcel = false): string {
+  if (payMethod === "card_on_pickup") return isParcel ? "Card la ridicare (POS)" : "Card la îmbarcare (POS la șofer)";
+  if (payMethod === "cash_on_pickup") return isParcel ? "Cash la ridicare" : "Cash la îmbarcare";
   if (payMethod === "cash_on_delivery") return "Cash la livrare";
   if (payMethod === "paid_in_advance") return "Achitată în avans";
-  return "La îmbarcare";
+  return isParcel ? "La ridicare" : "La îmbarcare";
 }
 
 function intro(text: string): string {
@@ -284,9 +276,9 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
   const depTime = isParcel ? null : (b.departureTime ?? formatTime(b.departureDate));
   const retTime = !isParcel && b.returnDate ? (b.returnTime ?? formatTime(b.returnDate)) : null;
   const rows: DetailRow[] = [
-    { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
+    { label: isParcel ? "Traseu" : "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
     {
-      label: "Plecare",
+      label: isParcel ? "Expediere" : "Plecare",
       value: depTime ? `${formatDate(b.departureDate)} · ${depTime}` : formatDate(b.departureDate),
     },
   ];
@@ -297,38 +289,46 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
     });
   }
   if (isParcel && b.parcelDetails) {
-    rows.push({ label: "Colet", value: b.parcelDetails });
+    rows.push({ label: "Conținut colet", value: b.parcelDetails });
   } else if (!isParcel) {
     rows.push({ label: "Pasageri", value: paxLine(b.adults, b.children) });
   }
-  // Autocar (când rezervarea e legată de un Trip). Util la îmbarcare ca
-  // pasagerul să-l recunoască vizual + nr. înmatriculare.
-  if (b.busLabel) {
+  // Autocar (când rezervarea e legată de un Trip). Doar pentru pasageri — la
+  // colete nu ajută expeditorul.
+  if (!isParcel && b.busLabel) {
     rows.push({
       label: "Autocar",
       value: b.busPlate ? `${b.busLabel} · ${b.busPlate}` : b.busLabel,
     });
   }
   rows.push({ label: "Total", value: formatPrice(b.price, b.currency) });
-  rows.push({ label: "Plata", value: payLabel(b.payMethod) });
+  rows.push({ label: "Plata", value: payLabel(b.payMethod, isParcel) });
   rows.push({ label: "Nr. rezervare", value: b.bookingNumber });
 
   const body = `
-    ${headline(`Bună ${b.firstName},<br>te așteptăm la cursă.`)}
+    ${headline(
+      isParcel
+        ? `Bună ${b.firstName},<br>coletul tău e înregistrat.`
+        : `Bună ${b.firstName},<br>te așteptăm la cursă.`
+    )}
     ${intro(
       isParcel
-        ? "Mai jos găsești detaliile transportului. Te sunăm în curând pentru ridicare și confirmare."
+        ? "Coletul tău e înregistrat la DAVO. Te sunăm în curând ca să stabilim ridicarea și detaliile de livrare — nu trebuie să faci nimic acum."
         : "Mai jos găsești detaliile călătoriei. Sosește la îmbarcare cu 30 de minute înainte de plecare."
     )}
     ${detailsCard(rows)}
-    ${urls ? vxButtons(urls, "Confirmă-ne acum că vii sau anulează — durează 1 secundă, ne ajuți să gestionăm locurile.") : ""}
-    ${ticketButton(b.bookingNumber)}
+    ${!isParcel && urls ? vxButtons(urls, "Confirmă-ne acum că vii sau anulează — durează 1 secundă, ne ajuți să gestionăm locurile.") : ""}
+    ${ticketButton(b.bookingNumber, isParcel ? "Vezi detaliile coletului →" : "Vezi biletul electronic →")}
   `;
 
   return layout({
-    preheader: `Rezervare ${b.bookingNumber} confirmată — ${b.departureCity} → ${b.arrivalCity}`,
-    title: `Confirmare rezervare DAVO — ${b.bookingNumber}`,
-    eyebrow: "✓ Rezervare confirmată",
+    preheader: isParcel
+      ? `Colet ${b.bookingNumber} înregistrat — ${b.departureCity} → ${b.arrivalCity}`
+      : `Rezervare ${b.bookingNumber} confirmată — ${b.departureCity} → ${b.arrivalCity}`,
+    title: isParcel
+      ? `Colet înregistrat DAVO — ${b.bookingNumber}`
+      : `Confirmare rezervare DAVO — ${b.bookingNumber}`,
+    eyebrow: isParcel ? "✓ Colet înregistrat" : "✓ Rezervare confirmată",
     eyebrowColor: C.red400,
     body,
   });
@@ -343,27 +343,41 @@ export function reminder24hHtml(b: Booking, urls?: ResponseUrls, scheduledDepart
     ? `${formatDate(b.departureDate)} · ${depTime}`
     : formatDate(b.departureDate);
   const body = `
-    ${headline(`${b.firstName}, mâine e ziua mare.`)}
-    ${intro(`Cursa ta <strong style="color:${C.navy900};">${b.departureCity} → ${b.arrivalCity}</strong> pleacă mâine. Vezi detaliile și confirmă-ne că vii.`)}
+    ${headline(
+      isParcel
+        ? `${b.firstName}, coletul tău pleacă mâine.`
+        : `${b.firstName}, mâine e ziua mare.`
+    )}
+    ${intro(
+      isParcel
+        ? `Coletul tău <strong style="color:${C.navy900};">${b.departureCity} → ${b.arrivalCity}</strong> pleacă mâine spre destinație. Te sunăm dacă mai e nevoie de ceva.`
+        : `Cursa ta <strong style="color:${C.navy900};">${b.departureCity} → ${b.arrivalCity}</strong> pleacă mâine. Vezi detaliile și confirmă-ne că vii.`
+    )}
     ${detailsCard([
-      { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
-      { label: "Plecare", value: plecareValue },
+      { label: isParcel ? "Traseu" : "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
+      { label: isParcel ? "Expediere" : "Plecare", value: plecareValue },
       { label: "Nr. rezervare", value: b.bookingNumber },
     ])}
-    ${urls ? vxButtons(urls, "Mai vii la cursă? Confirmă-ne acum sau anulează dacă nu mai poți.") : ""}
-    ${ticketButton(b.bookingNumber)}
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px;border-collapse:collapse;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;">
+    ${!isParcel && urls ? vxButtons(urls, "Mai vii la cursă? Confirmă-ne acum sau anulează dacă nu mai poți.") : ""}
+    ${ticketButton(b.bookingNumber, isParcel ? "Vezi detaliile coletului →" : "Vezi biletul electronic →")}
+    ${
+      isParcel
+        ? ""
+        : `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px;border-collapse:collapse;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;">
       <tr>
         <td style="padding:14px 18px;font-family:${FONT_BODY};font-size:13px;color:#78350f;line-height:1.55;">
           <strong>Pregătește pentru drum:</strong> buletin/pașaport valabil, max. 35 kg bagaj, sosește cu 30 min înainte.
         </td>
       </tr>
-    </table>
+    </table>`
+    }
   `;
   return layout({
-    preheader: `Cursa ta pleacă mâine — ${b.departureCity} → ${b.arrivalCity}`,
-    title: "Mâine pleci cu DAVO",
-    eyebrow: "Mâine pleci",
+    preheader: isParcel
+      ? `Coletul tău pleacă mâine — ${b.departureCity} → ${b.arrivalCity}`
+      : `Cursa ta pleacă mâine — ${b.departureCity} → ${b.arrivalCity}`,
+    title: isParcel ? "Mâine pleacă coletul tău" : "Mâine pleci cu DAVO",
+    eyebrow: isParcel ? "Mâine pleacă coletul" : "Mâine pleci",
     body,
   });
 }
@@ -463,7 +477,7 @@ export function adminNotificationHtml(b: ConfirmationData): string {
     rows.push({ label: "Pasageri", value: paxLine(b.adults, b.children) });
   }
   rows.push({ label: "Total", value: formatPrice(b.price, b.currency) });
-  rows.push({ label: "Plata", value: payLabel(b.payMethod) });
+  rows.push({ label: "Plata", value: payLabel(b.payMethod, isParcel) });
 
   const body = `
     ${headline(`${b.firstName} a făcut o rezervare.`)}
@@ -739,12 +753,17 @@ export function reviewRequestHtml(b: Booking, reviewUrl: string): string {
   });
 }
 
-export function subjectForType(type: string, bookingNumber: string): string {
+export function subjectForType(type: string, bookingNumber: string, bookingType?: string): string {
+  const isParcel = bookingType === "parcel" || bookingType === "colet_la_cheie";
   switch (type) {
     case "confirmation":
-      return `Rezervare confirmată — DAVO ${bookingNumber}`;
+      return isParcel
+        ? `Colet înregistrat — DAVO ${bookingNumber}`
+        : `Rezervare confirmată — DAVO ${bookingNumber}`;
     case "reminder_24h":
-      return "Mâine pleci cu DAVO — confirmă-ne că vii";
+      return isParcel
+        ? "Mâine pleacă coletul tău cu DAVO"
+        : "Mâine pleci cu DAVO — confirmă-ne că vii";
     case "cancellation":
       return `Rezervare ${bookingNumber} anulată`;
     case "review_request":
