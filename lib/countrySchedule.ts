@@ -33,12 +33,12 @@ export type CountryScheduleRow = {
 // Faq-ul ru/ro detectează stringul gol și sare peste mențiunea de durată.
 const SCHEDULES: Record<string, CountryScheduleRow> = {
   anglia: {
-    outboundLabel: "Joi 10:00",
+    outboundLabel: "Joi 07:00",
     outboundDuration: "",
     returnLabel: "Duminică 19:00",
     returnDuration: "",
     fullSentence:
-      "Plecare săptămânală joi la 10:00 din Chișinău (cu opriri în orașele din Moldova pe traseu), retur duminică la 19:00 din Anglia.",
+      "Plecare săptămânală joi la 07:00 din Chișinău (cu opriri în orașele din Moldova pe traseu), retur duminică la 19:00 din Anglia.",
   },
   belgia: {
     outboundLabel: "Vineri 08:30",
