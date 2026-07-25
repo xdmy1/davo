@@ -278,7 +278,7 @@ export default function TicketPage() {
                 {status.label}
               </span>
 
-              {booking.passengerResponse === "confirmed" && !isCancelled && (
+              {!isParcel && booking.passengerResponse === "confirmed" && !isCancelled && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--success)]">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Pasager confirmat că vine
                 </span>
@@ -304,7 +304,7 @@ export default function TicketPage() {
             <div className="grid grid-cols-[1fr,auto,1fr] items-start gap-4">
               <div className="text-center">
                 <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)]">
-                  Plecare
+                  {isParcel ? "Preluare" : "Plecare"}
                 </div>
                 <div className="mt-1 font-[family-name:var(--font-montserrat)] text-xl font-extrabold text-[color:var(--navy-900)] break-words">
                   {booking.departureCity}
@@ -326,7 +326,7 @@ export default function TicketPage() {
               </div>
               <div className="text-center">
                 <div className="text-[10px] uppercase tracking-widest font-bold text-[color:var(--ink-500)]">
-                  Sosire
+                  {isParcel ? "Livrare" : "Sosire"}
                 </div>
                 <div className="mt-1 font-[family-name:var(--font-montserrat)] text-xl font-extrabold text-[color:var(--navy-900)] break-words">
                   {booking.arrivalCity}
@@ -342,7 +342,7 @@ export default function TicketPage() {
 
           {/* Details grid */}
           <div className="px-7 pb-6 grid grid-cols-2 gap-3 print:gap-2">
-            <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label="Data plecării">
+            <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label={isParcel ? "Data expediere" : "Data plecării"}>
               {dateFmt.format(departureDate)}
               {/* Coletele NU au oră fixă (admin sună expeditorul pentru grafic).
                   Le păstrăm doar ca dată — altfel afișează "03:00" doar pentru

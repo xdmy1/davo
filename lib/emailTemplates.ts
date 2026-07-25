@@ -28,7 +28,10 @@ function logoUrl(): string {
 }
 
 function ticketUrlFor(bookingNumber: string): string {
-  return `${appUrl()}/bilet/${bookingNumber}`;
+  // `publicAppUrl` (nu `appUrl`) — linkul spre bilet/colet e deschis din inbox-ul
+  // clientului; nu trebuie să pointeze niciodată la `localhost` (trimiteri de
+  // test / din dev), altfel butonul din email duce în gol.
+  return `${publicAppUrl()}/bilet/${bookingNumber}`;
 }
 
 function formatDate(d: Date): string {
