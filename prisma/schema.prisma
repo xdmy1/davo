@@ -386,7 +386,9 @@ model MaintenanceLog {
   item      MaintenanceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   serviceKm Float?          // odometru (km) la momentul efectuării
   serviceAt DateTime
-  cost      Float?          // cost opțional
+  laborCost Float?          // preț manoperă
+  partsCost Float?          // preț piese
+  cost      Float?          // total (manoperă + piese) — snapshot pentru sumar rapid
   notes     String?
   createdByName String?     // adminul care a înregistrat
   createdAt DateTime        @default(now())

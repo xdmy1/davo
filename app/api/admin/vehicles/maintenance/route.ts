@@ -10,13 +10,17 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const now = Date.now();
-    const [{ vehicles: fleet }, items] = await Promise.all([
+    const [{ vehicles: fleet }, items, spentByItem] = await Promise.all([
       getFleet(),
       prisma.maintenanceItem.findMany({
         where: { active: true },
         orderBy: { createdAt: "asc" },
+        include: { logs: { orderBy: { serviceAt: "desc" }, take: 1 } },
       }),
+      // Total cheltuit (manoperă + piese) per punct, într-o singură interogare.
+      prisma.maintenanceLog.groupBy({ by: ["itemId"], _sum: { cost: true } }),
     ]);
+    const totalByItem = new Map(spentByItem.map((r) => [r.itemId, r._sum.cost ?? 0]));
 
     // Contoare pentru toate unitățile din flotă (odometru + ore motor), cache 5m.
     const counters = await getCounters(fleet.map((v) => v.id), now);
@@ -25,8 +29,8 @@ export async function GET() {
       const c = counters[v.id] ?? { mileageKm: null, engineHours: null };
       const computed = items
         .filter((i) => i.geliosUnitId === v.id)
-        .map((i) =>
-          computeMaintenance(
+        .map((i) => {
+          const base = computeMaintenance(
             {
               id: i.id,
               geliosUnitId: i.geliosUnitId,
@@ -41,8 +45,16 @@ export async function GET() {
             },
             c.mileageKm,
             now
-          )
-        )
+          );
+          const log = i.logs[0];
+          return {
+            ...base,
+            lastCost: log
+              ? { labor: log.laborCost, parts: log.partsCost, total: log.cost }
+              : null,
+            totalSpent: totalByItem.get(i.id) ?? 0,
+          };
+        })
         .sort((a, b) => maintSeverity(b.status) - maintSeverity(a.status) || a.type.localeCompare(b.type, "ro"));
 
       const worst: MaintStatus = computed.reduce<MaintStatus>(
@@ -59,6 +71,7 @@ export async function GET() {
         engineHours: c.engineHours,
         items: computed,
         worst,
+        totalSpent: computed.reduce((s, i) => s + (i.totalSpent ?? 0), 0),
         counts: {
           overdue: computed.filter((i) => i.status === "overdue").length,
           soon: computed.filter((i) => i.status === "soon").length,

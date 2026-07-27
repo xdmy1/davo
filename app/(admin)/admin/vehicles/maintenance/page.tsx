@@ -39,6 +39,8 @@ type Item = {
   progressPct: number;
   label: string;
   reason: string;
+  lastCost: { labor: number | null; parts: number | null; total: number | null } | null;
+  totalSpent: number;
 };
 type VehicleRow = {
   id: number;
@@ -48,6 +50,7 @@ type VehicleRow = {
   engineHours: number | null;
   items: Item[];
   worst: Status;
+  totalSpent: number;
   counts: { overdue: number; soon: number; ok: number };
 };
 type Summary = { vehicles: number; items: number; overdue: number; soon: number; ok: number; unknown: number };
@@ -60,6 +63,8 @@ const STATUS_UI: Record<Status, { badge: "green" | "yellow" | "red" | "slate"; b
 };
 
 const km = (n: number | null | undefined) => (n == null ? "—" : `${Math.round(n).toLocaleString("ro-RO")} km`);
+const lei = (n: number | null | undefined) =>
+  n == null ? "—" : `${n.toLocaleString("ro-RO", { maximumFractionDigits: 0 })} lei`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric" });
 const SEV: Record<Status, number> = { overdue: 3, soon: 2, ok: 1, unknown: 0 };
@@ -277,6 +282,11 @@ function VehicleCard({
                 <Clock className="h-3.5 w-3.5 text-slate-400" /> {Math.round(v.engineHours).toLocaleString("ro-RO")} h
               </span>
             )}
+            {v.totalSpent > 0 && (
+              <span className="inline-flex items-center gap-1" title="Total cheltuit pe mentenanță">
+                <Wrench className="h-3.5 w-3.5 text-slate-400" /> <b className="text-slate-700">{lei(v.totalSpent)}</b>
+              </span>
+            )}
           </div>
         </div>
         <button
@@ -370,6 +380,17 @@ function ItemRow({
               ultimul: {fmtDate(it.lastServiceAt)}
               {it.lastServiceKm != null ? ` · ${km(it.lastServiceKm)}` : ""}
             </span>
+            {it.lastCost?.total != null && it.lastCost.total > 0 && (
+              <>
+                <span className="text-slate-300">·</span>
+                <span
+                  className="font-semibold text-slate-600"
+                  title={`Manoperă ${lei(it.lastCost.labor ?? 0)} + Piese ${lei(it.lastCost.parts ?? 0)}`}
+                >
+                  {lei(it.lastCost.total)}
+                </span>
+              </>
+            )}
           </div>
           {it.notes && <div className="mt-1 text-[11px] italic text-slate-400">{it.notes}</div>}
         </div>
@@ -609,10 +630,13 @@ function ServiceModal({
 }) {
   const [serviceKm, setServiceKm] = useState<string>(vehicle.odometerKm != null ? String(Math.round(vehicle.odometerKm)) : "");
   const [serviceAt, setServiceAt] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [cost, setCost] = useState("");
+  const [laborCost, setLaborCost] = useState("");
+  const [partsCost, setPartsCost] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const total = (Number(laborCost) || 0) + (Number(partsCost) || 0);
 
   async function save() {
     setSaving(true);
@@ -624,7 +648,8 @@ function ServiceModal({
         body: JSON.stringify({
           serviceKm: serviceKm || null,
           serviceAt: serviceAt ? new Date(serviceAt).toISOString() : undefined,
-          cost: cost || null,
+          laborCost: laborCost || null,
+          partsCost: partsCost || null,
           notes: notes.trim() || null,
         }),
       });
@@ -669,24 +694,39 @@ function ServiceModal({
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Cost (opțional)">
+          <Field label="Manoperă (lei)">
             <input
               type="number"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              placeholder="lei"
+              value={laborCost}
+              onChange={(e) => setLaborCost(e.target.value)}
+              placeholder="0"
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
             />
           </Field>
-          <Field label="Notițe (opțional)">
+          <Field label="Piese (lei)">
             <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="ex: schimbat și filtru"
+              type="number"
+              value={partsCost}
+              onChange={(e) => setPartsCost(e.target.value)}
+              placeholder="0"
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
             />
           </Field>
         </div>
+        {total > 0 && (
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+            <span className="text-slate-500">Total service</span>
+            <span className="font-bold text-slate-900">{lei(total)}</span>
+          </div>
+        )}
+        <Field label="Notițe (opțional)">
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="ex: schimbat și filtru, service Auto XYZ"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
+          />
+        </Field>
         {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{err}</div>}
       </div>
       <div className="mt-5 flex justify-end gap-2">

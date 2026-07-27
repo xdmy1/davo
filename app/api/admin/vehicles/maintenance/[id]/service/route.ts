@@ -27,13 +27,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       serviceKm = c.mileageKm;
     }
 
-    const cost = body.cost != null && body.cost !== "" ? Number(body.cost) : null;
+    const numOrNull = (v: unknown) => (v != null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null);
+    const laborCost = numOrNull(body.laborCost);
+    const partsCost = numOrNull(body.partsCost);
+    // Total = manoperă + piese dacă e cel puțin una; altfel fallback la `cost` brut.
+    const cost = laborCost !== null || partsCost !== null ? (laborCost ?? 0) + (partsCost ?? 0) : numOrNull(body.cost);
     const notes = body.notes ? String(body.notes).trim() : null;
     const createdByName = body.by ? String(body.by).trim() : null;
 
     const [, updated] = await prisma.$transaction([
       prisma.maintenanceLog.create({
-        data: { itemId: id, serviceKm, serviceAt, cost, notes, createdByName },
+        data: { itemId: id, serviceKm, serviceAt, laborCost, partsCost, cost, notes, createdByName },
       }),
       prisma.maintenanceItem.update({
         where: { id },
