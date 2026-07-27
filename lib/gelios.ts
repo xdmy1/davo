@@ -207,6 +207,56 @@ export async function getVehicleDetail(id: number): Promise<VehicleDetail | null
   };
 }
 
+// ===== Contoare (odometru + ore motor) =====
+// Gelios ține un odometru absolut per unitate în `counters.mileage.value` (km)
+// și orele de motor în `counters.engineHours.value`. Câmpul NU vine în lista
+// `/units` (e null acolo) — doar în detaliul `/units/{id}`. Îl folosim ca sursă
+// live pentru evidența mentenanței (km rămași până la următorul service).
+
+export type VehicleCounters = { mileageKm: number | null; engineHours: number | null };
+
+export async function getVehicleCounters(id: number): Promise<VehicleCounters> {
+  const res = await geliosFetch(`/api/v1/units/${id}`);
+  if (!res.ok) return { mileageKm: null, engineHours: null };
+  const u = (await res.json()) as {
+    counters?: { mileage?: { value?: unknown }; engineHours?: { value?: unknown } } | null;
+  };
+  return {
+    mileageKm: num(u.counters?.mileage?.value),
+    engineHours: num(u.counters?.engineHours?.value),
+  };
+}
+
+// Cache scurt pe contoare — odometrul se mișcă lent, iar dashboard-ul de
+// mentenanță cere contoarele pentru toată flota la fiecare încărcare. Evită să
+// batem Gelios cu N cereri per refresh.
+const COUNTER_TTL_MS = 5 * 60 * 1000;
+const counterCache = new Map<number, { v: VehicleCounters; at: number }>();
+
+export async function getCounters(
+  ids: number[],
+  nowMs: number
+): Promise<Record<number, VehicleCounters>> {
+  const out: Record<number, VehicleCounters> = {};
+  await Promise.all(
+    [...new Set(ids)].map(async (id) => {
+      const c = counterCache.get(id);
+      if (c && nowMs - c.at < COUNTER_TTL_MS) {
+        out[id] = c.v;
+        return;
+      }
+      try {
+        const v = await getVehicleCounters(id);
+        counterCache.set(id, { v, at: nowMs });
+        out[id] = v;
+      } catch {
+        out[id] = { mileageKm: null, engineHours: null };
+      }
+    })
+  );
+  return out;
+}
+
 // ===== Adresă (reverse geocoding via OpenStreetMap Nominatim) =====
 
 const addrCache = new Map<string, string | null>();

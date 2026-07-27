@@ -352,3 +352,44 @@ model Review {
 
   @@index([createdAt])
 }
+
+// ===== Evidență mentenanță autobuze =====
+// Un „punct de mentenanță" recurent per vehicul (ex: „Ulei motor la 30.000 km").
+// Odometrul curent se ia LIVE din Gelios (counters.mileage), deci nu-l stocăm —
+// calculăm km rămași = intervalKm − (odometruGelios − lastServiceKm).
+// Cheia stabilă e `geliosUnitId` (id-ul unității GPS), nu placa (care se poate
+// schimba). `vehicleName` e doar snapshot pentru afișare.
+model MaintenanceItem {
+  id            String   @id @default(uuid())
+  geliosUnitId  Int      // id unitate Gelios (identificator stabil)
+  vehicleName   String   // snapshot placă/nume (ex: "DAW 077")
+  type          String   // ex: "Ulei motor + filtru", "ITP", "Asigurare RCA"
+  intervalKm    Int?     // schimbă la fiecare X km (opțional)
+  intervalDays  Int?     // și/sau la fiecare X zile (ITP, asigurare, tahograf)
+  lastServiceKm Float?   // odometru (km) la ultima efectuare — snapshot din Gelios
+  lastServiceAt DateTime // data ultimei efectuări
+  notes         String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  logs          MaintenanceLog[]
+
+  @@index([geliosUnitId])
+  @@index([active])
+}
+
+// Istoricul efectuărilor (fiecare dată când s-a făcut service-ul acelui punct).
+model MaintenanceLog {
+  id        String          @id @default(uuid())
+  itemId    String
+  item      MaintenanceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  serviceKm Float?          // odometru (km) la momentul efectuării
+  serviceAt DateTime
+  cost      Float?          // cost opțional
+  notes     String?
+  createdByName String?     // adminul care a înregistrat
+  createdAt DateTime        @default(now())
+
+  @@index([itemId])
+}

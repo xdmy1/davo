@@ -17,6 +17,7 @@ import {
   Armchair,
   Fuel,
   MapPin,
+  Wrench,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { label: "Schemă autocar", href: "/admin/seats", icon: Armchair },
       { label: "Curse", href: "/admin/trips", icon: CalendarClock },
       { label: "Mașini GPS", href: "/admin/vehicles", icon: MapPin },
+      { label: "Mentenanță", href: "/admin/vehicles/maintenance", icon: Wrench },
     ],
   },
   {
@@ -60,7 +62,9 @@ const navGroups: { title: string; items: NavItem[] }[] = [
 ];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/admin") return pathname === "/admin";
+  // Exact-match pentru rutele care au sub-rute cu intrare proprie în meniu
+  // (altfel „Mașini GPS" ar rămâne activ și pe „/admin/vehicles/maintenance").
+  if (href === "/admin" || href === "/admin/vehicles") return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
