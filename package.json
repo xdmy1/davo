@@ -13,6 +13,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "accounts:pin": "tsx scripts/set-accounts-pin.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

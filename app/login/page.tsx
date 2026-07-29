@@ -6,7 +6,11 @@ import { Lock, LogIn } from "lucide-react";
 
 function LoginInner() {
   const router = useRouter();
-  const next = useSearchParams().get("next") ?? "/admin";
+  const params = useSearchParams();
+  const next = params.get("next") ?? "/admin";
+  // Proxy-ul adaugă ?inactiv=1 când găsește contul dezactivat și șterge cookie-ul;
+  // fără mesaj, utilizatorul ar vedea doar o delogare inexplicabilă.
+  const deactivated = params.get("inactiv") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -46,6 +50,11 @@ function LoginInner() {
         <p className="text-xs text-slate-500">Autentificare operator</p>
       </div>
       <div className="space-y-4 px-6 py-5">
+        {deactivated && !error && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Contul a fost dezactivat. Contactează administratorul pentru reactivare.
+          </div>
+        )}
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Email</span>
           <input

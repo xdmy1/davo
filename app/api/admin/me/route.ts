@@ -16,13 +16,21 @@ export async function GET(req: NextRequest) {
   }
   const user = await prisma.adminUser.findUnique({
     where: { email: session.email },
-    select: { email: true, name: true, role: true },
+    select: { email: true, name: true, role: true, active: true, permissions: true },
   });
   if (!user) {
     return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
   }
   return NextResponse.json({
     success: true,
-    user: { email: user.email, name: user.name, role: normalizeRole(user.role) },
+    user: {
+      email: user.email,
+      name: user.name,
+      role: normalizeRole(user.role),
+      active: user.active,
+      // Lista brută, nu cea efectivă: consumatorii o dau mai departe la
+      // `canAccessUI`, care aplică singur presetul rolului când e goală.
+      permissions: user.permissions,
+    },
   });
 }

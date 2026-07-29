@@ -34,6 +34,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Verificarea vine abia după parolă: altfel mesajul distinct ar confirma
+    // existența contului oricui încearcă emailuri la întâmplare.
+    if (!user.active) {
+      return NextResponse.json(
+        { success: false, error: "Cont dezactivat" },
+        { status: 403 }
+      );
+    }
+
     await prisma.adminUser.update({
       where: { id: user.id },
       data: { lastLogin: new Date() },

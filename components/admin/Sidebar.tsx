@@ -19,9 +19,10 @@ import {
   MapPin,
   Wrench,
   ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { canAccessUI, type Role } from "@/lib/permissions";
+import { canAccessUI, normalizeRole, type Role } from "@/lib/permissions";
 
 type NavItem = {
   label: string;
@@ -59,6 +60,10 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { label: "Setări", href: "/admin/settings", icon: Settings },
     ],
   },
+  {
+    title: "Sistem",
+    items: [{ label: "Conturi & Acces", href: "/admin/conturi", icon: ShieldCheck }],
+  },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -76,21 +81,24 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname() ?? "";
-  const [role, setRole] = useState<Role | null>(null);
+  const [me, setMe] = useState<{ role: Role; permissions: string[] } | null>(null);
 
-  // Fetch o singură dată: păstrăm sidebar-ul complet vizibil pe `admin` (cel
-  // principal) și restrâns pe `admin2`. Cât timp nu știm rolul, afișăm tot
-  // (matchează comportamentul implicit) — proxy-ul gardează oricum servere.
+  // Fetch o singură dată: meniul afișează doar secțiunile permise contului
+  // (permisiunile proprii, iar dacă lista e goală presetul rolului). Cât timp
+  // nu știm identitatea, afișăm tot — proxy-ul gardează oricum serverul.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/admin/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled || !d?.success) return;
-        setRole((d.user.role as Role) ?? "admin");
+        setMe({
+          role: normalizeRole(d.user.role),
+          permissions: Array.isArray(d.user.permissions) ? d.user.permissions : [],
+        });
       })
       .catch(() => {
-        /* fallback la "admin" — nu blocăm UI-ul */
+        /* fallback la meniul complet — nu blocăm UI-ul */
       });
     return () => {
       cancelled = true;
@@ -100,7 +108,9 @@ export default function Sidebar({
   const visibleGroups = navGroups
     .map((g) => ({
       ...g,
-      items: g.items.filter((it) => (role ? canAccessUI(role, it.href) : true)),
+      items: g.items.filter((it) =>
+        me ? canAccessUI(me.role, it.href, me.permissions) : true
+      ),
     }))
     .filter((g) => g.items.length > 0);
 
