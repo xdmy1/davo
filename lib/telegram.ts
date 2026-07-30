@@ -6,11 +6,14 @@
 // `chat_id`. Fiecare operator (sau grup) pornește o conversație cu botul, iar
 // chat_id-ul lui se pune în env. Numerele de pe site sunt doar eticheta rutării.
 //
-// Env necesare (Vercel): TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_MOLDOVA,
-// TELEGRAM_CHAT_ANGLIA, TELEGRAM_CHAT_BENELUX. Dacă lipsesc, trimiterea e no-op
-// (nu blochează rezervarea).
+// Config (token + chat_id-uri) se citește din tabela Settings (cheile
+// `telegram_bot_token`, `telegram_chat_moldova|anglia|benelux|default`), cu
+// fallback pe env (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_*). Dacă lipsesc, trimiterea
+// e no-op (nu blochează rezervarea). `telegram_chat_default` primește cererile
+// pentru un grup fără chat setat încă, ca să nu se piardă nimic.
 
 import { destinations, moldovanCities } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -48,13 +51,41 @@ export function operatorGroupForOrigin(departureCity: string): OperatorGroup | n
   return country ? COUNTRY_TO_GROUP[country] ?? null : null;
 }
 
-function chatIdForGroup(group: OperatorGroup): string | undefined {
-  const map: Record<OperatorGroup, string | undefined> = {
-    moldova: process.env.TELEGRAM_CHAT_MOLDOVA,
-    anglia: process.env.TELEGRAM_CHAT_ANGLIA,
-    benelux: process.env.TELEGRAM_CHAT_BENELUX,
+type TgConfig = {
+  token?: string;
+  chats: Partial<Record<OperatorGroup | "default", string>>;
+};
+
+let cfgCache: { v: TgConfig; at: number } | null = null;
+const CFG_TTL_MS = 60 * 1000;
+
+async function getConfig(): Promise<TgConfig> {
+  if (cfgCache && Date.now() - cfgCache.at < CFG_TTL_MS) return cfgCache.v;
+  const keys = [
+    "telegram_bot_token",
+    "telegram_chat_moldova",
+    "telegram_chat_anglia",
+    "telegram_chat_benelux",
+    "telegram_chat_default",
+  ];
+  const m = new Map<string, string>();
+  try {
+    const rows = await prisma.settings.findMany({ where: { key: { in: keys } } });
+    for (const r of rows) m.set(r.key, r.value);
+  } catch {
+    /* DB indisponibil → cădem pe env */
+  }
+  const v: TgConfig = {
+    token: m.get("telegram_bot_token") || process.env.TELEGRAM_BOT_TOKEN,
+    chats: {
+      moldova: m.get("telegram_chat_moldova") || process.env.TELEGRAM_CHAT_MOLDOVA,
+      anglia: m.get("telegram_chat_anglia") || process.env.TELEGRAM_CHAT_ANGLIA,
+      benelux: m.get("telegram_chat_benelux") || process.env.TELEGRAM_CHAT_BENELUX,
+      default: m.get("telegram_chat_default") || process.env.TELEGRAM_CHAT_DEFAULT,
+    },
   };
-  return map[group];
+  cfgCache = { v, at: Date.now() };
+  return v;
 }
 
 const esc = (s: string) =>
@@ -68,11 +99,11 @@ function payLabel(m?: string | null): string {
   return m || "—";
 }
 
-export async function sendTelegram(chatId: string, text: string): Promise<boolean> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token || !chatId) return false;
+export async function sendTelegram(chatId: string, text: string, token?: string): Promise<boolean> {
+  const tok = token || (await getConfig()).token;
+  if (!tok || !chatId) return false;
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -108,12 +139,19 @@ export async function notifyParcelRequest(
 ): Promise<{ sent: boolean; group: OperatorGroup | null; reason?: string }> {
   const group = operatorGroupForOrigin(data.departureCity);
   if (!group) return { sent: false, group: null, reason: "origine necunoscută" };
-  const chatId = chatIdForGroup(group);
+
+  const cfg = await getConfig();
+  if (!cfg.token) return { sent: false, group, reason: "token lipsă" };
+  // Chat-ul grupului; dacă lipsește, cade pe „default" cu o notă vizibilă.
+  const groupChat = cfg.chats[group];
+  const chatId = groupChat || cfg.chats.default;
   if (!chatId) return { sent: false, group, reason: "chat id lipsă" };
+  const fallbackNote = !groupChat ? `⚠️ <i>(fără chat pentru operatorul ${group.toUpperCase()} — trimis pe canalul implicit)</i>\n\n` : "";
 
   const lines = [
-    `📦 <b>Cerere colet nouă</b> — ${esc(data.bookingNumber)}`,
+    `${fallbackNote}📦 <b>Cerere colet nouă</b> — ${esc(data.bookingNumber)}`,
     ``,
+    `<b>Operator:</b> ${group.toUpperCase()}`,
     `<b>Rută:</b> ${esc(data.departureCity)} → ${esc(data.arrivalCity)}`,
     `<b>Expeditor:</b> ${esc(data.name)}`,
     `<b>Telefon:</b> ${esc(data.phone)}`,
@@ -123,6 +161,6 @@ export async function notifyParcelRequest(
     data.ticketUrl ? `\n${esc(data.ticketUrl)}` : "",
   ].filter(Boolean);
 
-  const sent = await sendTelegram(chatId, lines.join("\n"));
+  const sent = await sendTelegram(chatId, lines.join("\n"), cfg.token);
   return { sent, group };
 }
