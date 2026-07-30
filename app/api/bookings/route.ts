@@ -7,7 +7,7 @@ import { occupiedSeatsForRun } from '@/lib/runSeats'
 import { autoLinkTripAndClient } from '@/lib/bookingLink'
 import { enqueueRemindersOnly } from '@/lib/emailQueue'
 import { createBookingToken, bookingResponseUrl } from '@/lib/bookingToken'
-import { appUrl as resolveAppUrl } from '@/lib/appUrl'
+import { appUrl as resolveAppUrl, publicAppUrl } from '@/lib/appUrl'
 import type { SeatLayout } from '@/lib/adminMock'
 
 function generateBookingNumber(): string {
@@ -229,7 +229,9 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = resolveAppUrl()
-    const ticketUrl = `${appUrl}/bilet/${booking.bookingNumber}`
+    // Linkul spre bilet e public (email, QR, buton pe pagina de succes) — folosim
+    // `publicAppUrl` ca să nu ajungă niciodată la `localhost`.
+    const ticketUrl = `${publicAppUrl()}/bilet/${booking.bookingNumber}`
 
     await prisma.booking.update({
       where: { id: booking.id },

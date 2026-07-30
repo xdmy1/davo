@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Check, Download, Home, Search, Ticket } from "lucide-react";
+import { useLocale } from "@/lib/i18n/client";
+import { localePath } from "@/lib/i18n/config";
 
 export default function SuccessCard({
   bookingNumber,
@@ -13,10 +15,18 @@ export default function SuccessCard({
   ticketUrl?: string;
   mode?: "bilet" | "colet";
 }) {
-  const title =
-    mode === "colet"
-      ? "Felicitări! Ai rezervat cu succes serviciul de DAVO Transport pasageri și colete"
-      : "Felicitări! Rezervarea ta a fost confirmată cu succes";
+  const locale = useLocale();
+  const isColet = mode === "colet";
+  const title = isColet
+    ? "Felicitări! Ai rezervat cu succes serviciul de DAVO Transport pasageri și colete"
+    : "Felicitări! Rezervarea ta a fost confirmată cu succes";
+
+  // Link relativ, dependent de limbă — merge mereu pe domeniul curent și nu
+  // poate ajunge la `localhost` (spre deosebire de `ticketUrl` absolut din API).
+  const ticketHref = bookingNumber
+    ? localePath(locale, `/bilet/${bookingNumber}`)
+    : ticketUrl;
+  const viewLabel = isColet ? "Vizualizează coletul" : "Vizualizează biletul";
 
   return (
     <section className="relative py-16 lg:py-24 bg-[color:var(--ink-50)] min-h-[70vh] flex items-center">
@@ -56,18 +66,18 @@ export default function SuccessCard({
           )}
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {ticketUrl && (
+            {ticketHref && (
               <Link
-                href={ticketUrl}
+                href={ticketHref}
                 className="inline-flex items-center gap-2 rounded-full bg-[color:var(--red-500)] px-6 py-3.5 font-semibold text-white hover:bg-[color:var(--red-600)] transition-colors shadow-[0_18px_40px_-12px_rgba(225,30,43,0.45)]"
               >
                 <Ticket className="h-4 w-4" />
-                Vezi biletul
+                {viewLabel}
               </Link>
             )}
-            {ticketUrl && (
+            {ticketHref && (
               <a
-                href={`${ticketUrl}?download=1`}
+                href={`${ticketHref}?download=1`}
                 className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-white px-6 py-3.5 font-semibold text-[color:var(--navy-900)] hover:border-[color:var(--navy-700)] transition-colors"
               >
                 <Download className="h-4 w-4" />
@@ -76,7 +86,7 @@ export default function SuccessCard({
             )}
             {bookingNumber && (
               <Link
-                href={`/livrare?nr=${bookingNumber}`}
+                href={localePath(locale, `/livrare?nr=${bookingNumber}`)}
                 className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-white px-6 py-3.5 font-semibold text-[color:var(--navy-900)] hover:border-[color:var(--navy-700)] transition-colors"
               >
                 <Search className="h-4 w-4" />
@@ -84,7 +94,7 @@ export default function SuccessCard({
               </Link>
             )}
             <Link
-              href="/"
+              href={localePath(locale, "/")}
               className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-white px-6 py-3.5 font-semibold text-[color:var(--navy-900)] hover:border-[color:var(--navy-700)] transition-colors"
             >
               <Home className="h-4 w-4" />
