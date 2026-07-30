@@ -4,6 +4,294 @@ import type { Locale } from "@/lib/i18n/config";
 // Ordered newest-first. Add new posts to the top of this array.
 export const posts: BlogPost[] = [
   {
+    slug: "autocar-avion-tren-moldova-europa",
+    date: "2026-07-30",
+    readingMinutes: 8,
+    locales: ["ro", "ru"],
+    i18n: {
+      ro: {
+        category: "Ghid de călătorie",
+        title: "Autocar, avion sau tren: cum ajungi cel mai bine din Moldova în Europa (2026)",
+        excerpt:
+          "Comparație cinstită între autocar, avion și tren pentru drumul Moldova → Vestul Europei: costul real, timpul din ușă în ușă, bagajul, coletele și confortul — ca să alegi în cunoștință de cauză.",
+        metaTitle: "Autocar vs. avion vs. tren: cum ajungi din Moldova în Europa (2026)",
+        metaDescription:
+          "Comparație autocar, avion și tren Moldova → Europa: preț, timp din ușă în ușă, bagaj 35 kg inclus, colete și confort. Ce e mai avantajos pentru Anglia, Germania, Belgia, Olanda, Luxemburg.",
+        author: "Echipa DAVO Group",
+        keyTakeaways: [
+          "Avionul câștigă la orele de zbor, dar „din ușă în ușă” diferența scade din cauza aeroportului, transferurilor și escalelor.",
+          "Autocarul include 35 kg bagaj de cală + 5 kg de mână, fără taxe per kilogram.",
+          "Cu autocarul poți trimite și colete pe aceeași cursă, inclusiv perisabile în remorcă frigorifică.",
+          "Autocarul te ia din orașul tău din Moldova și te duce direct, fără schimburi.",
+          "Pentru buget, bagaj mult și familie cu copii, autocarul e cea mai echilibrată alegere.",
+        ],
+        content: [
+          {
+            type: "p",
+            text: "Ai o cursă de făcut din Moldova spre Vestul Europei — Anglia, Germania, Belgia, Olanda sau Luxemburg — și te întrebi cum ajungi mai bine: cu **autocarul, cu avionul sau cu trenul**? Fiecare variantă are locul ei. Mai jos comparăm cinstit costul real, timpul din ușă în ușă, bagajul și confortul, ca să alegi ce ți se potrivește.",
+          },
+          {
+            type: "stats",
+            items: [
+              { value: "de la 120 €", label: "Bilet autocar dus" },
+              { value: "35 kg", label: "Bagaj inclus, fără taxe" },
+              { value: "ușă la ușă", label: "Preluare din orașul tău" },
+            ],
+          },
+          { type: "h2", id: "pe-scurt", text: "Cele trei opțiuni, pe scurt" },
+          {
+            type: "p",
+            text: "Pe hârtie, avionul e cel mai rapid, trenul e cel mai pitoresc, iar autocarul e cel mai echilibrat pentru cei mai mulți moldoveni care fac naveta spre casă sau spre muncă. Diferența adevărată apare când socotești **tot** — nu doar prețul biletului sau orele „în aer”.",
+          },
+          {
+            type: "table",
+            head: ["Criteriu", "Autocar (DAVO)", "Avion", "Tren"],
+            rows: [
+              ["Preț dus (orientativ)", "de la 120 €", "80–250 € + bagaje", "150–350 €, cu schimburi"],
+              ["Bagaj inclus", "35 kg cală + 5 kg mână", "adesea doar ~10 kg de mână", "limitat, variază"],
+              ["Colete / cutii", "Da, chiar și frigorific", "Nu (sau foarte scump)", "Nu"],
+              ["Transferuri", "0 — direct", "aeroport + adesea escală", "2–4 schimburi de tren"],
+              ["Preluare", "Din orașul tău", "Doar aeroport Chișinău", "Doar gară mare"],
+              ["La bord", "Starlink, prânz, însoțitoare", "băuturi contra cost", "vagon-restaurant uneori"],
+            ],
+          },
+          { type: "h2", id: "pret", text: "Prețul: cât te costă cu adevărat" },
+          {
+            type: "p",
+            text: "Biletul de avion pare uneori ieftin, dar din Chișinău zborurile directe spre Vest sunt puține, așa că apar escale, iar prețul urcă. Adaugă apoi bagajul de cală (de regulă taxat separat, de la ~10–25 € de bucată, uneori mai mult), transportul spre și dinspre aeroport și eventuala cazare dacă escala e lungă.",
+          },
+          {
+            type: "p",
+            text: "Trenul din Moldova spre Vestul Europei înseamnă mai multe schimburi (de regulă prin România, Ungaria, Austria sau Germania) și tarife occidentale — rareori iese mai ieftin decât autocarul, iar durata totală e mare.",
+          },
+          {
+            type: "callout",
+            variant: "info",
+            title: "Ce e inclus deja la autocar",
+            text: "La DAVO, prețul biletului include **35 kg bagaj de cală, 5 kg de mână, prânz cald, ceai și cafea nelimitat și internet Starlink** — fără costuri-surpriză la aeroport sau pe drum.",
+          },
+          { type: "h2", id: "timp", text: "Timpul: nu doar orele de mers" },
+          {
+            type: "p",
+            text: "Avionul câștigă la orele efective de zbor, dar „din ușă în ușă” diferența se micșorează: ajungi la aeroport cu 2–3 ore înainte, faci drumul până la și de la aeroport, plus escala. Autocarul te ia din orașul tău și te lasă aproape de destinație, fără cozi la check-in și securitate.",
+          },
+          {
+            type: "p",
+            text: "Pe scurt: dacă pui la socoteală **tot drumul**, nu doar zborul, autocarul e mai comod decât pare — mai ales pentru destinații fără zbor direct din Chișinău.",
+          },
+          { type: "h2", id: "bagaje", text: "Bagaje și colete: unde autocarul chiar câștigă" },
+          {
+            type: "p",
+            text: "Aici diferența e mare. Mulți moldoveni nu călătoresc „ușor” — duc sau aduc cadouri, produse de acasă, lucruri pentru familie.",
+          },
+          {
+            type: "ul",
+            items: [
+              "**35 kg** bagaj de cală + **5 kg** de mână, incluse, fără taxe per kilogram.",
+              "Poți trimite și un **colet** cu aceeași cursă — inclusiv perisabile, în remorcă frigorifică.",
+              "Fără cântărire stresantă la poartă și fără taxe de supragreutate ca la avion.",
+            ],
+          },
+          {
+            type: "p",
+            text: "La avion, fiecare kilogram în plus costă; la tren, spațiul e limitat și nu poți expedia cutii mari.",
+          },
+          { type: "h2", id: "confort", text: "Confort la bord" },
+          {
+            type: "p",
+            text: "O cursă lungă e mult mai ușoară când ai tot ce-ți trebuie la bord:",
+          },
+          {
+            type: "ul",
+            items: [
+              "Internet **Starlink** nelimitat pe toată ruta.",
+              "Prânz cald gratuit, ceai și cafea naturală nelimitat.",
+              "Însoțitoare de bord 24/24 și șoferi profesioniști.",
+              "Scaune reclinabile, climatizare și opriri regulate.",
+            ],
+          },
+          { type: "h2", id: "recomandare", text: "Pentru cine e fiecare variantă" },
+          {
+            type: "ul",
+            items: [
+              "**Avionul** — dacă ești grăbit, călătorești ușor și există un zbor convenabil din Chișinău.",
+              "**Trenul** — dacă îți place drumul cu peisaj și nu te deranjează schimburile.",
+              "**Autocarul** — pentru cei mai mulți: buget prietenos, mult bagaj, familie cu copii, colete de trimis și confort de la ușă la ușă.",
+            ],
+          },
+          {
+            type: "callout",
+            variant: "success",
+            title: "Recomandarea noastră",
+            text: "Dacă mergi regulat între Moldova și Europa, cu bagaj și fără bătăi de cap, autocarul e alegerea echilibrată. DAVO te ia din orașul tău și te duce direct, cu tot confortul inclus.",
+          },
+        ],
+        faq: [
+          {
+            q: "Cât durează o cursă cu autocarul din Moldova în Europa?",
+            a: "Depinde de destinație — de regulă între ~24 și ~40 de ore, cu opriri regulate pentru odihnă, masă și pauze. Vezi programul exact pe pagina fiecărei țări.",
+          },
+          {
+            q: "Pot lua mai mult de 35 kg de bagaj?",
+            a: "Da, contra cost, dacă ne anunți din timp. Cele 35 kg de cală + 5 kg de mână sunt incluse gratuit; pentru surplus ne înțelegem în prealabil.",
+          },
+          {
+            q: "Pot trimite un colet fără să călătoresc?",
+            a: "Da. Transportăm colete separat pe toate rutele, inclusiv produse perisabile în remorcă frigorifică. Îl preluăm din Moldova și îl livrăm la destinație.",
+          },
+          {
+            q: "De unde mă ia autocarul?",
+            a: "Din orașul tău din Moldova — plecăm din Chișinău și oprim în mai multe orașe pe traseu. La destinație te lăsăm cât mai aproape de adresă.",
+          },
+          {
+            q: "Este internet la bord?",
+            a: "Da, internet Starlink nelimitat pe toată ruta, plus prize USB la fiecare scaun.",
+          },
+        ],
+      },
+      ru: {
+        category: "Гид путешественника",
+        title: "Автобус, самолёт или поезд: как лучше добраться из Молдовы в Европу (2026)",
+        excerpt:
+          "Честное сравнение автобуса, самолёта и поезда для поездки Молдова → Западная Европа: реальная цена, время «от двери до двери», багаж, посылки и комфорт — чтобы выбрать осознанно.",
+        metaTitle: "Автобус, самолёт или поезд: как добраться из Молдовы в Европу (2026)",
+        metaDescription:
+          "Сравнение автобуса, самолёта и поезда Молдова → Европа: цена, время от двери до двери, багаж 35 кг, посылки и комфорт. Что выгоднее для поездки в Англию, Германию, Бельгию, Нидерланды.",
+        author: "Команда DAVO Group",
+        keyTakeaways: [
+          "Самолёт выигрывает по часам полёта, но «от двери до двери» разница сокращается из-за аэропорта, пересадок и стыковок.",
+          "Автобус включает 35 кг багажа + 5 кг ручной клади, без платы за каждый килограмм.",
+          "Автобусом можно отправить и посылку тем же рейсом, включая скоропортящееся в рефрижераторе.",
+          "Автобус забирает вас из вашего города в Молдове и везёт напрямую, без пересадок.",
+          "Для бюджета, большого багажа и семьи с детьми автобус — самый сбалансированный выбор.",
+        ],
+        content: [
+          {
+            type: "p",
+            text: "Вам нужно доехать из Молдовы в Западную Европу — Англию, Германию, Бельгию, Нидерланды или Люксембург — и вы думаете, как лучше: **автобусом, самолётом или поездом**? У каждого варианта своё место. Ниже честно сравниваем реальную цену, время от двери до двери, багаж и комфорт, чтобы вы выбрали то, что подходит именно вам.",
+          },
+          {
+            type: "stats",
+            items: [
+              { value: "от 120 €", label: "Билет на автобус в один конец" },
+              { value: "35 кг", label: "Багаж включён, без доплат" },
+              { value: "до двери", label: "Забираем из вашего города" },
+            ],
+          },
+          { type: "h2", id: "pe-scurt", text: "Три варианта коротко" },
+          {
+            type: "p",
+            text: "На бумаге самолёт — самый быстрый, поезд — самый живописный, а автобус — самый сбалансированный для большинства молдаван, которые ездят домой или на работу. Настоящая разница видна, когда считаешь **всё** — а не только цену билета или часы «в воздухе».",
+          },
+          {
+            type: "table",
+            head: ["Критерий", "Автобус (DAVO)", "Самолёт", "Поезд"],
+            rows: [
+              ["Цена в один конец (ориентир)", "от 120 €", "80–250 € + багаж", "150–350 €, с пересадками"],
+              ["Багаж включён", "35 кг + 5 кг ручной", "часто только ~10 кг ручной", "ограничен, зависит"],
+              ["Посылки / коробки", "Да, даже рефрижератор", "Нет (или очень дорого)", "Нет"],
+              ["Пересадки", "0 — напрямую", "аэропорт + часто стыковка", "2–4 пересадки"],
+              ["Посадка", "Из вашего города", "Только аэропорт Кишинёв", "Только крупный вокзал"],
+              ["На борту", "Starlink, обед, сопровождение", "напитки за плату", "вагон-ресторан иногда"],
+            ],
+          },
+          { type: "h2", id: "pret", text: "Цена: сколько это стоит на самом деле" },
+          {
+            type: "p",
+            text: "Авиабилет иногда кажется дешёвым, но из Кишинёва прямых рейсов на Запад мало, поэтому появляются стыковки, и цена растёт. Добавьте багаж (обычно оплачивается отдельно, от ~10–25 € за место, иногда больше), дорогу в аэропорт и из него, а также возможное проживание при долгой стыковке.",
+          },
+          {
+            type: "p",
+            text: "Поезд из Молдовы в Западную Европу — это несколько пересадок (обычно через Румынию, Венгрию, Австрию или Германию) и западные тарифы; редко выходит дешевле автобуса, а общее время в пути большое.",
+          },
+          {
+            type: "callout",
+            variant: "info",
+            title: "Что уже включено в автобус",
+            text: "У DAVO цена билета включает **35 кг багажа, 5 кг ручной клади, горячий обед, чай и кофе без ограничений и интернет Starlink** — без сюрпризов в аэропорту или в дороге.",
+          },
+          { type: "h2", id: "timp", text: "Время: не только часы в пути" },
+          {
+            type: "p",
+            text: "Самолёт выигрывает по чистым часам полёта, но «от двери до двери» разница сокращается: в аэропорт нужно приехать за 2–3 часа, добраться до него и обратно, плюс стыковка. Автобус забирает вас из вашего города и высаживает рядом с местом назначения, без очередей на регистрацию и досмотр.",
+          },
+          {
+            type: "p",
+            text: "Коротко: если считать **всю дорогу**, а не только полёт, автобус удобнее, чем кажется — особенно для направлений без прямого рейса из Кишинёва.",
+          },
+          { type: "h2", id: "bagaje", text: "Багаж и посылки: где автобус реально выигрывает" },
+          {
+            type: "p",
+            text: "Здесь разница большая. Многие молдаване не путешествуют «налегке» — везут или привозят подарки, продукты из дома, вещи для семьи.",
+          },
+          {
+            type: "ul",
+            items: [
+              "**35 кг** багажа + **5 кг** ручной клади включены, без платы за килограмм.",
+              "Можно отправить и **посылку** тем же рейсом — включая скоропортящееся, в рефрижераторе.",
+              "Без нервного взвешивания у выхода и без доплат за перевес, как в самолёте.",
+            ],
+          },
+          {
+            type: "p",
+            text: "В самолёте каждый лишний килограмм стоит денег; в поезде место ограничено, и большие коробки не отправишь.",
+          },
+          { type: "h2", id: "confort", text: "Комфорт на борту" },
+          {
+            type: "p",
+            text: "Долгая поездка гораздо легче, когда на борту есть всё необходимое:",
+          },
+          {
+            type: "ul",
+            items: [
+              "Безлимитный интернет **Starlink** на всём маршруте.",
+              "Бесплатный горячий обед, чай и натуральный кофе без ограничений.",
+              "Сопровождение 24/24 и профессиональные водители.",
+              "Откидные кресла, кондиционер и регулярные остановки.",
+            ],
+          },
+          { type: "h2", id: "recomandare", text: "Кому какой вариант подходит" },
+          {
+            type: "ul",
+            items: [
+              "**Самолёт** — если вы спешите, путешествуете налегке и есть удобный рейс из Кишинёва.",
+              "**Поезд** — если любите дорогу с пейзажами и не против пересадок.",
+              "**Автобус** — для большинства: доступный бюджет, много багажа, семья с детьми, посылки и комфорт от двери до двери.",
+            ],
+          },
+          {
+            type: "callout",
+            variant: "success",
+            title: "Наша рекомендация",
+            text: "Если вы регулярно ездите между Молдовой и Европой, с багажом и без хлопот, автобус — сбалансированный выбор. DAVO забирает вас из вашего города и везёт напрямую, со всем комфортом в цене.",
+          },
+        ],
+        faq: [
+          {
+            q: "Сколько длится поездка на автобусе из Молдовы в Европу?",
+            a: "Зависит от направления — обычно от ~24 до ~40 часов, с регулярными остановками на отдых, еду и перерывы. Точное расписание смотрите на странице каждой страны.",
+          },
+          {
+            q: "Можно взять больше 35 кг багажа?",
+            a: "Да, за доплату, если предупредите заранее. 35 кг багажа + 5 кг ручной клади включены бесплатно; по перевесу договариваемся заранее.",
+          },
+          {
+            q: "Можно отправить посылку, не путешествуя самому?",
+            a: "Да. Мы перевозим посылки отдельно на всех маршрутах, включая скоропортящееся в рефрижераторе. Забираем в Молдове и доставляем по адресу.",
+          },
+          {
+            q: "Откуда меня заберёт автобус?",
+            a: "Из вашего города в Молдове — выезжаем из Кишинёва и останавливаемся в нескольких городах по пути. В пункте назначения высаживаем как можно ближе к адресу.",
+          },
+          {
+            q: "Есть ли интернет на борту?",
+            a: "Да, безлимитный интернет Starlink на всём маршруте, плюс USB-розетки у каждого кресла.",
+          },
+        ],
+      },
+    },
+  },
+  {
     slug: "tahografe-autoutilitare-2026-obligatii-exceptii-sanctiuni",
     date: "2026-07-08",
     readingMinutes: 9,
