@@ -764,10 +764,12 @@ function RezervareContent() {
                     disabled={submitting || !consent}
                     className="inline-flex items-center gap-2 rounded-full bg-[color:var(--success)] px-6 py-3 text-sm font-semibold text-white hover:brightness-110 transition-all shadow-[0_12px_30px_-10px_rgba(16,196,155,0.55)] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
+                    {/* Nu se achită nimic pe site — plata e la bord / la ridicare,
+                        deci butonul doar confirmă. */}
                     {submitting ? "Se procesează..." : (
                       <>
-                        <CreditCard className="h-4 w-4" />
-                        Achită & confirmă
+                        <ShieldCheck className="h-4 w-4" />
+                        {mode === "colet" ? "Confirmă coletul" : "Confirmă rezervarea"}
                       </>
                     )}
                   </button>

@@ -303,8 +303,10 @@ export function TripPicker({
               const key = dayKey(date);
               const trip = tripByDay.get(key);
               const isActive = trip && selectedTripId === trip.id;
-              const isAvailable = !!trip && trip.availableSeats > 0;
-              const isSoldOut = !!trip && trip.availableSeats === 0;
+              // Coletele nu ocupă scaune — o cursă cu autocar plin rămâne
+              // selectabilă pentru colete, deci „sold out" există doar la bilete.
+              const isAvailable = !!trip && (parcelMode || trip.availableSeats > 0);
+              const isSoldOut = !parcelMode && !!trip && trip.availableSeats === 0;
               const isToday = key === dayKey(new Date());
 
               return (
@@ -353,9 +355,12 @@ export function TripPicker({
                           <div className="text-[color:var(--navy-700)]">
                             {timeFmt.format(new Date(trip.departureAt))}
                           </div>
-                          <div className="text-[color:var(--ink-400)] hidden md:block">
-                            {trip.pricePerSeat}{trip.currency === "GBP" ? "£" : "€"}
-                          </div>
+                          {/* Coletele nu afișează preț — operatorul îl stabilește la confirmare. */}
+                          {!parcelMode && (
+                            <div className="text-[color:var(--ink-400)] hidden md:block">
+                              {trip.pricePerSeat}{trip.currency === "GBP" ? "£" : "€"}
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -397,14 +402,18 @@ export function TripPicker({
                       </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold text-[color:var(--navy-900)]">
-                      {t.pricePerSeat}{currency}
+                  {/* Preț + locuri libere doar la bilete: coletul nu ocupă scaun,
+                      iar prețul lui îl stabilește operatorul la confirmare. */}
+                  {!parcelMode && (
+                    <div className="text-right">
+                      <div className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold text-[color:var(--navy-900)]">
+                        {t.pricePerSeat}{currency}
+                      </div>
+                      <div className="text-[11px] font-semibold text-[color:var(--ink-500)] inline-flex items-center gap-1">
+                        <Users className="h-3 w-3" /> {t.availableSeats} libere
+                      </div>
                     </div>
-                    <div className="text-[11px] font-semibold text-[color:var(--ink-500)] inline-flex items-center gap-1">
-                      <Users className="h-3 w-3" /> {t.availableSeats} libere
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             );
