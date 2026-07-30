@@ -257,7 +257,61 @@ export function TripPicker({
 
       {!loading && !error && filteredTrips && filteredTrips.length === 0 && <NoTripsCard />}
 
-      {!loading && total > 0 && (
+      {/* Colete: listă compactă de plecări în loc de grilă de lună — cursele
+          sunt rare (1–2/săptămână), deci calendarul întreg era mare și mai tot
+          gol. Coletul nu ocupă scaun: listăm și cursele cu autocar plin și nu
+          afișăm preț (îl stabilește operatorul la confirmare). */}
+      {!loading && total > 0 && parcelMode && (
+        <div>
+          <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-[color:var(--red-500)]">
+            <CalendarIcon className="h-3 w-3" />
+            Alege data plecării — {total} {total === 1 ? "cursă disponibilă" : "curse disponibile"}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 max-h-80 overflow-y-auto pr-1">
+            {(filteredTrips ?? []).map((t) => {
+              const dep = new Date(t.departureAt);
+              const active = selectedTripId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => pickTrip(t)}
+                  className={cn(
+                    "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all",
+                    active
+                      ? "border-[color:var(--red-500)] bg-[color:var(--red-500)] text-white shadow-[0_8px_24px_-12px_rgba(225,30,43,0.55)]"
+                      : "border-[color:var(--ink-200)] bg-white hover:border-[color:var(--red-400)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(11,38,83,0.35)]"
+                  )}
+                >
+                  <div>
+                    <div
+                      className={cn(
+                        "font-[family-name:var(--font-montserrat)] text-sm font-extrabold",
+                        active ? "text-white" : "text-[color:var(--navy-900)]"
+                      )}
+                    >
+                      {capitalize(weekdayFmt.format(dep))} · {dateFmt.format(dep)}
+                    </div>
+                    <div className={cn("mt-0.5 text-xs", active ? "text-white/85" : "text-[color:var(--ink-500)]")}>
+                      Plecare {timeFmt.format(dep)} · {t.busLabel}
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
+                      active ? "border-white/70 bg-white/15 text-white" : "border-[color:var(--ink-200)] text-transparent"
+                    )}
+                  >
+                    ✓
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && total > 0 && !parcelMode && (
         <div>
           {/* Header calendar: navigare lună + count */}
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -303,10 +357,8 @@ export function TripPicker({
               const key = dayKey(date);
               const trip = tripByDay.get(key);
               const isActive = trip && selectedTripId === trip.id;
-              // Coletele nu ocupă scaune — o cursă cu autocar plin rămâne
-              // selectabilă pentru colete, deci „sold out" există doar la bilete.
-              const isAvailable = !!trip && (parcelMode || trip.availableSeats > 0);
-              const isSoldOut = !parcelMode && !!trip && trip.availableSeats === 0;
+              const isAvailable = !!trip && trip.availableSeats > 0;
+              const isSoldOut = !!trip && trip.availableSeats === 0;
               const isToday = key === dayKey(new Date());
 
               return (
@@ -355,12 +407,9 @@ export function TripPicker({
                           <div className="text-[color:var(--navy-700)]">
                             {timeFmt.format(new Date(trip.departureAt))}
                           </div>
-                          {/* Coletele nu afișează preț — operatorul îl stabilește la confirmare. */}
-                          {!parcelMode && (
-                            <div className="text-[color:var(--ink-400)] hidden md:block">
-                              {trip.pricePerSeat}{trip.currency === "GBP" ? "£" : "€"}
-                            </div>
-                          )}
+                          <div className="text-[color:var(--ink-400)] hidden md:block">
+                            {trip.pricePerSeat}{trip.currency === "GBP" ? "£" : "€"}
+                          </div>
                         </>
                       )}
                     </div>
@@ -402,18 +451,14 @@ export function TripPicker({
                       </span>
                     </div>
                   </div>
-                  {/* Preț + locuri libere doar la bilete: coletul nu ocupă scaun,
-                      iar prețul lui îl stabilește operatorul la confirmare. */}
-                  {!parcelMode && (
-                    <div className="text-right">
-                      <div className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold text-[color:var(--navy-900)]">
-                        {t.pricePerSeat}{currency}
-                      </div>
-                      <div className="text-[11px] font-semibold text-[color:var(--ink-500)] inline-flex items-center gap-1">
-                        <Users className="h-3 w-3" /> {t.availableSeats} libere
-                      </div>
+                  <div className="text-right">
+                    <div className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold text-[color:var(--navy-900)]">
+                      {t.pricePerSeat}{currency}
                     </div>
-                  )}
+                    <div className="text-[11px] font-semibold text-[color:var(--ink-500)] inline-flex items-center gap-1">
+                      <Users className="h-3 w-3" /> {t.availableSeats} libere
+                    </div>
+                  </div>
                 </div>
               </div>
             );
