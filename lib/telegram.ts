@@ -75,13 +75,14 @@ async function getConfig(): Promise<TgConfig> {
   } catch {
     /* DB indisponibil → cădem pe env */
   }
+  // Env (Vercel) are prioritate; Settings din DB e fallback (config interimar).
   const v: TgConfig = {
-    token: m.get("telegram_bot_token") || process.env.TELEGRAM_BOT_TOKEN,
+    token: process.env.TELEGRAM_BOT_TOKEN || m.get("telegram_bot_token"),
     chats: {
-      moldova: m.get("telegram_chat_moldova") || process.env.TELEGRAM_CHAT_MOLDOVA,
-      anglia: m.get("telegram_chat_anglia") || process.env.TELEGRAM_CHAT_ANGLIA,
-      benelux: m.get("telegram_chat_benelux") || process.env.TELEGRAM_CHAT_BENELUX,
-      default: m.get("telegram_chat_default") || process.env.TELEGRAM_CHAT_DEFAULT,
+      moldova: process.env.TELEGRAM_CHAT_MOLDOVA || m.get("telegram_chat_moldova"),
+      anglia: process.env.TELEGRAM_CHAT_ANGLIA || m.get("telegram_chat_anglia"),
+      benelux: process.env.TELEGRAM_CHAT_BENELUX || m.get("telegram_chat_benelux"),
+      default: process.env.TELEGRAM_CHAT_DEFAULT || m.get("telegram_chat_default"),
     },
   };
   cfgCache = { v, at: Date.now() };
@@ -142,10 +143,12 @@ export async function notifyParcelRequest(
 
   const cfg = await getConfig();
   if (!cfg.token) return { sent: false, group, reason: "token lipsă" };
-  // Chat-ul grupului; dacă lipsește, cade pe „default" cu o notă vizibilă.
+  // Chat-ul grupului (poate fi mai multe id-uri separate prin virgulă); dacă
+  // lipsește, cade pe „default" cu o notă vizibilă.
   const groupChat = cfg.chats[group];
-  const chatId = groupChat || cfg.chats.default;
-  if (!chatId) return { sent: false, group, reason: "chat id lipsă" };
+  const rawChat = groupChat || cfg.chats.default;
+  if (!rawChat) return { sent: false, group, reason: "chat id lipsă" };
+  const chatIds = rawChat.split(",").map((s) => s.trim()).filter(Boolean);
   const fallbackNote = !groupChat ? `⚠️ <i>(fără chat pentru operatorul ${group.toUpperCase()} — trimis pe canalul implicit)</i>\n\n` : "";
 
   const lines = [
@@ -161,6 +164,11 @@ export async function notifyParcelRequest(
     data.ticketUrl ? `\n${esc(data.ticketUrl)}` : "",
   ].filter(Boolean);
 
-  const sent = await sendTelegram(chatId, lines.join("\n"), cfg.token);
-  return { sent, group };
+  const text = lines.join("\n");
+  let anySent = false;
+  for (const id of chatIds) {
+    const ok = await sendTelegram(id, text, cfg.token);
+    anySent = anySent || ok;
+  }
+  return { sent: anySent, group };
 }
