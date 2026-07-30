@@ -387,8 +387,10 @@ function RezervareContent() {
     // Validăm la pasul unde e câmpul, nu abia la Plată. Serverul cere oricum
     // orașe, ziua expedierii, nume/telefon/email expeditor și greutatea.
     if (mode === "colet") {
-      // Pasul Direcție: orașe alese + ziua expedierii (cursa reală).
-      if (step === 0) return !!from.trim() && !!to.trim() && !!outboundTripId;
+      // Pasul Direcție: doar orașele. Fără selecție de cursă/zi — orarele de
+      // ridicare variază prea mult (țară, raion, oră); operatorul sună
+      // expeditorul și stabilesc împreună.
+      if (step === 0) return !!from.trim() && !!to.trim();
       // Pasul Expeditor: nume + telefon + email valid.
       if (step === 1) return !!sender.name.trim() && !!sender.phone.trim() && isEmail(sender.email);
       // Pasul Detalii colet: greutate > 0. (Destinatarul rămâne opțional.)
@@ -469,11 +471,10 @@ function RezervareContent() {
               // expeditorului / destinatarului din PartyForm e doar fallback.
               departureCity: fromCityName || sender.city,
               arrivalCity: toCityName || recipient.city,
-              // Data + ora coletului = plecarea cursei pe care a ales-o.
-              // Cădere pe data dintr-un input liber doar dacă userul (rare!)
-              // n-a putut alege o cursă (rută fără program activ).
-              departureDate: outboundTripInfo?.departureAt || date || new Date().toISOString().slice(0, 10),
-              tripId: outboundTripId || undefined,
+              // Coletele nu mai aleg cursă/zi — data e doar un placeholder
+              // tehnic (serverul cere câmpul); ridicarea reală o stabilește
+              // operatorul la telefon, de-asta n-o afișăm nicăieri clientului.
+              departureDate: date || new Date().toISOString().slice(0, 10),
               firstName: sender.name.split(" ")[0] || sender.name,
               lastName: sender.name.split(" ").slice(1).join(" ") || "—",
               email: sender.email,
@@ -657,33 +658,19 @@ function RezervareContent() {
                             toChisinauOnly={angliaInbound}
                             hideTrip
                           />
-                          {/* Coletele călătoresc cu autocarul de pasageri. Reutilizăm
-                              același TripPicker (cu parcelMode → fără seat picker)
-                              ca data și ora afișate pe email/bilet să fie cele reale
-                              ale cursei, nu un input liber al userului. */}
-                          {originCityId && destCityId && (
-                            <TripPicker
-                              title="Alege ziua expedierii"
-                              subtitle="Coletul pleacă cu cursa de pasageri"
-                              originCityId={originCityId}
-                              destCityId={destCityId}
-                              maxSeats={1}
-                              selectedTripId={outboundTripId}
-                              selectedSeats={[]}
-                              parcelMode
-                              onSelect={(tripId, _seats, tripInfo) => {
-                                setOutboundTripId(tripId);
-                                if (tripInfo !== undefined) setOutboundTripInfo(tripInfo ?? null);
-                              }}
-                              allowedWeekdays={
-                                matchedCountry
-                                  ? direction === "md-to-eu"
-                                    ? getOutboundWeekdays(matchedCountry.slug)
-                                    : getReturnWeekdays(matchedCountry.slug)
-                                  : null
-                              }
-                            />
-                          )}
+                          {/* Fără selecție de cursă/zi la colete: orarele de ridicare
+                              variază prea mult (țară, raion, ore diferite), așa că
+                              informăm general, iar operatorul sună expeditorul și
+                              stabilesc împreună ridicarea. */}
+                          <div className="rounded-2xl border border-[color:var(--navy-200,rgba(20,58,122,0.18))] bg-[color:var(--navy-50)] p-5 flex items-start gap-3">
+                            <Info className="h-5 w-5 mt-0.5 shrink-0 text-[color:var(--navy-700)]" />
+                            <div className="text-sm text-[color:var(--navy-900)] leading-relaxed">
+                              <span className="font-bold">Curse regulate în fiecare săptămână</span> spre și
+                              din toate destinațiile. Nu trebuie să alegi o dată — completezi datele de
+                              contact, iar un operator te sună în cel mai scurt timp ca să stabiliți
+                              împreună ridicarea coletului.
+                            </div>
+                          </div>
                         </div>
                       )}
                       {step === 1 && <PartyForm role="Expeditor" data={sender} onChange={setSender} />}
@@ -1377,9 +1364,16 @@ function SummaryCard({
           </div>
 
           <div className="mt-5 space-y-2 text-sm">
-            <Row icon={<Calendar className="h-3.5 w-3.5" />} label="Plecare">
-              {formatRoDate(date) || "—"}
-            </Row>
+            {/* Coletele nu au dată aleasă — arătăm doar că sunt curse săptămânale. */}
+            {mode === "colet" ? (
+              <Row icon={<Calendar className="h-3.5 w-3.5" />} label="Curse">
+                Regulate, în fiecare săptămână
+              </Row>
+            ) : (
+              <Row icon={<Calendar className="h-3.5 w-3.5" />} label="Plecare">
+                {formatRoDate(date) || "—"}
+              </Row>
+            )}
             {returnDate && (
               <Row icon={<Calendar className="h-3.5 w-3.5" />} label="Întoarcere">
                 {formatRoDate(returnDate)}

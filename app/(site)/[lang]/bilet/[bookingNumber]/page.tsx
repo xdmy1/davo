@@ -342,13 +342,16 @@ export default function TicketPage() {
 
           {/* Details grid */}
           <div className="px-7 pb-6 grid grid-cols-2 gap-3 print:gap-2">
+            {/* Coletele nu au zi de expediere aleasă (departureDate e placeholder) —
+                ridicarea o stabilește operatorul la telefon. */}
             <DetailCell icon={<Calendar className="h-3.5 w-3.5" />} label={isParcel ? "Data expediere" : "Data plecării"}>
-              {dateFmt.format(departureDate)}
-              {/* Coletele NU au oră fixă (admin sună expeditorul pentru grafic).
-                  Le păstrăm doar ca dată — altfel afișează "03:00" doar pentru
-                  că `new Date("YYYY-MM-DD")` e UTC midnight = 03:00 Chișinău. */}
-              {!isParcel && (
-                <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.departureTime ?? timeFmt.format(departureDate)}</span>
+              {isParcel ? (
+                "Se stabilește cu operatorul"
+              ) : (
+                <>
+                  {dateFmt.format(departureDate)}
+                  <span className="ml-1 text-[color:var(--ink-700)] font-medium">· {booking.departureTime ?? timeFmt.format(departureDate)}</span>
+                </>
               )}
             </DetailCell>
             {returnDate && (

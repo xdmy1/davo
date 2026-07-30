@@ -95,7 +95,10 @@ export async function enqueueRemindersOnly(bookingId: string) {
   const dep24 = dayBeforeAtLocal(dep, 8, 0);
 
   const jobs: Array<{ type: string; sendAt: Date; status: string; bookingId: string }> = [];
-  if (!have.has("reminder_24h") && dep24 > now) {
+  // Fără reminder la colete: din fluxul public nu se mai alege cursă/zi, deci
+  // departureDate e un placeholder — „coletul pleacă mâine" ar minți clientul.
+  // Ridicarea o stabilește operatorul la telefon.
+  if (booking.type !== "parcel" && !have.has("reminder_24h") && dep24 > now) {
     jobs.push({ type: "reminder_24h", sendAt: dep24, status: "scheduled", bookingId });
   }
   // Recenzie: la 2 zile după ultima etapă a călătoriei (retur dacă există).

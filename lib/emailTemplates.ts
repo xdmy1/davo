@@ -280,11 +280,15 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
   const retTime = !isParcel && b.returnDate ? (b.returnTime ?? formatTime(b.returnDate)) : null;
   const rows: DetailRow[] = [
     { label: isParcel ? "Traseu" : "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
-    {
-      label: isParcel ? "Expediere" : "Plecare",
-      value: depTime ? `${formatDate(b.departureDate)} · ${depTime}` : formatDate(b.departureDate),
-    },
   ];
+  // Coletele nu au zi de expediere aleasă (departureDate e un placeholder
+  // tehnic) — ridicarea o stabilește operatorul la telefon, deci nu afișăm data.
+  if (!isParcel) {
+    rows.push({
+      label: "Plecare",
+      value: depTime ? `${formatDate(b.departureDate)} · ${depTime}` : formatDate(b.departureDate),
+    });
+  }
   if (isRoundTrip && b.returnDate && retTime) {
     rows.push({
       label: "Întoarcere",
@@ -479,9 +483,10 @@ export function adminNotificationHtml(b: ConfirmationData): string {
     { label: "Tip", value: isParcel ? "Colet" : "Pasager" },
     { label: "Client", value: b.firstName },
     { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
-    { label: "Plecare", value: plecareValue },
   ];
+  // La colete data e un placeholder (operatorul stabilește ridicarea) — n-o arătăm.
   if (!isParcel) {
+    rows.push({ label: "Plecare", value: plecareValue });
     rows.push({ label: "Pasageri", value: paxLine(b.adults, b.children) });
   }
   // Coletele nu au preț la creare — operatorul îl stabilește la confirmare.

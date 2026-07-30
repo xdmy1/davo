@@ -18,8 +18,11 @@ export default function SuccessCard({
   const locale = useLocale();
   const isColet = mode === "colet";
   const title = isColet
-    ? "Felicitări! Ai rezervat cu succes serviciul de DAVO Transport pasageri și colete"
+    ? "Solicitarea a fost înregistrată"
     : "Felicitări! Rezervarea ta a fost confirmată cu succes";
+  const subtitle = isColet
+    ? "În cel mai scurt timp, un operator va reveni la dumneavoastră ca să stabiliți ridicarea coletului și detaliile de livrare. Nu trebuie să faceți nimic acum."
+    : "Un e-mail cu biletul a fost trimis către detaliile tale de contact, împreună cu un act de identitate necesar pentru călătorie.";
 
   // Link relativ, dependent de limbă — merge mereu pe domeniul curent și nu
   // poate ajunge la `localhost` (spre deosebire de `ticketUrl` absolut din API).
@@ -51,7 +54,7 @@ export default function SuccessCard({
           </h1>
 
           <p className="mt-4 text-[color:var(--ink-500)] max-w-md mx-auto">
-            Un e-mail cu biletul a fost trimis către detaliile tale de contact, împreună cu un act de identitate necesar pentru călătorie.
+            {subtitle}
           </p>
 
           {bookingNumber && (

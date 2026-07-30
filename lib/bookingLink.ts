@@ -24,8 +24,10 @@ export async function autoLinkTripAndClient(bookingId: string): Promise<{
 
   // 1. Link Trip — sare peste matching dacă tripId e deja setat (ex: flow-ul
   // public cu selecție explicită de Trip). Altfel încearcă match pe nume oraș +
-  // ziua plecării (flow legacy fără selecție de Trip).
-  if (!booking.tripId) {
+  // ziua plecării (flow legacy fără selecție de Trip). Doar pasageri: la colete
+  // departureDate e un placeholder (nu se mai alege zi), deci match-ul pe zi
+  // ar lega coletul de o cursă greșită — operatorul îl leagă la confirmare.
+  if (!booking.tripId && booking.type === "passenger") {
     const originCity = await prisma.city.findFirst({
       where: { name: booking.departureCity, isOrigin: true },
     });

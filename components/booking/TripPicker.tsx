@@ -87,7 +87,6 @@ export function TripPicker({
   selectedSeats,
   onSelect,
   allowedWeekdays,
-  parcelMode = false,
 }: {
   title: string;
   subtitle?: string;
@@ -103,10 +102,6 @@ export function TripPicker({
    *  Unele țări pleacă în MAI MULTE zile (Belgia: joi + vineri) — de-aia listă,
    *  nu o singură zi. Gol/null = fără filtru. */
   allowedWeekdays?: number[] | null;
-  /** Coletele călătoresc cu autocarul de pasageri — folosesc același calendar
-   *  de curse dar nu rezervă scaune. Cu `parcelMode`, ascundem SeatPicker-ul
-   *  și nu mai cerem `maxSeats` să fie sincronizat cu nimic. */
-  parcelMode?: boolean;
 }) {
   const hasRoute = Boolean(originCityId && destCityId);
   const [trips, setTrips] = useState<PublicTrip[] | null>(null);
@@ -257,61 +252,7 @@ export function TripPicker({
 
       {!loading && !error && filteredTrips && filteredTrips.length === 0 && <NoTripsCard />}
 
-      {/* Colete: listă compactă de plecări în loc de grilă de lună — cursele
-          sunt rare (1–2/săptămână), deci calendarul întreg era mare și mai tot
-          gol. Coletul nu ocupă scaun: listăm și cursele cu autocar plin și nu
-          afișăm preț (îl stabilește operatorul la confirmare). */}
-      {!loading && total > 0 && parcelMode && (
-        <div>
-          <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-[color:var(--red-500)]">
-            <CalendarIcon className="h-3 w-3" />
-            Alege data plecării — {total} {total === 1 ? "cursă disponibilă" : "curse disponibile"}
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 max-h-80 overflow-y-auto pr-1">
-            {(filteredTrips ?? []).map((t) => {
-              const dep = new Date(t.departureAt);
-              const active = selectedTripId === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => pickTrip(t)}
-                  className={cn(
-                    "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all",
-                    active
-                      ? "border-[color:var(--red-500)] bg-[color:var(--red-500)] text-white shadow-[0_8px_24px_-12px_rgba(225,30,43,0.55)]"
-                      : "border-[color:var(--ink-200)] bg-white hover:border-[color:var(--red-400)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(11,38,83,0.35)]"
-                  )}
-                >
-                  <div>
-                    <div
-                      className={cn(
-                        "font-[family-name:var(--font-montserrat)] text-sm font-extrabold",
-                        active ? "text-white" : "text-[color:var(--navy-900)]"
-                      )}
-                    >
-                      {capitalize(weekdayFmt.format(dep))} · {dateFmt.format(dep)}
-                    </div>
-                    <div className={cn("mt-0.5 text-xs", active ? "text-white/85" : "text-[color:var(--ink-500)]")}>
-                      Plecare {timeFmt.format(dep)} · {t.busLabel}
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
-                      active ? "border-white/70 bg-white/15 text-white" : "border-[color:var(--ink-200)] text-transparent"
-                    )}
-                  >
-                    ✓
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {!loading && total > 0 && !parcelMode && (
+      {!loading && total > 0 && (
         <div>
           {/* Header calendar: navigare lună + count */}
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -467,7 +408,7 @@ export function TripPicker({
       )}
 
       <AnimatePresence>
-        {selectedTripId && !parcelMode && (
+        {selectedTripId && (
           <motion.div
             key="seat-picker"
             initial={{ opacity: 0, height: 0 }}
