@@ -279,6 +279,27 @@ export async function POST(request: NextRequest) {
     const emailResult = await sendBookingConfirmation(bookingData)
     await sendAdminNotification(bookingData)
 
+    // Colete: trimitem cererea pe Telegram operatorului potrivit (după țara de
+    // ridicare). Best-effort — nu blocăm rezervarea dacă Telegram nu e configurat.
+    if (booking.type === 'parcel') {
+      try {
+        const { notifyParcelRequest } = await import('@/lib/telegram')
+        await notifyParcelRequest({
+          bookingNumber: booking.bookingNumber,
+          departureCity: booking.departureCity,
+          arrivalCity: booking.arrivalCity,
+          name: `${booking.firstName} ${booking.lastName}`.trim(),
+          phone: booking.phone,
+          email: booking.email,
+          parcelDetails: booking.parcelDetails,
+          payMethod: booking.payMethod,
+          ticketUrl,
+        })
+      } catch (e) {
+        console.error('telegram parcel notify:', e)
+      }
+    }
+
     if (emailResult.success) {
       await prisma.booking.update({
         where: { id: booking.id },

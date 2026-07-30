@@ -304,7 +304,12 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
       value: b.busPlate ? `${b.busLabel} · ${b.busPlate}` : b.busLabel,
     });
   }
-  rows.push({ label: "Total", value: formatPrice(b.price, b.currency) });
+  // Coletele nu mai afișează preț — operatorul îl stabilește la confirmare.
+  if (isParcel) {
+    rows.push({ label: "Preț", value: "Se stabilește de operator la confirmare" });
+  } else {
+    rows.push({ label: "Total", value: formatPrice(b.price, b.currency) });
+  }
   rows.push({ label: "Plata", value: payLabel(b.payMethod, isParcel) });
   rows.push({ label: "Nr. rezervare", value: b.bookingNumber });
 

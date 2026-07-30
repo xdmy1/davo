@@ -448,10 +448,10 @@ export default function TicketPage() {
             <div className="relative flex items-center justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[color:var(--red-400)]">
-                  Preț total
+                  {isParcel ? "Preț" : "Preț total"}
                 </div>
-                <div className="mt-1 font-[family-name:var(--font-montserrat)] text-3xl font-extrabold">
-                  {booking.price} {booking.currency}
+                <div className={`mt-1 font-[family-name:var(--font-montserrat)] font-extrabold ${isParcel ? "text-lg" : "text-3xl"}`}>
+                  {isParcel ? "Se stabilește la confirmare" : `${booking.price} ${booking.currency}`}
                 </div>
                 {booking.payMethod && (
                   <div className="mt-2 text-xs text-white/70">

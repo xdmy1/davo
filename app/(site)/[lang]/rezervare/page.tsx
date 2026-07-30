@@ -696,7 +696,7 @@ function RezervareContent() {
                           onPayMethod={setPayMethod}
                           lines={[
                             { label: "Livrare colet", value: "standard" },
-                            { label: `Greutate: ${parcel.weight || 0} kg`, value: `${parcel.weight || 0} × 1.5 ${currency}` },
+                            { label: "Greutate", value: `${parcel.weight || 0} kg` },
                           ]}
                           total={`${total}${currency}`}
                         />
@@ -1251,19 +1251,29 @@ function PaymentStep({
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center justify-between pt-3 border-t border-[color:var(--ink-200)]">
-          <span className="text-sm font-semibold text-[color:var(--ink-700)]">Total de plată</span>
-          <span className="font-[family-name:var(--font-montserrat)] text-3xl font-extrabold text-[color:var(--navy-900)]">
-            {total}
-          </span>
-        </div>
+        {mode === "colet" ? (
+          <div className="mt-4 flex items-center justify-between gap-3 pt-3 border-t border-[color:var(--ink-200)]">
+            <span className="text-sm font-semibold text-[color:var(--ink-700)]">Preț</span>
+            <span className="text-right text-sm font-semibold text-[color:var(--navy-900)]">
+              Se stabilește de operator la confirmare
+            </span>
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center justify-between pt-3 border-t border-[color:var(--ink-200)]">
+            <span className="text-sm font-semibold text-[color:var(--ink-700)]">Total de plată</span>
+            <span className="font-[family-name:var(--font-montserrat)] text-3xl font-extrabold text-[color:var(--navy-900)]">
+              {total}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="mt-5 rounded-xl border border-[color:var(--navy-200,rgba(20,58,122,0.18))] bg-[color:var(--navy-50)] p-4 text-sm text-[color:var(--navy-900)] flex items-start gap-3">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-[color:var(--navy-700)]" />
         <span>
-          Pe site nu se achită cu cardul. Plata se face direct la {moment} —
-          alege metoda dorită mai jos. Confirmarea îți ajunge pe email imediat.
+          {mode === "colet"
+            ? "Prețul coletului se stabilește de operator la confirmare, în funcție de dimensiuni și destinație. Te contactăm imediat după ce trimiți cererea. Plata se face la livrare — alege metoda preferată mai jos."
+            : `Pe site nu se achită cu cardul. Plata se face direct la ${moment} — alege metoda dorită mai jos. Confirmarea îți ajunge pe email imediat.`}
         </span>
       </div>
 
@@ -1390,9 +1400,18 @@ function SummaryCard({
             )}
           </div>
 
-          <div className="mt-5 flex items-center justify-between pt-4 border-t border-white/10">
-            <span className="text-xs text-white/55 uppercase tracking-widest font-bold">Total</span>
-            <span className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold">{total}</span>
+          <div className="mt-5 flex items-center justify-between gap-3 pt-4 border-t border-white/10">
+            {mode === "colet" ? (
+              <>
+                <span className="text-xs text-white/55 uppercase tracking-widest font-bold">Preț</span>
+                <span className="text-right text-[13px] font-semibold text-white/80">La confirmare</span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-white/55 uppercase tracking-widest font-bold">Total</span>
+                <span className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold">{total}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
