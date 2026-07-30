@@ -48,6 +48,10 @@ type CityLookup = { id: string; name: string };
 
 const coletSteps = ["Direcție", "Expeditor", "Destinatar", "Detalii colet", "Plată"];
 
+// Validare simplă de email — folosită ca să blocăm „Continuă" la pasul potrivit,
+// nu abia la trimitere (serverul cere mereu un email valid).
+const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+
 const dateFmtRo = new Intl.DateTimeFormat("ro-RO", {
   weekday: "short",
   day: "numeric",
@@ -379,7 +383,20 @@ function RezervareContent() {
   };
 
   const canContinue = (() => {
-    if (mode !== "bilet") return true;
+    // ----- Flux COLET -----
+    // Validăm la pasul unde e câmpul, nu abia la Plată. Serverul cere oricum
+    // orașe, ziua expedierii, nume/telefon/email expeditor și greutatea.
+    if (mode === "colet") {
+      // Pasul Direcție: orașe alese + ziua expedierii (cursa reală).
+      if (step === 0) return !!from.trim() && !!to.trim() && !!outboundTripId;
+      // Pasul Expeditor: nume + telefon + email valid.
+      if (step === 1) return !!sender.name.trim() && !!sender.phone.trim() && isEmail(sender.email);
+      // Pasul Detalii colet: greutate > 0. (Destinatarul rămâne opțional.)
+      if (step === 3) return Number(parcel.weight) > 0;
+      return true;
+    }
+
+    // ----- Flux BILET -----
     if (step === 0) {
       // Pasul "Călătorie": from/to alese + cursă dus + scaune = pasageri.
       return (
@@ -392,7 +409,7 @@ function RezervareContent() {
     if (step === 1 && trip === "return") {
       return !!returnTripId && returnSeats.length === passengers;
     }
-    // Pasul Pasageri: nume + prenume + telefon + email obligatorii — serverul
+    // Pasul Pasageri: nume + prenume + telefon + email valid obligatorii — serverul
     // oricum respinge fără ele; nu lăsăm clientul să ajungă la Plată degeaba.
     if ((step === 1 && trip === "one") || (step === 2 && trip === "return")) {
       const extras = extraPassengers.slice(0, Math.max(0, passengers - 1));
@@ -400,7 +417,7 @@ function RezervareContent() {
         !!person.firstName.trim() &&
         !!person.lastName.trim() &&
         !!person.phone.trim() &&
-        !!person.email.trim() &&
+        isEmail(person.email) &&
         extras.every((p) => !!p.firstName.trim() && !!p.lastName.trim())
       );
     }
@@ -1055,11 +1072,11 @@ function PartyForm({
   // în orașul respectiv, stabilește ora de pickup sau drop-off la oficiu).
   // Deci câmpurile detaliate sunt opționale — userul completează ce știe acum,
   // restul se aliniază prin telefon.
-  // - Expeditor: nume + telefon obligatorii (ca să-l putem suna înapoi).
+  // - Expeditor: nume + telefon + email obligatorii (email = confirmarea + biletul).
   // - Destinatar: complet opțional (operatorul coordonează cu expeditorul).
   const isSender = role === "Expeditor";
   const helperText = isSender
-    ? "Operatorul te sună pentru confirmare și pentru a stabili ora de pickup sau de venire la oficiu (Calea Ieșilor 11/3). Completează ce știi acum."
+    ? "Operatorul te sună pentru confirmare și pentru a stabili ora de pickup sau de venire la oficiu (Calea Ieșilor 11/3). Emailul e necesar pentru confirmare."
     : "Datele destinatarului sunt opționale — le poți lăsa goale și le clarificăm la confirmarea telefonică.";
 
   return (
@@ -1092,11 +1109,13 @@ function PartyForm({
             className="simple-input"
           />
         </SimpleField>
-        <SimpleField label="Email" icon={<Mail className="h-4 w-4" />}>
+        <SimpleField label={isSender ? "Email *" : "Email"} icon={<Mail className="h-4 w-4" />}>
           <input
+            required={isSender}
             type="email"
             value={data.email}
             onChange={(e) => setField("email", e.target.value)}
+            placeholder="ion@email.com"
             className="simple-input"
           />
         </SimpleField>
