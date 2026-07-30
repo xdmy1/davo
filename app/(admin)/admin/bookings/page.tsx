@@ -403,7 +403,8 @@ export default function BookingsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="font-semibold text-slate-900">
-                          {b.price} {b.currency}
+                          {/* Colet fără preț setat = operatorul îl stabilește la confirmare */}
+                          {b.type !== "passenger" && !b.price ? "La confirmare" : `${b.price} ${b.currency}`}
                         </div>
                         <div className={`text-xs ${b.emailSent ? "text-emerald-600" : "text-red-500"}`}>
                           {b.emailSent ? "Email trimis" : "Email netrimis"}

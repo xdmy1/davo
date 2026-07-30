@@ -484,7 +484,12 @@ export function adminNotificationHtml(b: ConfirmationData): string {
   if (!isParcel) {
     rows.push({ label: "Pasageri", value: paxLine(b.adults, b.children) });
   }
-  rows.push({ label: "Total", value: formatPrice(b.price, b.currency) });
+  // Coletele nu au preț la creare — operatorul îl stabilește la confirmare.
+  if (isParcel) {
+    rows.push({ label: "Preț", value: "Se stabilește de operator la confirmare" });
+  } else {
+    rows.push({ label: "Total", value: formatPrice(b.price, b.currency) });
+  }
   rows.push({ label: "Plata", value: payLabel(b.payMethod, isParcel) });
 
   const body = `

@@ -137,7 +137,19 @@ export async function POST(request: NextRequest) {
 
     let price: number
     let currency: string
-    if (outboundTrip) {
+    if (body.type === 'parcel') {
+      // Colet: prețul îl stabilește operatorul la confirmare — NU tarifăm ca un
+      // loc de pasager nici când coletul e legat de o cursă (înainte, un colet
+      // cu tripId primea basePrice-ul rutei, ex. 150 EUR). 0 = „încă nesetat".
+      price = 0
+      currency = outboundTrip
+        ? outboundTrip.route.currency
+        : calculatePrice({
+            departureCity: body.departureCity,
+            arrivalCity: body.arrivalCity,
+            type: 'parcel',
+          }).currency
+    } else if (outboundTrip) {
       const res = calculatePriceFromRoute({
         basePrice: outboundTrip.route.basePrice,
         currency: outboundTrip.route.currency,
