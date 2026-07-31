@@ -1,6 +1,13 @@
 // PATCH/DELETE /api/admin/accounts/colete/[id] — editarea și ștergerea unui
 // cont de șofer colete.
 //
+// Aici se schimbă doar câmpurile CONTULUI: nume, PIN, rol, activ/blocat,
+// destinațiile excluse, țările de colectare, contorul comun de ridicări.
+// Intervalele de numere sunt rânduri separate în `driver_route_ranges` și au
+// rutele lor (`./ranges`, `./ranges/[rangeId]`) — un PATCH care ar primi și
+// lista lor ar trebui să ghicească singur ce rând s-a adăugat, ce s-a mutat și
+// ce s-a șters, exact genul de diff care pierde tăcut o rută.
+//
 // Două reguli țin aplicația de colete funcțională, ambele verificate pe starea
 // citită acum din Supabase, nu pe ce trimite formularul: nu rămâne fără niciun
 // admin activ și nu se șterge un cont care are colete ne-arhivate în spate.
@@ -16,42 +23,28 @@ import {
   type ColeteDriver,
   type ColeteRole,
 } from "@/lib/coleteAdmin";
+import {
+  asBool,
+  asCollectionCountries,
+  asCountryList,
+  asRole,
+  asText,
+  describeRange,
+  NECONFIGURAT,
+} from "../_shared";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const NECONFIGURAT =
-  "Baza colete nu e configurată — adaugă COLETE_SUPABASE_URL și COLETE_SUPABASE_SERVICE_KEY în variabilele de mediu";
 
 type ColetePatch = {
   username?: string;
   pin?: string;
   role?: ColeteRole;
-  rangeStart?: number;
-  rangeEnd?: number;
+  excludedDestinations?: string[];
+  allowedCollectionCountries?: string[] | null;
+  sharedPickupCounter?: boolean;
   active?: boolean;
 };
-
-function asText(value: unknown): string {
-  return typeof value === "string" ? value : "";
-}
-
-function asRole(value: unknown): ColeteRole {
-  return asText(value).trim() as ColeteRole;
-}
-
-function asInt(value: unknown): number {
-  if (typeof value === "number") return value;
-  const text = asText(value).trim();
-  return text ? Number(text) : NaN;
-}
-
-function asBool(value: unknown): boolean | undefined {
-  if (typeof value === "boolean") return value;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  return undefined;
-}
 
 function fail(error: string, status: number) {
   return NextResponse.json({ success: false, error }, { status });
@@ -78,8 +71,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // PIN gol la editare = „lasă-l pe cel vechi", exact ca la câmpurile de parolă.
   if (body.pin !== undefined && asText(body.pin).trim() !== "") patch.pin = asText(body.pin);
   if (body.role !== undefined) patch.role = asRole(body.role);
-  if (body.rangeStart !== undefined) patch.rangeStart = asInt(body.rangeStart);
-  if (body.rangeEnd !== undefined) patch.rangeEnd = asInt(body.rangeEnd);
+  if (body.excludedDestinations !== undefined) {
+    patch.excludedDestinations = asCountryList(body.excludedDestinations);
+  }
+  if (body.allowedCollectionCountries !== undefined) {
+    // `null` (fără acces la Colectări) și `[]` (acces, dar pe nicio țară) sunt
+    // valori diferite în baza colete; parserul le păstrează distincte.
+    patch.allowedCollectionCountries = asCollectionCountries(body.allowedCollectionCountries) ?? null;
+  }
+  if (body.sharedPickupCounter !== undefined) {
+    const shared = asBool(body.sharedPickupCounter);
+    if (shared === undefined) {
+      return fail("Câmpul „contor comun de ridicări” trebuie să fie adevărat sau fals", 400);
+    }
+    patch.sharedPickupCounter = shared;
+  }
   if (body.active !== undefined) {
     const active = asBool(body.active);
     // O valoare pe care n-o înțelegem nu se ignoră tăcut: adminul ar crede că a
@@ -123,9 +129,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const details: Record<string, unknown> = { campuri: changed };
     if (patch.username && patch.username !== target.username) details.numeNou = patch.username;
     if (patch.role !== undefined) details.rol = patch.role;
-    if (patch.rangeStart !== undefined || patch.rangeEnd !== undefined) {
-      details.interval = [patch.rangeStart ?? target.rangeStart, patch.rangeEnd ?? target.rangeEnd];
+    if (patch.excludedDestinations !== undefined) {
+      details.destinatiiExcluse = patch.excludedDestinations;
     }
+    if (patch.allowedCollectionCountries !== undefined) {
+      details.colectari = patch.allowedCollectionCountries ?? "fără acces";
+    }
+    if (patch.sharedPickupCounter !== undefined) details.contorComun = patch.sharedPickupCounter;
     if (patch.active !== undefined) details.activ = patch.active;
     // Doar faptul că PIN-ul s-a schimbat, niciodată valoarea lui.
     if (patch.pin !== undefined) details.pinSchimbat = true;
@@ -186,7 +196,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       system: "colete",
       targetId: id,
       targetName: target.username,
-      details: { rol: target.role, interval: [target.rangeStart, target.rangeEnd] },
+      details: { rol: target.role, rute: target.routeRanges.map(describeRange) },
       ip: clientIp(req),
     });
 

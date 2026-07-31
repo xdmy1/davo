@@ -12,12 +12,28 @@
 // `import type` se șterge complet la compilare, deci tipurile de mai jos vin
 // din sursa lor reală fără ca modulele de server (Prisma, fetch cu cheia
 // service_role) să ajungă în bundle-ul clientului.
-import type { ColeteDriver, ColeteRole } from "@/lib/coleteAdmin";
+import type { ColeteDriver, ColeteRole, ColeteRouteRange } from "@/lib/coleteAdmin";
 import type { Role } from "@/lib/permissions";
 import type { RezervariRole } from "@/lib/rezervariSections";
 
 // Re-exportate ca taburile să aibă o singură sursă de importuri.
-export type { ColeteDriver, ColeteRole, Role, RezervariRole };
+export type { ColeteDriver, ColeteRole, ColeteRouteRange, Role, RezervariRole };
+// Lista de țări e o constantă, nu un tip: `COLETE_COUNTRIES` din `coleteAdmin`
+// nu poate fi importată ca valoare într-un component client (fișierul citește
+// cheia `service_role`), deci se copiază aici. Codurile trebuie să rămână
+// identice în cele două locuri — serverul respinge orice cod din afara listei.
+export const COLETE_COUNTRIES: { code: string; label: string }[] = [
+  { code: "MD", label: "Moldova" },
+  { code: "UK", label: "Regatul Unit" },
+  { code: "BE", label: "Belgia" },
+  { code: "NL", label: "Țările de Jos" },
+  { code: "DE", label: "Germania" },
+];
+
+/** Codul → numele țării, pentru etichete; codul necunoscut se arată ca atare. */
+export function countryLabel(code: string): string {
+  return COLETE_COUNTRIES.find((c) => c.code === code)?.label ?? code;
+}
 
 /**
  * Duplicat deliberat față de `lib/accountsGate.ts`: acela importă Prisma și
@@ -105,6 +121,8 @@ export type ColeteListResponse = {
   message?: string;
 };
 export type ColeteMutationResponse = { driver: ColeteDriver };
+/** Răspunsul rutelor `/colete/[id]/ranges` la creare și la editare de rând. */
+export type ColeteRangeResponse = { range: ColeteRouteRange };
 export type AuditListResponse = { entries: AuditEntry[]; limit: number };
 
 // ───────────────────────────── Transportul ─────────────────────────────
