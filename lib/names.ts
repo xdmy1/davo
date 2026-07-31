@@ -18,14 +18,21 @@ export function splitPassengers(
 }
 
 // Numele complet al fiecărui pasager, separați prin ", ".
-// `surnameFirst` → "Nume Prenume" (convenția din panoul operatorilor);
-// implicit „Prenume Nume".
+// Formatul canonic (peste tot: website, emailuri, panou operatori) e „Nume
+// Prenume" per pasager → "Lemnaru Anisoara, Lemnaru Ana". `surnameFirst=false`
+// dă „Prenume Nume", dacă e nevoie undeva.
 export function formatPassengers(
   firstName: string,
   lastName: string,
-  surnameFirst = false
+  surnameFirst = true
 ): string {
   return splitPassengers(firstName, lastName)
     .map((p) => (surnameFirst ? `${p.lastName} ${p.firstName}` : `${p.firstName} ${p.lastName}`).trim())
     .join(", ");
+}
+
+// Prenumele primului pasager — pentru formule de adresare („Bună Anisoara,"),
+// ca să nu apară niciodată concatenarea brută „Anisoara, Ana" în saluturi.
+export function firstGivenName(firstName: string): string {
+  return (firstName || "").split(",")[0].trim();
 }

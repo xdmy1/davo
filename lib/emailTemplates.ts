@@ -1,6 +1,6 @@
 import type { Booking } from "@prisma/client";
 import { appUrl, publicAppUrl } from "@/lib/appUrl";
-import { formatPassengers } from "@/lib/names";
+import { formatPassengers, firstGivenName } from "@/lib/names";
 
 // Ora plecării/întoarcerii e introdusă mereu în ora locală Moldovei (admin +
 // flow public). Serverul (Vercel) rulează în UTC, deci fără `timeZone` ar
@@ -322,8 +322,8 @@ export function confirmationHtml(b: ConfirmationData, urls?: ResponseUrls): stri
   const body = `
     ${headline(
       isParcel
-        ? `Bună ${b.firstName},<br>coletul tău e înregistrat.`
-        : `Bună ${b.firstName},<br>te așteptăm la cursă.`
+        ? `Bună ${firstGivenName(b.firstName)},<br>coletul tău e înregistrat.`
+        : `Bună ${firstGivenName(b.firstName)},<br>te așteptăm la cursă.`
     )}
     ${intro(
       isParcel
@@ -359,8 +359,8 @@ export function reminder24hHtml(b: Booking, urls?: ResponseUrls, scheduledDepart
   const body = `
     ${headline(
       isParcel
-        ? `${b.firstName}, coletul tău pleacă mâine.`
-        : `${b.firstName}, mâine e ziua mare.`
+        ? `${firstGivenName(b.firstName)}, coletul tău pleacă mâine.`
+        : `${firstGivenName(b.firstName)}, mâine e ziua mare.`
     )}
     ${intro(
       isParcel
@@ -405,7 +405,7 @@ export function cancellationHtml(b: Booking): string {
       : "Plata urma să se facă la îmbarcare/livrare, deci nu există o sumă de rambursat.";
 
   const body = `
-    ${headline(`${b.firstName}, rezervarea a fost anulată.`)}
+    ${headline(`${firstGivenName(b.firstName)}, rezervarea a fost anulată.`)}
     ${intro(refundLine)}
     ${detailsCard([
       { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
@@ -448,7 +448,7 @@ export function busChangeHtml(d: BusChangeData): string {
     ? `Din motive operaționale a fost nevoie să-ți schimbăm ${multi ? "locurile" : "locul"}. Ne cerem sincer scuze pentru neplăcere — restul rezervării rămâne neschimbat.`
     : `${multi ? "Locurile tale rămân aceleași" : "Locul tău rămâne același"}.`;
   const body = `
-    ${headline(`${d.firstName}, s-a schimbat autobuzul cursei tale.`)}
+    ${headline(`${firstGivenName(d.firstName)}, s-a schimbat autobuzul cursei tale.`)}
     ${intro(`Ruta rămâne aceeași și pleci conform programului — se schimbă doar autocarul cursei <strong style="color:${C.navy900};">${d.departureCity} → ${d.arrivalCity}</strong>. ${apology}`)}
     ${detailsCard([
       { label: "Cursa", value: `${d.departureCity} → ${d.arrivalCity}` },
@@ -500,7 +500,7 @@ export function adminNotificationHtml(b: ConfirmationData): string {
   rows.push({ label: "Plata", value: payLabel(b.payMethod, isParcel) });
 
   const body = `
-    ${headline(`${b.firstName} a făcut o rezervare.`)}
+    ${headline(`${firstGivenName(b.firstName)} a făcut o rezervare.`)}
     ${detailsCard(rows)}
     <div style="text-align:center;">
       <a href="${appUrl()}/admin/bookings"
@@ -750,7 +750,7 @@ export function adminCountryManifestHtml(d: CountryManifestData): string {
 
 export function reviewRequestHtml(b: Booking, reviewUrl: string): string {
   const body = `
-    ${headline(`${b.firstName}, cum a fost călătoria cu DAVO?`)}
+    ${headline(`${firstGivenName(b.firstName)}, cum a fost călătoria cu DAVO?`)}
     ${intro(
       `Ai călătorit recent pe ruta <strong style="color:${C.navy900};">${b.departureCity} → ${b.arrivalCity}</strong>. ` +
       `Părerea ta ne ajută enorm — durează 30 de secunde: dai stelele și, dacă vrei, un comentariu.`

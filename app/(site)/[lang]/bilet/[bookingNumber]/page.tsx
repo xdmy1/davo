@@ -405,7 +405,7 @@ export default function TicketPage() {
                   <div key={`${p.firstName}-${i}`} className="flex items-center gap-2 text-[color:var(--navy-900)]">
                     <User className="h-3.5 w-3.5 text-[color:var(--red-500)]" />
                     <span className="font-semibold">
-                      {p.firstName} {p.lastName}
+                      {p.lastName} {p.firstName}
                     </span>
                     {arr.length > 1 && booking.outboundSeats && booking.outboundSeats[i] && (
                       <span className="text-[color:var(--ink-500)] text-xs font-mono">
