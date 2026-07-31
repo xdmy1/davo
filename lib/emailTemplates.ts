@@ -1,5 +1,6 @@
 import type { Booking } from "@prisma/client";
 import { appUrl, publicAppUrl } from "@/lib/appUrl";
+import { formatPassengers } from "@/lib/names";
 
 // Ora plecării/întoarcerii e introdusă mereu în ora locală Moldovei (admin +
 // flow public). Serverul (Vercel) rulează în UTC, deci fără `timeZone` ar
@@ -228,6 +229,7 @@ export type ConfirmationData = {
   type: "passenger" | "parcel";
   tripType?: "one-way" | "round-trip";
   firstName: string;
+  lastName?: string;
   departureCity: string;
   arrivalCity: string;
   departureDate: Date;
@@ -481,7 +483,7 @@ export function adminNotificationHtml(b: ConfirmationData): string {
   const rows: DetailRow[] = [
     { label: "Nr. rezervare", value: b.bookingNumber },
     { label: "Tip", value: isParcel ? "Colet" : "Pasager" },
-    { label: "Client", value: b.firstName },
+    { label: "Client", value: formatPassengers(b.firstName, b.lastName ?? "") },
     { label: "Cursa", value: `${b.departureCity} → ${b.arrivalCity}` },
   ];
   // La colete data e un placeholder (operatorul stabilește ridicarea) — n-o arătăm.
