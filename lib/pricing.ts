@@ -21,7 +21,12 @@ function normalize(s: string) {
 
 function findCity(cityName: string) {
   const name = normalize(cityName);
-  if (moldovanCities.some((c) => normalize(c.name) === name)) {
+  // Chișinău nu e în `moldovanCities` (e hub-ul, adăugat separat în picker).
+  if (
+    name === "chișinău" ||
+    name === "chisinau" ||
+    moldovanCities.some((c) => normalize(c.name) === name)
+  ) {
     return { fromMoldova: true as const, country: null };
   }
   const country = destinations.find((d) =>

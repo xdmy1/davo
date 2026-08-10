@@ -124,6 +124,10 @@ export type CountryCityPickerProps = {
   // opriri de coborâre prin raioane). Când e true, lista de orașe a Moldovei se
   // reduce la Chișinău.
   chisinauOnly?: boolean;
+  // Orașele MD permise pentru țara străină de pe partea opusă (vezi
+  // mdStopsForCountry din lib/data.ts). null/undefined = fără restricție.
+  // Se aplică doar când țara selectată pe această parte e Moldova.
+  mdCityWhitelist?: string[] | null;
 };
 
 export function CountryCityPicker({
@@ -134,6 +138,7 @@ export function CountryCityPicker({
   cityPlaceholder,
   hideCountries,
   chisinauOnly = false,
+  mdCityWhitelist = null,
 }: CountryCityPickerProps) {
   const countries = useCountries(locale);
   const visible = useMemo(
@@ -143,9 +148,21 @@ export function CountryCityPicker({
   const { city, country } = parseValue(value, countries);
   const selectedCountry = countries.find((c) => c.name === country);
   const allCities = selectedCountry?.cities ?? [];
-  const cities = chisinauOnly && country === MOLDOVA
-    ? allCities.filter((c) => c.name === "Chișinău")
+  const mdFiltered = country === MOLDOVA && mdCityWhitelist
+    ? mdCityWhitelist.map((n) => ({ name: n, label: localizeCity(n, locale) }))
     : allCities;
+  const cities = chisinauOnly && country === MOLDOVA
+    ? mdFiltered.filter((c) => c.name === "Chișinău")
+    : mdFiltered;
+
+  // Dacă orașul MD ales iese din lista permisă (ex: era Bălți și userul alege
+  // Belgia pe partea opusă), îl golim — țara rămâne, userul realege orașul.
+  useEffect(() => {
+    if (country === MOLDOVA && city && mdCityWhitelist && !mdCityWhitelist.includes(city)) {
+      onChange(buildValue("", country));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mdCityWhitelist, city, country]);
 
   // Auto-select când rămâne o singură țară posibilă (ex: origin=Anglia → în
   // picker-ul de destinație, doar Moldova mai e vizibilă). Economiseste un

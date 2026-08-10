@@ -178,7 +178,49 @@ export const moldovanCities: City[] = [
   { id: "m13", name: "Cimișlia", slug: "cimislia" },
   { id: "m14", name: "Drochia", slug: "drochia" },
   { id: "m15", name: "Fălești", slug: "falesti" },
+  { id: "m16", name: "Balabanu", slug: "balabanu" },
+  { id: "m17", name: "Kongaz", slug: "kongaz" },
+  { id: "m18", name: "Telenești", slug: "telenesti" },
+  { id: "m19", name: "Sîngerei", slug: "singerei" },
 ];
+
+// Orașele MD de îmbarcare/coborâre permise PASAGERILOR, per țară destinație
+// (spec operator, aug 2026) — valabil și la tur și la retur. Coletele NU se
+// restricționează. Cheile sunt numele canonice din `destinations`; țările
+// absente (ex. Luxemburg) rămân nerestricționate.
+const BELGIA_GROUP_MD_STOPS = [
+  "Soroca",
+  "Edineț",
+  "Drochia",
+  "Sîngerei",
+  "Telenești",
+  "Strășeni",
+  "Căușeni",
+  "Balabanu",
+  "Kongaz",
+];
+export const MD_STOPS_BY_COUNTRY: Record<string, string[]> = {
+  Anglia: [
+    "Chișinău",
+    "Ialoveni",
+    "Hîncești",
+    "Cimișlia",
+    "Comrat",
+    "Balabanu",
+    "Kongaz",
+    "Cahul",
+  ],
+  Belgia: BELGIA_GROUP_MD_STOPS,
+  Germania: BELGIA_GROUP_MD_STOPS,
+  Olanda: BELGIA_GROUP_MD_STOPS,
+};
+
+// Lista orașelor MD permise pentru o țară străină (după numele canonic).
+// null = fără restricție (țară necunoscută / încă nealeasă).
+export function mdStopsForCountry(country: string | null | undefined): string[] | null {
+  if (!country) return null;
+  return MD_STOPS_BY_COUNTRY[country] ?? null;
+}
 
 export const services: Service[] = [
   {

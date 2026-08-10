@@ -205,6 +205,9 @@ export const cityNameI18n: Record<string, Translated<string>> = {
   Drochia: { ro: "Drochia", ru: "Дрокия" },
   Fălești: { ro: "Fălești", ru: "Фалешты" },
   Balabanu: { ro: "Balabanu", ru: "Балабану" },
+  Kongaz: { ro: "Kongaz", ru: "Конгаз" },
+  Telenești: { ro: "Telenești", ru: "Теленешты" },
+  Sîngerei: { ro: "Sîngerei", ru: "Сынджерей" },
 };
 
 export function localizeCity(name: string, locale: Locale): string {

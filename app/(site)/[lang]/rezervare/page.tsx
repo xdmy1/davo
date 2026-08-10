@@ -20,7 +20,7 @@ import {
   Phone,
   Info,
 } from "lucide-react";
-import { destinations, moldovanCities, contactInfo } from "@/lib/data";
+import { destinations, moldovanCities, contactInfo, mdStopsForCountry } from "@/lib/data";
 import { seatSurcharge } from "@/lib/pricing";
 import { CountryCityPicker, complementHide, getCountryFromValue } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
@@ -230,6 +230,12 @@ function RezervareContent() {
   const toCountryName = getCountryFromValue(to);
   const fromHide = useMemo(() => complementHide(toCountryName), [toCountryName]);
   const toHide = useMemo(() => complementHide(fromCountryName), [fromCountryName]);
+
+  // Orașele MD de îmbarcare/coborâre permise pentru BILETE depind de țara
+  // străină de pe partea opusă (spec operator) — și la tur și la retur.
+  // Coletele nu se restricționează.
+  const fromMdCities = useMemo(() => mdStopsForCountry(toCountryName), [toCountryName]);
+  const toMdCities = useMemo(() => mdStopsForCountry(fromCountryName), [fromCountryName]);
 
   // Rutele DIN Anglia opresc în Moldova DOAR la Chișinău — fără orașe de
   // coborâre (Comrat, Bălți...). Dacă destinația era alt oraș MD și plecarea
@@ -548,6 +554,8 @@ function RezervareContent() {
                             fromHide={fromHide}
                             toHide={toHide}
                             toChisinauOnly={angliaInbound}
+                            fromMdCities={fromMdCities}
+                            toMdCities={toMdCities}
                           />
                           {originCityId && destCityId && (
                             <TripPicker
@@ -809,6 +817,8 @@ function DirectionStep({
   toHide,
   hideTrip = false,
   toChisinauOnly = false,
+  fromMdCities = null,
+  toMdCities = null,
 }: {
   from: string;
   to: string;
@@ -825,6 +835,9 @@ function DirectionStep({
   hideTrip?: boolean;
   // Plecare din Anglia → destinația Moldova doar Chișinău (fără raioane).
   toChisinauOnly?: boolean;
+  // Orașele MD permise per țară destinație (doar la bilete, nu la colete).
+  fromMdCities?: string[] | null;
+  toMdCities?: string[] | null;
 }) {
   return (
     <div className="card-elevated p-6 md:p-8">
@@ -837,10 +850,10 @@ function DirectionStep({
 
       <div className="relative grid md:grid-cols-2 gap-4">
         <FancyField label="Plecare din" icon={<MapPin className="h-4 w-4" />}>
-          <CountryCityPicker value={from} onChange={onFrom} locale={locale} hideCountries={fromHide} />
+          <CountryCityPicker value={from} onChange={onFrom} locale={locale} hideCountries={fromHide} mdCityWhitelist={fromMdCities} />
         </FancyField>
         <FancyField label="Destinația" icon={<MapPin className="h-4 w-4" />}>
-          <CountryCityPicker value={to} onChange={onTo} locale={locale} hideCountries={toHide} chisinauOnly={toChisinauOnly} />
+          <CountryCityPicker value={to} onChange={onTo} locale={locale} hideCountries={toHide} chisinauOnly={toChisinauOnly} mdCityWhitelist={toMdCities} />
         </FancyField>
         {onSwap && (
           <button

@@ -3,8 +3,30 @@
 import type { City, Destination } from "@/types";
 import type { Locale } from "@/lib/i18n/config";
 import { localizeDestinationName, localizeCity } from "@/lib/i18n/dataI18n";
+import { mdStopsForCountry } from "@/lib/data";
 import { ro } from "@/lib/i18n/dictionaries/ro";
 import { ru } from "@/lib/i18n/dictionaries/ru";
+
+// Orașele MD de îmbarcare pentru textele FAQ/meta — urmează restricțiile per
+// țară din MD_STOPS_BY_COUNTRY (lib/data.ts). Fallback (ex. Luxemburg): setul
+// istoric.
+function mdPickupStops(destination: Destination): string[] {
+  return (
+    mdStopsForCountry(destination.name) ?? [
+      "Ialoveni",
+      "Hîncești",
+      "Cimișlia",
+      "Comrat",
+      "Balabanu",
+      "Cahul",
+    ]
+  );
+}
+
+function joinList(names: string[], and: string): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} ${and} ${names[names.length - 1]}`;
+}
 
 type Sched = {
   outboundLabel: string;
@@ -46,7 +68,14 @@ export function buildCountryFaq(
     });
     items.push({
       q: `Из каких городов Молдовы можно отправиться?`,
-      a: `Автобус DAVO Group забирает пассажиров из: Яловены, Хынчешты, Чимишлия, Комрат, Балабану и Кагул. Отправление — от офиса DAVO в Кишинёве (ул. Каля Иешилор 11/3). При бронировании указываете свой город, а точку посадки согласуем по телефону.`,
+      a: `Автобус DAVO Group забирает пассажиров из: ${joinList(
+        mdPickupStops(destination).map((n) => localizeCity(n, "ru")),
+        "и"
+      )}.${
+        mdPickupStops(destination).includes("Chișinău")
+          ? " Отправление — от офиса DAVO в Кишинёве (ул. Каля Иешилор 11/3)."
+          : ""
+      } При бронировании указываете свой город, а точку посадки согласуем по телефону.`,
     });
     items.push({
       q: `Можно ли отправить посылку в страну ${country}?`,
@@ -78,7 +107,11 @@ export function buildCountryFaq(
   });
   items.push({
     q: `Din ce orașe din Moldova pot pleca?`,
-    a: `Autocarul DAVO Group preia pasageri din: Ialoveni, Hîncești, Cimișlia, Comrat, Balabanu și Cahul. Plecarea se face de la sediul DAVO din Chișinău (Calea Ieșilor 11/3). La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
+    a: `Autocarul DAVO Group preia pasageri din: ${joinList(mdPickupStops(destination), "și")}.${
+      mdPickupStops(destination).includes("Chișinău")
+        ? " Plecarea se face de la sediul DAVO din Chișinău (Calea Ieșilor 11/3)."
+        : ""
+    } La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
   });
   items.push({
     q: `Pot trimite un colet în ${country}?`,
@@ -182,14 +215,17 @@ export function buildCountryMeta(
     const sn = sched ? ` Отправление ${sched.outboundLabel}, обратный ${sched.returnLabel}.` : "";
     return {
       title: `Транспорт Молдова ⇋ ${country} | Еженедельные рейсы${sched ? ` ${sched.outboundLabel}` : ""}`,
-      description: `${localizedDesc}.${sn} ${destination.cities.length} городов доступно. Отправление из Кишинёва с забором пассажиров из Яловены, Хынчешты, Чимишлия, Комрат, Балабану и Кагул. Wi-Fi Starlink, бесплатный обед, стюардесса 24/24. Цена от ${price}${currency}. Бронируйте онлайн.`,
+      description: `${localizedDesc}.${sn} ${destination.cities.length} городов доступно. Посадка пассажиров: ${joinList(
+        mdPickupStops(destination).map((n) => localizeCity(n, "ru")),
+        "и"
+      )}. Wi-Fi Starlink, бесплатный обед, стюардесса 24/24. Цена от ${price}${currency}. Бронируйте онлайн.`,
     };
   }
 
   const sn = sched ? ` Plecare ${sched.outboundLabel}, retur ${sched.returnLabel}.` : "";
   return {
     title: `Transport Moldova ⇋ ${country} | Curse săptămânale${sched ? ` ${sched.outboundLabel}` : ""}`,
-    description: `${desc}.${sn} ${destination.cities.length} orașe disponibile. Plecare din Chișinău, cu preluare pasageri din Ialoveni, Hîncești, Cimișlia, Comrat, Balabanu și Cahul. Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Preț de la ${price}${currency}. Rezervă online.`,
+    description: `${desc}.${sn} ${destination.cities.length} orașe disponibile. Îmbarcare pasageri din ${joinList(mdPickupStops(destination), "și")}. Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Preț de la ${price}${currency}. Rezervă online.`,
   };
 }
 

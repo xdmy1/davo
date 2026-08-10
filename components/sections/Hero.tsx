@@ -15,7 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn, countryLandingUrl } from "@/lib/utils";
-import { destinations } from "@/lib/data";
+import { destinations, mdStopsForCountry } from "@/lib/data";
 import { CountryFlag, countryMeta, type CountryCode } from "@/components/ui/CountryFlag";
 import { CountryCityPicker, complementHide, getCountryFromValue } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
@@ -70,6 +70,17 @@ export default function Hero() {
   const toCountry = getCountryFromValue(to);
   const fromHide = useMemo(() => complementHide(toCountry), [toCountry]);
   const toHide = useMemo(() => complementHide(fromCountry), [fromCountry]);
+
+  // Orașele MD permise depind de țara străină de pe partea opusă — dar doar
+  // pentru bilete (tab transport); coletele se colectează din toată Moldova.
+  const fromMdCities = useMemo(
+    () => (tab === "transport" ? mdStopsForCountry(toCountry) : null),
+    [tab, toCountry]
+  );
+  const toMdCities = useMemo(
+    () => (tab === "transport" ? mdStopsForCountry(fromCountry) : null),
+    [tab, fromCountry]
+  );
 
   // Dacă userul comută `from` de pe MD pe străinătate (sau invers) și `to`
   // devine ilegal (ambele MD sau ambele străine), îl resetăm — picker-ul
@@ -294,6 +305,7 @@ export default function Hero() {
                         onChange={setFrom}
                         locale={locale}
                         hideCountries={fromHide}
+                        mdCityWhitelist={fromMdCities}
                       />
                     </Field>
 
@@ -303,6 +315,7 @@ export default function Hero() {
                         onChange={setTo}
                         locale={locale}
                         hideCountries={toHide}
+                        mdCityWhitelist={toMdCities}
                       />
                     </Field>
 
