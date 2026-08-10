@@ -190,13 +190,8 @@ export const moldovanCities: City[] = [
 // absente (ex. Luxemburg) rămân nerestricționate.
 const BELGIA_GROUP_MD_STOPS = [
   "Chișinău",
-  "Soroca",
-  "Edineț",
-  "Drochia",
   "Sîngerei",
   "Telenești",
-  "Strășeni",
-  "Căușeni",
   "Balabanu",
   "Kongaz",
 ];
