@@ -8,19 +8,10 @@ import { ro } from "@/lib/i18n/dictionaries/ro";
 import { ru } from "@/lib/i18n/dictionaries/ru";
 
 // Orașele MD de îmbarcare pentru textele FAQ/meta — urmează restricțiile per
-// țară din MD_STOPS_BY_COUNTRY (lib/data.ts). Fallback (ex. Luxemburg): setul
-// istoric.
+// țară din MD_STOPS_BY_COUNTRY (lib/data.ts); țările fără listă proprie
+// (ex. Luxemburg) primesc lista implicită de pasageri.
 function mdPickupStops(destination: Destination): string[] {
-  return (
-    mdStopsForCountry(destination.name) ?? [
-      "Ialoveni",
-      "Hîncești",
-      "Cimișlia",
-      "Comrat",
-      "Balabanu",
-      "Cahul",
-    ]
-  );
+  return mdStopsForCountry(destination.name);
 }
 
 function joinList(names: string[], and: string): string {

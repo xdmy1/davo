@@ -189,21 +189,21 @@ export const moldovanCities: City[] = [
 // restricționează. Cheile sunt numele canonice din `destinations`; țările
 // absente (ex. Luxemburg) rămân nerestricționate.
 // Lista completă de orașe MD, MINUS Soroca, Edineț, Căușeni, Strășeni,
-// Drochia (scoase la cererea operatorului).
+// Drochia, Orhei (scoase la cererea operatorului). Ordinea cozii e fixată de
+// operator: ... Comrat, Kongaz, Balabanu, Cahul.
 const BELGIA_GROUP_MD_STOPS = [
   "Chișinău",
   "Bălți",
   "Fălești",
   "Sîngerei",
   "Telenești",
-  "Orhei",
   "Ungheni",
   "Ialoveni",
   "Hîncești",
   "Cimișlia",
   "Comrat",
-  "Balabanu",
   "Kongaz",
+  "Balabanu",
   "Cahul",
 ];
 export const MD_STOPS_BY_COUNTRY: Record<string, string[]> = {
@@ -213,8 +213,8 @@ export const MD_STOPS_BY_COUNTRY: Record<string, string[]> = {
     "Hîncești",
     "Cimișlia",
     "Comrat",
-    "Balabanu",
     "Kongaz",
+    "Balabanu",
     "Cahul",
   ],
   Belgia: BELGIA_GROUP_MD_STOPS,
@@ -222,11 +222,18 @@ export const MD_STOPS_BY_COUNTRY: Record<string, string[]> = {
   Olanda: BELGIA_GROUP_MD_STOPS,
 };
 
-// Lista orașelor MD permise pentru o țară străină (după numele canonic).
-// null = fără restricție (țară necunoscută / încă nealeasă).
-export function mdStopsForCountry(country: string | null | undefined): string[] | null {
-  if (!country) return null;
-  return MD_STOPS_BY_COUNTRY[country] ?? null;
+// Implicitul pentru BILETE când țara destinație nu e încă aleasă (sau n-are
+// listă proprie, ex. Luxemburg): reuniunea listelor per țară. Cele 5 orașe
+// scoase de operator (Soroca, Edineț, Căușeni, Strășeni, Drochia) nu apar la
+// bilete nicăieri — doar la colete (care folosesc lista globală, nefiltrată).
+// Lista Angliei e subset al grupului Belgia, deci reuniunea = grupul Belgia.
+const MD_STOPS_DEFAULT = BELGIA_GROUP_MD_STOPS;
+
+// Lista orașelor MD permise PASAGERILOR pentru o țară străină (după numele
+// canonic). Întoarce mereu o listă — nu se folosește la colete.
+export function mdStopsForCountry(country: string | null | undefined): string[] {
+  if (!country) return MD_STOPS_DEFAULT;
+  return MD_STOPS_BY_COUNTRY[country] ?? MD_STOPS_DEFAULT;
 }
 
 export const services: Service[] = [
