@@ -189,6 +189,7 @@ export const moldovanCities: City[] = [
 // restricționează. Cheile sunt numele canonice din `destinations`; țările
 // absente (ex. Luxemburg) rămân nerestricționate.
 const BELGIA_GROUP_MD_STOPS = [
+  "Chișinău",
   "Soroca",
   "Edineț",
   "Drochia",
