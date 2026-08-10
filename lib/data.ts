@@ -189,15 +189,10 @@ export const moldovanCities: City[] = [
 // restricționează. Cheile sunt numele canonice din `destinations`; țările
 // absente (ex. Luxemburg) rămân nerestricționate.
 // Lista completă de orașe MD, MINUS Soroca, Edineț, Căușeni, Strășeni,
-// Drochia, Orhei (scoase la cererea operatorului). Ordinea cozii e fixată de
-// operator: ... Comrat, Kongaz, Balabanu, Cahul.
+// Drochia, Orhei (scoase la cererea operatorului). Ordinea = ruta reală
+// (confirmată de operator): sudul întâi (ca Anglia), apoi nordul.
 const BELGIA_GROUP_MD_STOPS = [
   "Chișinău",
-  "Bălți",
-  "Fălești",
-  "Sîngerei",
-  "Telenești",
-  "Ungheni",
   "Ialoveni",
   "Hîncești",
   "Cimișlia",
@@ -205,6 +200,11 @@ const BELGIA_GROUP_MD_STOPS = [
   "Kongaz",
   "Balabanu",
   "Cahul",
+  "Telenești",
+  "Sîngerei",
+  "Bălți",
+  "Fălești",
+  "Ungheni",
 ];
 export const MD_STOPS_BY_COUNTRY: Record<string, string[]> = {
   Anglia: [
