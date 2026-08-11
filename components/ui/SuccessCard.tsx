@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Check, Download, Home, Search, Ticket } from "lucide-react";
 import { useLocale } from "@/lib/i18n/client";
 import { localePath } from "@/lib/i18n/config";
+import { ShareTicket } from "@/components/ui/ShareTicket";
 
 export default function SuccessCard({
   bookingNumber,
@@ -101,9 +102,17 @@ export default function SuccessCard({
               className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ink-200)] bg-white px-6 py-3.5 font-semibold text-[color:var(--navy-900)] hover:border-[color:var(--navy-700)] transition-colors"
             >
               <Home className="h-4 w-4" />
-              Acasă
+              Înapoi la panou
             </Link>
           </div>
+
+          {!isColet && ticketHref && (
+            <ShareTicket
+              path={ticketHref}
+              text={`Biletul meu DAVO${bookingNumber ? ` — ${bookingNumber}` : ""}`}
+              className="mt-7 border-t border-[color:var(--ink-200)] pt-6"
+            />
+          )}
         </motion.div>
       </div>
     </section>

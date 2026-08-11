@@ -22,6 +22,7 @@ import {
   Bus as BusIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ShareTicket } from "@/components/ui/ShareTicket";
 import { contactInfo } from "@/lib/data";
 
 interface Booking {
@@ -510,6 +511,12 @@ export default function TicketPage() {
             Distribuie
           </Button>
         </div>
+
+        <ShareTicket
+          path={`/bilet/${bookingNumber}`}
+          text={`Biletul meu DAVO: ${booking.departureCity} → ${booking.arrivalCity}`}
+          className="no-print mt-4"
+        />
 
         {/* Reminders — text diferit pentru pasager vs. colet. Coletele sunt
             ridicate/livrate de șofer, nu cer pașaport, n-au bagaj sau facilități. */}
