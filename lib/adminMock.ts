@@ -160,7 +160,8 @@ export type EmailType =
   | "confirmation"
   | "reminder_24h"
   | "reminder_2h"
-  | "cancellation";
+  | "cancellation"
+  | "review_request";
 
 export type MockEmail = {
   id: string;

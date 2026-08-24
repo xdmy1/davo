@@ -6,7 +6,7 @@ import PageHeader from "@/components/admin/PageHeader";
 import StatCard from "@/components/admin/StatCard";
 import Badge from "@/components/admin/Badge";
 import EmptyState from "@/components/admin/EmptyState";
-import type { MockEmail, EmailType } from "@/lib/adminMock";
+import type { MockEmail } from "@/lib/adminMock";
 import { emailStatusMeta, emailTypeLabel } from "@/lib/adminLabels";
 
 const dateFmt = new Intl.DateTimeFormat("ro-RO", {
@@ -18,24 +18,51 @@ const dateFmt = new Intl.DateTimeFormat("ro-RO", {
 
 type Tab = "log" | "templates";
 
-const templates: { type: EmailType; subject: string; preview: string; trigger: string }[] = [
+// Catalogul emailurilor REALE (lib/emailTemplates.ts) în ordinea în care le
+// primește pasagerul. „Previzualizează" deschide exact HTML-ul trimis prin
+// Resend, randat cu date de exemplu (/api/admin/emails/preview).
+const templates: { previewType: string; label: string; subject: string; trigger: string }[] = [
   {
-    type: "confirmation",
-    subject: "Confirmare rezervare #{bookingNumber}",
-    preview: "Bună {firstName}, mulțumim că ai ales DAVO Group. Biletul tău pentru cursa {routeLabel} este atașat și disponibil aici: {ticketUrl}.",
-    trigger: "Trimis automat după confirmarea rezervării.",
+    previewType: "confirmation",
+    label: "1 · Confirmare rezervare",
+    subject: "Rezervare confirmată — DAVO {nr}",
+    trigger: "Imediat după rezervare (site) sau la trecerea pe „Confirmată” (admin).",
   },
   {
-    type: "reminder_24h",
-    subject: "Mâine pleci în călătorie cu DAVO",
-    preview: "Salut {firstName}, mâine la {departureTime} pleacă cursa ta spre {destination}. Pregătește actele, bagajul (max. 35 kg) și sosește la {boardingPoint} cu 30 min înainte.",
-    trigger: "Programat la confirmare: departureAt - 24h.",
+    previewType: "confirmation_parcel",
+    label: "1 · Confirmare colet",
+    subject: "Colet înregistrat — DAVO {nr}",
+    trigger: "Imediat după înregistrarea coletului. Fără reminder — ridicarea se stabilește telefonic.",
   },
   {
-    type: "cancellation",
-    subject: "Rezervarea ta #{bookingNumber} a fost anulată",
-    preview: "Am înregistrat anularea rezervării tale. Suma de {amount} {currency} va fi rambursată în 5-7 zile lucrătoare pe aceeași metodă de plată.",
-    trigger: "Trimis la schimbarea statusului în cancelled.",
+    previewType: "reminder_24h",
+    label: "2 · Reminder cu o zi înainte",
+    subject: "Mâine pleci cu DAVO — confirmă-ne că vii",
+    trigger: "Cu o zi înainte de plecare, la 08:00 ora Moldovei (trimis efectiv la rularea cronului de dimineață).",
+  },
+  {
+    previewType: "bus_change",
+    label: "(opțional) Autocar schimbat",
+    subject: "Autocar schimbat — {nr}",
+    trigger: "Manual, din Curse → schimbă autocarul, dacă bifezi „anunță pasagerii”.",
+  },
+  {
+    previewType: "cancellation",
+    label: "(opțional) Anulare rezervare",
+    subject: "Rezervare {nr} anulată",
+    trigger: "Când rezervarea trece pe „Anulată” în admin.",
+  },
+  {
+    previewType: "review_request",
+    label: "3 · Cerere recenzie / feedback",
+    subject: "Cum a fost călătoria cu DAVO? Lasă o recenzie ⭐",
+    trigger: "La 2 zile după SOSIREA la destinație (plecare + durata cursei din programul țării + 48h).",
+  },
+  {
+    previewType: "admin_notification",
+    label: "Intern · Notificare admin",
+    subject: "Rezervare nouă — {nr}",
+    trigger: "Către adresa de admin, imediat după fiecare rezervare de pe site.",
   },
 ];
 
@@ -226,33 +253,45 @@ export default function EmailsPage() {
             </div>
           )
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {templates.map((tpl) => (
-              <article key={tpl.type} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                    <Mail className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-slate-900">{emailTypeLabel[tpl.type]}</h3>
-                      <Badge variant="slate">{tpl.type}</Badge>
+          <>
+            <p className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm">
+              Astea sunt emailurile reale trimise prin Resend, în ordinea în care le primește un pasager.
+              „Previzualizează” deschide HTML-ul exact, cu date de exemplu. Pentru o rezervare anume:{" "}
+              <code className="rounded bg-slate-100 px-1.5 py-0.5">/api/admin/bookings/DAVO-…/preview-email</code>
+            </p>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {templates.map((tpl) => (
+                <article key={tpl.previewType} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                      <Mail className="h-5 w-5" />
                     </div>
-                    <p className="mt-1 text-xs font-mono text-slate-600">{tpl.subject}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-slate-900">{tpl.label}</h3>
+                        <Badge variant="slate">{tpl.previewType}</Badge>
+                      </div>
+                      <p className="mt-1 text-xs font-mono text-slate-600">{tpl.subject}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs text-slate-700 leading-relaxed">{tpl.preview}</div>
-                <div className="mt-3 flex items-start gap-2 text-xs text-slate-500">
-                  <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>{tpl.trigger}</span>
-                </div>
-                <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
-                  <button className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Previzualizare</button>
-                  <button className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800">Editează</button>
-                </div>
-              </article>
-            ))}
-          </div>
+                  <div className="mt-3 flex items-start gap-2 text-xs text-slate-500">
+                    <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>{tpl.trigger}</span>
+                  </div>
+                  <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                    <a
+                      href={`/api/admin/emails/preview?type=${tpl.previewType}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                      Previzualizează
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

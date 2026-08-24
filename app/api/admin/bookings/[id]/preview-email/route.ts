@@ -4,6 +4,7 @@ import {
   confirmationHtml,
   reminder24hHtml,
   cancellationHtml,
+  reviewRequestHtml,
   type ConfirmationData,
 } from "@/lib/emailTemplates";
 import { createBookingToken, bookingResponseUrl } from "@/lib/bookingToken";
@@ -18,10 +19,11 @@ export const dynamic = "force-dynamic";
 //   /api/admin/bookings/DAVO-2026-XXX/preview-email
 //   /api/admin/bookings/DAVO-2026-XXX/preview-email?type=reminder_24h
 //   /api/admin/bookings/DAVO-2026-XXX/preview-email?type=cancellation
+//   /api/admin/bookings/DAVO-2026-XXX/preview-email?type=review_request
 //
-// Tipuri valide: confirmation (default) | reminder_24h | cancellation
+// Tipuri valide: confirmation (default) | reminder_24h | cancellation | review_request
 
-const VALID_TYPES = ["confirmation", "reminder_24h", "cancellation"] as const;
+const VALID_TYPES = ["confirmation", "reminder_24h", "cancellation", "review_request"] as const;
 type EmailType = (typeof VALID_TYPES)[number];
 
 export async function GET(
@@ -79,6 +81,12 @@ export async function GET(
     html = confirmationHtml(data, { confirmUrl, cancelUrl });
   } else if (type === "reminder_24h") {
     html = reminder24hHtml(booking, { confirmUrl, cancelUrl });
+  } else if (type === "review_request") {
+    const reviewToken = await createBookingToken(booking.bookingNumber, "review", 120 * 24 * 3600 * 1000);
+    html = reviewRequestHtml(
+      booking,
+      `${appUrl.replace(/\/$/, "")}/recenzie?nr=${encodeURIComponent(booking.bookingNumber)}&t=${encodeURIComponent(reviewToken)}`
+    );
   } else {
     html = cancellationHtml(booking);
   }
@@ -94,6 +102,7 @@ export async function GET(
   <div style="display:flex;gap:6px;">
     <a href="?type=confirmation" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "confirmation" ? "700" : "400"};">confirmation</a>
     <a href="?type=reminder_24h" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "reminder_24h" ? "700" : "400"};">24h</a>
+    <a href="?type=review_request" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "review_request" ? "700" : "400"};">recenzie</a>
     <a href="?type=cancellation" style="color:white;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:4px;text-decoration:none;font-weight:${type === "cancellation" ? "700" : "400"};">cancel</a>
   </div>
 </div>

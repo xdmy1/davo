@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // re-formatare din `booking.departureDate`, care altfel ar putea aluneca în
 // UTC pe Vercel.
 
-function extractCountry(city: string): string | null {
+export function extractCountry(city: string): string | null {
   const idx = city.lastIndexOf(",");
   if (idx < 0) return null;
   const tail = city.slice(idx + 1).trim();

@@ -37,4 +37,5 @@ export const emailTypeLabel: Record<EmailType, string> = {
   reminder_24h: "Reminder 24h înainte",
   reminder_2h: "Reminder 2h înainte",
   cancellation: "Anulare rezervare",
+  review_request: "Cerere recenzie",
 };

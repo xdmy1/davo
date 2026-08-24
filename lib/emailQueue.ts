@@ -10,6 +10,34 @@ import {
 import { createBookingToken, bookingResponseUrl } from "@/lib/bookingToken";
 import { appUrl as resolveAppUrl, publicAppUrl } from "@/lib/appUrl";
 import { dayBeforeAtLocal } from "@/lib/schedule";
+import { extractCountry } from "@/lib/scheduledTime";
+
+/**
+ * Momentul emailului de recenzie: „2 zile după ce pasagerul A AJUNS la
+ * destinație" = plecarea cursei DUS + durata cursei (din programul țării,
+ * admin → Țări) + 2 zile. Înainte se programa la 2 zile după plecarea
+ * ultimei etape — adică prea devreme (cursele durează 28–40h) și, la
+ * tur-retur cu întoarcerea peste luni, mult prea târziu.
+ * Rute fără program (manuale, ex. Anglia → Belgia): durata 0 → plecare + 2 zile.
+ */
+async function reviewRequestAt(booking: Booking): Promise<Date> {
+  const dep = new Date(booking.departureDate);
+  let durationHours = 0;
+  try {
+    const depCountry = extractCountry(booking.departureCity);
+    const arrCountry = extractCountry(booking.arrivalCity);
+    if (depCountry === "Moldova" && arrCountry && arrCountry !== "Moldova") {
+      const c = await prisma.country.findUnique({ where: { name: arrCountry } });
+      durationHours = c?.outboundDurationHours ?? 0;
+    } else if (depCountry && depCountry !== "Moldova" && arrCountry === "Moldova") {
+      const c = await prisma.country.findUnique({ where: { name: depCountry } });
+      durationHours = c?.returnDurationHours ?? 0;
+    }
+  } catch {
+    // Nefatal — rămâne durata 0.
+  }
+  return new Date(dep.getTime() + (durationHours + 2 * 24) * 3600 * 1000);
+}
 
 async function buildResponseUrls(bookingNumber: string) {
   const appUrl = resolveAppUrl();
@@ -60,9 +88,8 @@ export async function enqueueForBooking(bookingId: string) {
   if (!have.has("reminder_24h") && dep24 > now) {
     jobs.push({ type: "reminder_24h", sendAt: dep24, status: "scheduled" });
   }
-  // Recenzie: la 2 zile după ultima etapă a călătoriei (retur dacă există).
-  const lastLeg = booking.returnDate ?? booking.departureDate;
-  const reviewAt = new Date(new Date(lastLeg).getTime() + 2 * 24 * 3600 * 1000);
+  // Recenzie: la 2 zile după SOSIREA la destinație (vezi reviewRequestAt).
+  const reviewAt = await reviewRequestAt(booking);
   if (booking.type !== "parcel" && !have.has("review_request") && reviewAt > now) {
     jobs.push({ type: "review_request", sendAt: reviewAt, status: "scheduled" });
   }
@@ -101,9 +128,8 @@ export async function enqueueRemindersOnly(bookingId: string) {
   if (booking.type !== "parcel" && !have.has("reminder_24h") && dep24 > now) {
     jobs.push({ type: "reminder_24h", sendAt: dep24, status: "scheduled", bookingId });
   }
-  // Recenzie: la 2 zile după ultima etapă a călătoriei (retur dacă există).
-  const lastLeg = booking.returnDate ?? booking.departureDate;
-  const reviewAt = new Date(new Date(lastLeg).getTime() + 2 * 24 * 3600 * 1000);
+  // Recenzie: la 2 zile după SOSIREA la destinație (vezi reviewRequestAt).
+  const reviewAt = await reviewRequestAt(booking);
   if (booking.type !== "parcel" && !have.has("review_request") && reviewAt > now) {
     jobs.push({ type: "review_request", sendAt: reviewAt, status: "scheduled", bookingId });
   }
