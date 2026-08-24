@@ -49,6 +49,7 @@ export const destinations: Destination[] = [
       { id: "a35", name: "Corby", slug: "corby" },
       { id: "a36", name: "Rugby", slug: "rugby" },
       { id: "a37", name: "Daventry", slug: "daventry" },
+      { id: "a38", name: "Slough", slug: "slough" },
     ],
   },
   {

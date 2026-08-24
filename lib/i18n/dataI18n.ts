@@ -161,6 +161,7 @@ export const cityNameI18n: Record<string, Translated<string>> = {
   Northampton: { ro: "Northampton", ru: "Нортгемптон" },
   Peterborough: { ro: "Peterborough", ru: "Питерборо" },
   Bolton: { ro: "Bolton", ru: "Болтон" },
+  Slough: { ro: "Slough", ru: "Слау" },
   "Frankfurt am Main": { ro: "Frankfurt am Main", ru: "Франкфурт-на-Майне" },
   Köln: { ro: "Köln", ru: "Кёльн" },
   Düsseldorf: { ro: "Düsseldorf", ru: "Дюссельдорф" },
