@@ -32,6 +32,7 @@ import RouteHero from "@/components/booking/RouteHero";
 import { StepBar } from "@/components/booking/StepBar";
 import { TripPicker, type PublicTrip } from "@/components/booking/TripPicker";
 import SuccessCard from "@/components/ui/SuccessCard";
+import Money from "@/components/ui/Money";
 
 type PassengerName = { firstName: string; lastName: string };
 
@@ -631,7 +632,7 @@ function RezervareContent() {
                           payMethod={payMethod}
                           onPayMethod={setPayMethod}
                           lines={[
-                            { label: `${fromCityName} → ${toCityName}`, value: `${basePrice}${currency}` },
+                            { label: `${fromCityName} → ${toCityName}`, value: <Money amount={basePrice} currency={currency} /> },
                             { label: `Locuri: ${outboundSeats.length || 1}`, value: `×${outboundSeats.length || 1}` },
                             {
                               label: trip === "return" ? "Tur-retur" : "O direcție",
@@ -641,10 +642,12 @@ function RezervareContent() {
                               const s =
                                 seatSurcharge(outboundTripInfo?.busPlate, outboundSeats) +
                                 (trip === "return" ? seatSurcharge(returnTripInfo?.busPlate, returnSeats) : 0);
-                              return s > 0 ? [{ label: "Locuri premium (1–8, 25–28)", value: `+${s}${currency}` }] : [];
+                              return s > 0
+                                ? [{ label: "Locuri premium (1–8, 25–28)", value: <>+<Money amount={s} currency={currency} /></> }]
+                                : [];
                             })(),
                           ]}
-                          total={`${total}${currency}`}
+                          total={<Money amount={total} currency={currency} />}
                         />
                       )}
                     </>
@@ -693,7 +696,7 @@ function RezervareContent() {
                             { label: "Livrare colet", value: "standard" },
                             { label: "Greutate", value: `${parcel.weight || 0} kg` },
                           ]}
-                          total={`${total}${currency}`}
+                          total={<Money amount={total} currency={currency} />}
                         />
                       )}
                     </>
@@ -785,7 +788,7 @@ function RezervareContent() {
                 ? new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" }).format(new Date(outboundTripInfo.departureAt))
                 : null}
               weight={parcel.weight}
-              total={`${total}${currency}`}
+              total={<Money amount={total} currency={currency} />}
             />
           </div>
 
@@ -1224,8 +1227,8 @@ function PaymentStep({
   onPayMethod,
 }: {
   mode: Mode;
-  lines: { label: string; value: string }[];
-  total: string;
+  lines: { label: string; value: React.ReactNode }[];
+  total: React.ReactNode;
   payMethod: "card" | "cash";
   onPayMethod: (m: "card" | "cash") => void;
 }) {
@@ -1356,7 +1359,7 @@ function SummaryCard({
   seats: string[];
   time: string | null;
   weight: string;
-  total: string;
+  total: React.ReactNode;
 }) {
   return (
     <aside className="space-y-4">

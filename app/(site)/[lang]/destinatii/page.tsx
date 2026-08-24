@@ -8,6 +8,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { destinations } from "@/lib/data";
 import { countryLandingUrl } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
+import Money from "@/components/ui/Money";
 import { isLocale, localePath } from "@/lib/i18n/config";
 import { dict } from "@/lib/i18n/dict";
 import {
@@ -87,7 +88,7 @@ export default async function DestinatiiPage({
                           {t.common.from}
                         </div>
                         <div className="font-[family-name:var(--font-montserrat)] font-extrabold text-[color:var(--red-500)] text-xl">
-                          {d.price || "—"} {d.currency}
+                          {d.price ? <Money amount={Number(d.price)} currency={d.currency} /> : "—"}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 text-xs text-[color:var(--ink-500)]">

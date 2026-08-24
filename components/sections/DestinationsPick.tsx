@@ -8,6 +8,7 @@ import { destinations } from "@/lib/data";
 import { cn, countryLandingUrl } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
 import { Reveal } from "@/components/ui/Reveal";
+import Money from "@/components/ui/Money";
 import { useLocale } from "@/lib/i18n/client";
 import { dict } from "@/lib/i18n/dict";
 import { localePath } from "@/lib/i18n/config";
@@ -76,8 +77,8 @@ export default function DestinationsPick() {
                           {t.destinationsPick.transportMoldovaTo(dName)}
                         </div>
                         <div className={cn("text-xs mt-0.5", isActive ? "text-white/80" : "text-[color:var(--ink-500)]")}>
-                          {t.destinationsPick.citiesCount(d.cities.length)} · {t.destinationsPick.fromPrice} {d.price || "—"}
-                          {d.currency}
+                          {t.destinationsPick.citiesCount(d.cities.length)} · {t.destinationsPick.fromPrice}{" "}
+                          {d.price ? <Money amount={Number(d.price)} currency={d.currency} /> : "—"}
                         </div>
                       </div>
                       <ArrowRight
@@ -114,8 +115,8 @@ export default function DestinationsPick() {
                         {t.destinationsPick.moldovaTo(activeName)}
                       </div>
                       <div className="display-hero text-3xl md:text-4xl text-white mt-1">
-                        {t.destinationsPick.fromPrice} {active.price || "—"}
-                        {active.currency}
+                        {t.destinationsPick.fromPrice}{" "}
+                        {active.price ? <Money amount={Number(active.price)} currency={active.currency} /> : "—"}
                       </div>
                     </div>
                   </div>

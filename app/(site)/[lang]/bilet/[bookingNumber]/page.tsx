@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ShareTicket } from "@/components/ui/ShareTicket";
+import Money from "@/components/ui/Money";
 import { contactInfo } from "@/lib/data";
 
 interface Booking {
@@ -455,7 +456,11 @@ export default function TicketPage() {
                   {isParcel ? "Preț" : "Preț total"}
                 </div>
                 <div className={`mt-1 font-[family-name:var(--font-montserrat)] font-extrabold ${isParcel ? "text-lg" : "text-3xl"}`}>
-                  {isParcel ? "Se stabilește la confirmare" : `${booking.price} ${booking.currency}`}
+                  {isParcel ? (
+                    "Se stabilește la confirmare"
+                  ) : (
+                    <Money amount={booking.price} currency={booking.currency} />
+                  )}
                 </div>
                 {booking.payMethod && (
                   <div className="mt-2 text-xs text-white/70">

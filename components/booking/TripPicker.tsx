@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { premiumSeatRule } from "@/lib/pricing";
 import { BusSeatMap } from "./BusSeatMap";
+import Money from "@/components/ui/Money";
 import type { BusLayout } from "@/lib/adminMock";
 
 export type PublicTrip = {
@@ -349,7 +350,7 @@ export function TripPicker({
                             {timeFmt.format(new Date(trip.departureAt))}
                           </div>
                           <div className="text-[color:var(--ink-400)] hidden md:block">
-                            {trip.pricePerSeat}{trip.currency === "GBP" ? "£" : "€"}
+                            <Money amount={trip.pricePerSeat} currency={trip.currency} />
                           </div>
                         </>
                       )}
@@ -394,7 +395,7 @@ export function TripPicker({
                   </div>
                   <div className="text-right">
                     <div className="font-[family-name:var(--font-montserrat)] text-2xl font-extrabold text-[color:var(--navy-900)]">
-                      {t.pricePerSeat}{currency}
+                      <Money amount={t.pricePerSeat} currency={currency} />
                     </div>
                     <div className="text-[11px] font-semibold text-[color:var(--ink-500)] inline-flex items-center gap-1">
                       <Users className="h-3 w-3" /> {t.availableSeats} libere

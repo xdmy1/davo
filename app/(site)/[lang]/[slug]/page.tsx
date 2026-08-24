@@ -20,6 +20,7 @@ import {
   countryLandingUrl,
 } from "@/lib/utils";
 import { CountryFlag, destinationSlugToCode } from "@/components/ui/CountryFlag";
+import Money from "@/components/ui/Money";
 import FAQ from "@/components/sections/FAQ";
 import { Reveal } from "@/components/ui/Reveal";
 import { getCountrySchedule } from "@/lib/countrySchedule";
@@ -264,8 +265,11 @@ function CountryLanding({ destination, locale }: { destination: Destination; loc
                       {td.fromPrice("", "").trim() || "de la"}
                     </span>
                     <span className="font-[family-name:var(--font-montserrat)] text-2xl">
-                      {destination.price || "—"}
-                      {destination.currency}
+                      {destination.price ? (
+                        <Money amount={Number(destination.price)} currency={destination.currency} />
+                      ) : (
+                        "—"
+                      )}
                     </span>
                   </div>
                 </div>
@@ -520,7 +524,13 @@ function CityPage({
                   <JourneyStat
                     icon={Bus}
                     label={t.common.from}
-                    value={`${destination.price || "—"}${destination.currency}`}
+                    value={
+                      destination.price ? (
+                        <Money amount={Number(destination.price)} currency={destination.currency} />
+                      ) : (
+                        "—"
+                      )
+                    }
                     accent
                   />
                 </div>
@@ -637,7 +647,7 @@ function JourneyStat({
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  value: string;
+  value: React.ReactNode;
   accent?: boolean;
 }) {
   return (
