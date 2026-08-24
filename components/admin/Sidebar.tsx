@@ -20,6 +20,8 @@ import {
   Wrench,
   ExternalLink,
   ShieldCheck,
+  Briefcase,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessUI, normalizeRole, type Role } from "@/lib/permissions";
@@ -37,6 +39,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     items: [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { label: "Rezervări", href: "/admin/bookings", icon: Ticket },
+      { label: "Furnizori", href: "/admin/furnizori", icon: Briefcase },
       { label: "Schemă autocar", href: "/admin/seats", icon: Armchair },
       { label: "Curse", href: "/admin/trips", icon: CalendarClock },
       { label: "Mașini GPS", href: "/admin/vehicles", icon: MapPin },
@@ -47,6 +50,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Configurare",
     items: [
       { label: "Țări & program", href: "/admin/countries", icon: Globe },
+      { label: "Orar ridicări", href: "/admin/orare", icon: Clock },
       { label: "Rute", href: "/admin/routes", icon: RouteIcon },
       { label: "Autocare", href: "/admin/buses", icon: BusIcon },
       { label: "Clienți", href: "/admin/clients", icon: Users },

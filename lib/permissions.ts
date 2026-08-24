@@ -48,6 +48,13 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     apiDeps: ["/api/admin/trips", "/api/admin/routes", "/api/admin/buses"],
   },
   {
+    key: "furnizori",
+    label: "Furnizori",
+    group: "Operare",
+    ui: ["/admin/furnizori"],
+    api: ["/api/admin/furnizori"],
+  },
+  {
     key: "seats",
     label: "Schemă autocar",
     group: "Operare",
@@ -76,6 +83,13 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     group: "Configurare",
     ui: ["/admin/countries"],
     api: ["/api/admin/countries", "/api/admin/geography"],
+  },
+  {
+    key: "orare",
+    label: "Orar ridicări",
+    group: "Configurare",
+    ui: ["/admin/orare"],
+    api: [],
   },
   {
     key: "routes",
