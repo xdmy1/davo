@@ -40,6 +40,7 @@ type Booking = {
   passengerResponse: "confirmed" | "cancelled" | null;
   passengerResponseAt: string | null;
   parcelDetails?: string | null;
+  furnizor?: string | null;
 };
 
 const responseOptions = [
@@ -244,6 +245,13 @@ export default function BookingsPage() {
 
   return (
     <div>
+      {/* Sugestii de furnizori pentru câmpurile din modale (evită typo-uri la
+          numele agenției — raportul de comision grupează după nume exact). */}
+      <datalist id="furnizori-cunoscuti">
+        {Array.from(new Set(bookings.map((b) => b.furnizor).filter(Boolean) as string[])).map((f) => (
+          <option key={f} value={f} />
+        ))}
+      </datalist>
       <PageHeader
         title="Rezervări"
         subtitle={
@@ -409,6 +417,11 @@ export default function BookingsPage() {
                         </div>
                         <div className="text-xs text-slate-500">{b.phone}</div>
                         <div className="text-xs text-slate-400">{b.email}</div>
+                        {b.furnizor && (
+                          <span className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            {b.furnizor}
+                          </span>
+                        )}
                       </td>
                       <td className="px-5 py-3">
                         <span className="font-medium text-slate-900">{b.departureCity}</span>
@@ -584,6 +597,7 @@ function ManualBookingModal({
   const [status, setStatus] = useState<"confirmed" | "pending">("confirmed");
   const [sendEmail, setSendEmail] = useState(true);
   const [notes, setNotes] = useState("");
+  const [furnizor, setFurnizor] = useState("");
 
   // Asociere cu o cursă existentă: previne suprapunerile de locuri între
   // rezervările manuale și cele publice. Opțional — dacă admin nu alege
@@ -815,6 +829,7 @@ function ManualBookingModal({
           status,
           sendEmail,
           notes,
+          furnizor: furnizor.trim() || undefined,
           tripId: selectedTripId || undefined,
           seatNumbers: selectedTripId ? selectedSeats : undefined,
         }),
@@ -1130,6 +1145,18 @@ function ManualBookingModal({
                 Apar pe biletul tipărit, sub datele pasagerului.
               </span>
             </Field>
+            <Field label="Furnizor / agenție (opțional)">
+              <input
+                value={furnizor}
+                onChange={(e) => setFurnizor(e.target.value)}
+                className={inputCls}
+                placeholder="ex: autocar.md"
+                list="furnizori-cunoscuti"
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Agenția parteneră care a adus pasagerul — apare în raportul de comision (Furnizori).
+              </span>
+            </Field>
           </Section>
 
           <div className="mt-2 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
@@ -1283,6 +1310,7 @@ function EditBookingModal({
   const [paymentStatus, setPaymentStatus] = useState<string>("pending");
   const [status, setStatus] = useState<string>(booking.status);
   const [notes, setNotes] = useState<string>("");
+  const [furnizorEdit, setFurnizorEdit] = useState<string>(booking.furnizor ?? "");
 
   // Date stocate doar la fetch: scaune curente + tripIds
   const [outboundSeats, setOutboundSeats] = useState<number[]>([]);
@@ -1390,6 +1418,7 @@ function EditBookingModal({
           payMethod,
           paymentStatus,
           status: targetStatus,
+          furnizor: furnizorEdit.trim() || null,
           ...(parcelDetails !== undefined ? { parcelDetails } : {}),
           removeOutboundSeats: removeOutbound,
           removeReturnSeats: removeReturn,
@@ -1582,6 +1611,18 @@ function EditBookingModal({
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputCls} />
                 <span className="mt-1 block text-[11px] text-slate-500">
                   Editabile doar pentru rezervări manuale (cu adresă custom).
+                </span>
+              </Field>
+              <Field label="Furnizor / agenție (opțional)">
+                <input
+                  value={furnizorEdit}
+                  onChange={(e) => setFurnizorEdit(e.target.value)}
+                  className={inputCls}
+                  placeholder="ex: autocar.md"
+                  list="furnizori-cunoscuti"
+                />
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Agenția parteneră care a adus pasagerul — apare în raportul de comision (Furnizori).
                 </span>
               </Field>
             </Section>

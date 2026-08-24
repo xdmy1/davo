@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
               { phone: { contains: t } },
               { firstName: { contains: t, mode: 'insensitive' as const } },
               { lastName: { contains: t, mode: 'insensitive' as const } },
+              { furnizor: { contains: t, mode: 'insensitive' as const } },
             ],
           })),
         }
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
     const originAddress: string | undefined = body.originAddress?.trim() || undefined
     const destinationAddress: string | undefined = body.destinationAddress?.trim() || undefined
     const notes: string | undefined = body.notes?.trim() || undefined
+    const furnizor: string | null = typeof body.furnizor === 'string' && body.furnizor.trim() ? body.furnizor.trim() : null
     const parcelDetails = originAddress || destinationAddress || notes
       ? JSON.stringify({ originAddress, destinationAddress, notes, manual: true })
       : undefined
@@ -188,6 +190,7 @@ export async function POST(request: NextRequest) {
         // Rezervare manuală din panoul admin davo.
         source: 'admin',
         createdByName,
+        furnizor,
       },
     })
 

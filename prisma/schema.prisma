@@ -206,6 +206,9 @@ model Booking {
 
   // Notiță internă a operatorului (Observații din formularul de rezervare).
   notes          String?
+  // Furnizor / agenție parteneră care ne-a adus pasagerul (ex. "autocar.md").
+  // Null = client direct. Folosit la raportul lunar de comision (/admin/furnizori).
+  furnizor       String?
   // Îmbarcare (scanner QR din panoul operatorilor): cine/când + surplus bagaj.
   boardedAt      DateTime?
   boardedBy      String?
@@ -233,6 +236,7 @@ model Booking {
   @@index([source])
   @@index([archivedAt])
   @@index([createdById])
+  @@index([furnizor])
 }
 
 // ===== Operatori (panou davo-operatori — login cu PIN 4 cifre) =====

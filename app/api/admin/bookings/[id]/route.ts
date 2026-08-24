@@ -23,6 +23,7 @@ const EDITABLE_FIELDS = {
   payMethod: 'string-or-null',
   paymentStatus: 'string',
   parcelDetails: 'string-or-null',
+  furnizor: 'string-or-null',
 } as const
 
 function coerce(value: unknown, type: (typeof EDITABLE_FIELDS)[EditableField]): unknown {
