@@ -190,8 +190,9 @@ export const moldovanCities: City[] = [
 // restricționează. Cheile sunt numele canonice din `destinations`; țările
 // absente (ex. Luxemburg) rămân nerestricționate.
 // Lista completă de orașe MD, MINUS Soroca, Edineț, Căușeni, Strășeni,
-// Drochia, Orhei (scoase la cererea operatorului). Ordinea = ruta reală
-// (confirmată de operator): sudul întâi (ca Anglia), apoi nordul.
+// Drochia (scoase la cererea operatorului; Orhei a fost scos în aug 2026 și
+// readus la 01.09.2026). Ordinea = ruta reală (confirmată de operator): sudul
+// întâi (ca Anglia), apoi nordul.
 const BELGIA_GROUP_MD_STOPS = [
   "Chișinău",
   "Ialoveni",
@@ -201,6 +202,7 @@ const BELGIA_GROUP_MD_STOPS = [
   "Kongaz",
   "Balabanu",
   "Cahul",
+  "Orhei",
   "Telenești",
   "Sîngerei",
   "Bălți",

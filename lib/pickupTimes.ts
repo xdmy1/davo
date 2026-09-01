@@ -36,6 +36,8 @@ const MD_SOUTH: PickupStop[] = [
 ];
 
 const MD_NORTH: PickupStop[] = [
+  // Orhei: readus în ofertă la 01.09.2026 — pe drumul din sud spre Telenești.
+  { city: "Orhei", offsetMin: 395 },
   { city: "Telenești", offsetMin: 425 },
   { city: "Sîngerei", offsetMin: 465 },
   { city: "Bălți", offsetMin: 495 },
