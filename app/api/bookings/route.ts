@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { sendBookingConfirmation, sendAdminNotification, BookingConfirmationData } from '@/lib/email'
 import { calculatePrice, calculatePriceFromRoute, seatSurcharge } from '@/lib/pricing'
+import { getGeoSafe } from '@/lib/geo'
 import { occupiedSeatsForRun } from '@/lib/runSeats'
 import { autoLinkTripAndClient } from '@/lib/bookingLink'
 import { enqueueRemindersOnly } from '@/lib/emailQueue'
@@ -130,6 +131,9 @@ export async function POST(request: NextRequest) {
 
     let price: number
     let currency: string
+    // Orașele din DB (admin → Orașe) — ca un oraș adăugat recent să fie tarifat
+    // pe țara lui, nu pe fallback-ul implicit.
+    const geo = await getGeoSafe()
     if (body.type === 'parcel') {
       // Colet: prețul îl stabilește operatorul la confirmare — NU tarifăm ca un
       // loc de pasager nici când coletul e legat de o cursă (înainte, un colet
@@ -141,6 +145,7 @@ export async function POST(request: NextRequest) {
             departureCity: body.departureCity,
             arrivalCity: body.arrivalCity,
             type: 'parcel',
+            geo,
           }).currency
     } else if (outboundTrip) {
       const res = calculatePriceFromRoute({
@@ -163,6 +168,7 @@ export async function POST(request: NextRequest) {
         adults: body.adults,
         children: body.children,
         parcelWeight: body.parcelWeight,
+        geo,
       })
       price = res.price
       currency = res.currency

@@ -20,7 +20,9 @@ import {
   Phone,
   Info,
 } from "lucide-react";
-import { destinations, moldovanCities, contactInfo, mdStopsForCountry } from "@/lib/data";
+import { destinations, contactInfo } from "@/lib/data";
+import { useGeo } from "@/components/geo/GeoProvider";
+import { activeCities, isMoldovanCity, mdStopsFor } from "@/lib/geoShared";
 import { seatSurcharge } from "@/lib/pricing";
 import { CountryCityPicker, complementHide, getCountryFromValue } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
@@ -81,6 +83,8 @@ export default function RezervarePage() {
 function RezervareContent() {
   const params = useSearchParams();
   const locale = useLocale();
+  // Orașele (DB, admin → Orașe) — aceeași listă ca pe rezervari.davo.md.
+  const geo = useGeo();
   const initialMode = (params.get("mode") as Mode) === "colet" ? "colet" : "bilet";
 
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -95,13 +99,8 @@ function RezervareContent() {
   // Detectăm direcția inițială din `from` ca să gestionăm corect cazul când
   // userul vine de pe Hero cu un oraș european (după ce a făcut swap acolo).
   const [direction, setDirection] = useState<"md-to-eu" | "eu-to-md">(() => {
-    const f = initialFrom.split(",")[0].trim().toLowerCase();
-    // Chișinău e hub-ul implicit MD, dar nu e în `moldovanCities` (lista de
-    // opriri intermediare), așa că îl tratăm explicit ca origine MD.
-    if (f === "chișinău" || f === "chisinau") return "md-to-eu";
-    return moldovanCities.some((c) => c.name.toLowerCase() === f)
-      ? "md-to-eu"
-      : "eu-to-md";
+    const f = initialFrom.split(",")[0].trim();
+    return isMoldovanCity(geo, f) ? "md-to-eu" : "eu-to-md";
   });
   const [trip, setTrip] = useState<"one" | "return">("one");
   const [passengers, setPassengers] = useState(1);
@@ -235,8 +234,8 @@ function RezervareContent() {
   // Orașele MD de îmbarcare/coborâre permise pentru BILETE depind de țara
   // străină de pe partea opusă (spec operator) — și la tur și la retur.
   // Coletele nu se restricționează.
-  const fromMdCities = useMemo(() => mdStopsForCountry(toCountryName), [toCountryName]);
-  const toMdCities = useMemo(() => mdStopsForCountry(fromCountryName), [fromCountryName]);
+  const fromMdCities = useMemo(() => mdStopsFor(geo, toCountryName), [geo, toCountryName]);
+  const toMdCities = useMemo(() => mdStopsFor(geo, fromCountryName), [geo, fromCountryName]);
 
   // Rutele DIN Anglia opresc în Moldova DOAR la Chișinău — fără orașe de
   // coborâre (Comrat, Bălți...). Dacă destinația era alt oraș MD și plecarea
@@ -278,10 +277,10 @@ function RezervareContent() {
 
   const destinationCities = useMemo(
     () =>
-      destinations.flatMap((d) =>
-        d.cities.map((c) => ({ name: c.name, country: d.name, slug: d.slug }))
+      geo.countries.flatMap((d) =>
+        activeCities(d).map((c) => ({ name: c.name, country: d.name, slug: d.slug }))
       ),
-    []
+    [geo]
   );
 
   // Țara/steagul se derivă din câmpul european — la EU→MD, asta e `from`.

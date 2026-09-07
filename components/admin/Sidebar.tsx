@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Briefcase,
   Clock,
+  MapPinned,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessUI, normalizeRole, type Role } from "@/lib/permissions";
@@ -50,6 +51,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Configurare",
     items: [
       { label: "Țări & program", href: "/admin/countries", icon: Globe },
+      { label: "Orașe", href: "/admin/orase", icon: MapPinned },
       { label: "Orar ridicări", href: "/admin/orare", icon: Clock },
       { label: "Rute", href: "/admin/routes", icon: RouteIcon },
       { label: "Autocare", href: "/admin/buses", icon: BusIcon },

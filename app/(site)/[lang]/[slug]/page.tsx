@@ -32,6 +32,8 @@ import {
   localizeCity,
 } from "@/lib/i18n/dataI18n";
 import { buildCountryFaq, buildCityFaq, buildCountryMeta, buildCityMeta } from "@/lib/i18n/destinationFaq";
+import { getGeoSafe } from "@/lib/geo";
+import { mdStopsFor } from "@/lib/geoShared";
 
 export const revalidate = 3600;
 
@@ -92,7 +94,8 @@ export async function generateMetadata({
 
   if (route.kind === "country") {
     const { destination } = route;
-    const { title, description } = buildCountryMeta(destination, sched, lang);
+    const mdStops = mdStopsFor(await getGeoSafe(), destination.name);
+    const { title, description } = buildCountryMeta(destination, sched, lang, mdStops);
     const canonicalPath = localePath(lang, countryLandingUrl(destination));
     return {
       title,
@@ -158,7 +161,7 @@ export default async function SeoSlugPage({
 // Country landing page
 // ============================================
 
-function CountryLanding({ destination, locale }: { destination: Destination; locale: Locale }) {
+async function CountryLanding({ destination, locale }: { destination: Destination; locale: Locale }) {
   const t = dict(locale);
   const td = t.destinationPage;
   const code = destinationSlugToCode[destination.slug];
@@ -207,7 +210,7 @@ function CountryLanding({ destination, locale }: { destination: Destination; loc
     ],
   };
 
-  const faqItems = buildCountryFaq(destination, sched, locale);
+  const faqItems = buildCountryFaq(destination, sched, locale, mdStopsFor(await getGeoSafe(), destination.name));
   const faqPageLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",

@@ -14,6 +14,8 @@
 
 import { destinations, moldovanCities } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
+import { getGeoSafe } from "@/lib/geo";
+import { countryOfCityName, type GeoData } from "@/lib/geoShared";
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -32,7 +34,7 @@ const COUNTRY_TO_GROUP: Record<string, OperatorGroup> = {
 // Deduce țara dintr-un string „Oraș, Țară" sau doar „Oraș" (unele colete au doar
 // orașul salvat). Cade pe: sufix explicit de țară → oraș moldovenesc/Chișinău →
 // căutare în lista de orașe-destinație.
-export function countryOfCity(cityStr: string): string | null {
+export function countryOfCity(cityStr: string, geo?: GeoData | null): string | null {
   if (!cityStr) return null;
   const parts = cityStr.split(",").map((s) => s.trim()).filter(Boolean);
   const tail = parts[parts.length - 1];
@@ -40,14 +42,17 @@ export function countryOfCity(cityStr: string): string | null {
 
   const cityName = norm(parts[0] || cityStr);
   if (cityName === "chișinău" || cityName === "chisinau") return "moldova";
+  // Orașele din DB (admin → Orașe) au prioritate — prind și orașele adăugate recent.
+  const fromGeo = geo ? countryOfCityName(geo, parts[0] || cityStr) : null;
+  if (fromGeo) return fromGeo.slug;
   if (moldovanCities.some((c) => norm(c.name) === cityName)) return "moldova";
   const dest = destinations.find((d) => d.cities.some((c) => norm(c.name) === cityName));
   if (dest) return norm(dest.name);
   return null;
 }
 
-export function operatorGroupForOrigin(departureCity: string): OperatorGroup | null {
-  const country = countryOfCity(departureCity);
+export function operatorGroupForOrigin(departureCity: string, geo?: GeoData | null): OperatorGroup | null {
+  const country = countryOfCity(departureCity, geo);
   return country ? COUNTRY_TO_GROUP[country] ?? null : null;
 }
 
@@ -138,7 +143,7 @@ export type ParcelNotify = {
 export async function notifyParcelRequest(
   data: ParcelNotify
 ): Promise<{ sent: boolean; group: OperatorGroup | null; reason?: string }> {
-  const group = operatorGroupForOrigin(data.departureCity);
+  const group = operatorGroupForOrigin(data.departureCity, await getGeoSafe());
   if (!group) return { sent: false, group: null, reason: "origine necunoscută" };
 
   const cfg = await getConfig();

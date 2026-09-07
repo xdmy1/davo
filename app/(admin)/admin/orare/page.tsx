@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import PageHeader from "@/components/admin/PageHeader";
 import {
-  MD_PICKUPS_BY_COUNTRY,
-  EU_PICKUPS_BY_COUNTRY,
+  mdPickupsFor,
+  euPickupsFor,
   computePickupTimes,
   weekdayWithShift,
   type ComputedStop,
 } from "@/lib/pickupTimes";
+import { getGeoSafe } from "@/lib/geo";
+import Link from "next/link";
 import { busPlateForCountry, extraOutboundDays } from "@/lib/busSchedule";
 
 // Orar complet de ridicare: fiecare oraș de pe site, din orice țară, pe ambele
@@ -62,7 +64,11 @@ function StopsTable({
             </td>
             <td className="px-5 py-2 font-mono font-semibold text-slate-900">{s.time}</td>
             <td className="px-5 py-2 text-xs text-slate-500">
-              {s.offsetMin === 0 ? "ancoră" : `+${Math.floor(s.offsetMin / 60)}h${String(s.offsetMin % 60).padStart(2, "0")}`}
+              {s.offsetMin == null
+                ? <span className="text-amber-700">nesetat</span>
+                : s.offsetMin === 0
+                  ? "ancoră"
+                  : `+${Math.floor(s.offsetMin / 60)}h${String(s.offsetMin % 60).padStart(2, "0")}`}
             </td>
           </tr>
         ))}
@@ -98,6 +104,7 @@ function DirectionCard({
 }
 
 export default async function OrarePage() {
+  const geo = await getGeoSafe();
   const rows = await prisma.country.findMany({
     where: { name: { not: "Moldova" } },
     select: {
@@ -122,16 +129,17 @@ export default async function OrarePage() {
 
       <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
         <strong>Offseturile per oraș sunt ESTIMĂRI</strong> (timpi de condus, în ordinea rutei) — de
-        verificat cu șoferii. Ordinea prin Moldova e cea confirmată (sudul întâi, apoi nordul); ordinea
-        prin țările străine e dedusă geografic. Ora-ancoră a fiecărei țări vine din „Țări &amp; program”;
-        un offset se corectează în <code className="rounded bg-amber-100 px-1.5 py-0.5">lib/pickupTimes.ts</code>.
+        verificat cu șoferii. Ora-ancoră a fiecărei țări vine din „Țări &amp; program”; orașele, ordinea
+        prin Moldova și offsetul fiecărui oraș se editează în{" "}
+        <Link href="/admin/orase" className="font-semibold underline">Orașe</Link>. Un oraș cu offset
+        „nesetat” nu primește oră.
       </div>
 
       <div className="space-y-10">
         {countries.map((name) => {
           const c = byName.get(name)!;
-          const mdStops = computePickupTimes(c.outboundTime, MD_PICKUPS_BY_COUNTRY[name] ?? []);
-          const euStops = computePickupTimes(c.returnTime, EU_PICKUPS_BY_COUNTRY[name] ?? []);
+          const mdStops = computePickupTimes(c.outboundTime, mdPickupsFor(geo, name));
+          const euStops = computePickupTimes(c.returnTime, euPickupsFor(geo, name));
           const plate = busPlateForCountry(name);
           const extra = extraOutboundDays(name);
           return (
@@ -166,7 +174,7 @@ export default async function OrarePage() {
                   subtitle={
                     c.returnTime
                       ? `Ancoră: ${weekdayWithShift(c.returnWeekday, 0)} ${c.returnTime}, plecarea din ${
-                          (EU_PICKUPS_BY_COUNTRY[name] ?? [])[0]?.city ?? "primul oraș"
+                          euPickupsFor(geo, name)[0]?.city ?? "primul oraș"
                         } (ora locală)`
                       : "Fără program setat în „Țări & program” — orele nu se pot calcula"
                   }

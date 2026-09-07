@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo } from "react";
 import { ChevronDown } from "lucide-react";
-import { destinations, moldovanCities } from "@/lib/data";
-import { localizeCity, localizeDestinationName } from "@/lib/i18n/dataI18n";
+import { destinations } from "@/lib/data";
+import { localizeDestinationName } from "@/lib/i18n/dataI18n";
 import type { Locale } from "@/lib/i18n/config";
+import { useGeo } from "@/components/geo/GeoProvider";
+import { activeCities, localizeGeoCity, type GeoData } from "@/lib/geoShared";
 
 // Numele țărilor "străinătate" pe care DAVO le deservește. Folosit pentru
 // regula de simetrie: o cursă validă merge mereu Moldova ↔ străinătate. Dacă
@@ -49,29 +51,30 @@ type CountryOption = {
   cities: { name: string; label: string }[];
 };
 
-function useCountries(locale: Locale): CountryOption[] {
-  return useMemo(() => {
+// Orașele vin din DB (admin → Orașe) prin GeoProvider — aceeași sursă ca
+// rezervari.davo.md. Doar cele active, în ordinea configurată.
+function useCountries(locale: Locale): { countries: CountryOption[]; geo: GeoData } {
+  const geo = useGeo();
+  const countries = useMemo(() => {
     const moldova: CountryOption = {
-      name: "Moldova",
+      name: MOLDOVA,
       label: locale === "ru" ? "Молдова" : "Moldova",
-      cities: [
-        { name: "Chișinău", label: localizeCity("Chișinău", locale) },
-        ...moldovanCities.map((c) => ({
-          name: c.name,
-          label: localizeCity(c.name, locale),
-        })),
-      ],
+      cities: activeCities(geo.moldova).map((c) => ({
+        name: c.name,
+        label: localizeGeoCity(geo, c.name, locale),
+      })),
     };
-    const foreign: CountryOption[] = destinations.map((d) => ({
+    const foreign: CountryOption[] = geo.countries.map((d) => ({
       name: d.name,
       label: localizeDestinationName(d.slug, locale, d.name),
-      cities: d.cities.map((c) => ({
+      cities: activeCities(d).map((c) => ({
         name: c.name,
-        label: localizeCity(c.name, locale),
+        label: localizeGeoCity(geo, c.name, locale),
       })),
     }));
     return [moldova, ...foreign];
-  }, [locale]);
+  }, [geo, locale]);
+  return { countries, geo };
 }
 
 // Parsează un string "Oraș, Țară" / "Țară" / "Oraș" / "" în (city, country).
@@ -140,7 +143,7 @@ export function CountryCityPicker({
   chisinauOnly = false,
   mdCityWhitelist = null,
 }: CountryCityPickerProps) {
-  const countries = useCountries(locale);
+  const { countries, geo } = useCountries(locale);
   const visible = useMemo(
     () => (hideCountries?.length ? countries.filter((c) => !hideCountries.includes(c.name)) : countries),
     [countries, hideCountries]
@@ -149,7 +152,7 @@ export function CountryCityPicker({
   const selectedCountry = countries.find((c) => c.name === country);
   const allCities = selectedCountry?.cities ?? [];
   const mdFiltered = country === MOLDOVA && mdCityWhitelist
-    ? mdCityWhitelist.map((n) => ({ name: n, label: localizeCity(n, locale) }))
+    ? mdCityWhitelist.map((n) => ({ name: n, label: localizeGeoCity(geo, n, locale) }))
     : allCities;
   const cities = chisinauOnly && country === MOLDOVA
     ? mdFiltered.filter((c) => c.name === "Chișinău")

@@ -14,10 +14,12 @@
  * Tabelul complet se vede în /admin/orare.
  */
 
+import { activeCities, mdStopsFor, type GeoData } from "@/lib/geoShared";
+
 export type PickupStop = {
   city: string;
-  /** minute față de ora-ancoră a direcției (0 = pleacă exact la ancoră) */
-  offsetMin: number;
+  /** minute față de ora-ancoră a direcției (0 = pleacă exact la ancoră); null = nesetat încă în admin → Orașe */
+  offsetMin: number | null;
 };
 
 // ===== MD → EU: îmbarcarea prin Moldova =====
@@ -168,11 +170,46 @@ export const EU_PICKUPS_BY_COUNTRY: Record<string, PickupStop[]> = {
   Luxemburg: [{ city: "Luxembourg City", offsetMin: 0 }],
 };
 
+// ===== Din DB (admin → Orașe) =====
+// Când geografia vine din DB, opririle și offseturile se iau de acolo (adminul
+// le editează în „Orașe"); tabelele statice de mai sus rămân fallback pentru
+// orașele fără offset setat și pentru cazul în care DB nu răspunde.
+
+const STATIC_MD_OFFSETS = new Map<string, number>(
+  [...MD_SOUTH, ...MD_NORTH].map((s) => [s.city, s.offsetMin as number])
+);
+
+/** Opririle MD pentru o țară destinație, în ordinea configurată în admin. */
+export function mdPickupsFor(geo: GeoData, countryName: string): PickupStop[] {
+  if (!geo.fromDb) return MD_PICKUPS_BY_COUNTRY[countryName] ?? [];
+  const byName = new Map((geo.moldova?.cities ?? []).map((c) => [c.name, c]));
+  return mdStopsFor(geo, countryName).map((city) => ({
+    city,
+    offsetMin: byName.get(city)?.pickupOffsetMin ?? STATIC_MD_OFFSETS.get(city) ?? null,
+  }));
+}
+
+/** Opririle din țara străină (cursa de retur), în ordinea offsetului (= ruta). */
+export function euPickupsFor(geo: GeoData, countryName: string): PickupStop[] {
+  if (!geo.fromDb) return EU_PICKUPS_BY_COUNTRY[countryName] ?? [];
+  const country = geo.countries.find((c) => c.name === countryName);
+  if (!country) return [];
+  const staticOffsets = new Map(
+    (EU_PICKUPS_BY_COUNTRY[countryName] ?? []).map((s) => [s.city, s.offsetMin as number])
+  );
+  const stops = activeCities(country).map((c) => ({
+    city: c.name,
+    offsetMin: c.pickupOffsetMin ?? staticOffsets.get(c.name) ?? null,
+  }));
+  // Orașele cu offset, crescător (ordinea rutei); cele fără offset la coadă.
+  return stops.sort((a, b) => (a.offsetMin ?? Infinity) - (b.offsetMin ?? Infinity));
+}
+
 // ===== Calcul =====
 
 export type ComputedStop = {
   city: string;
-  offsetMin: number;
+  offsetMin: number | null;
   /** "HH:mm" */
   time: string;
   /** câte zile după ziua ancorei (0 = aceeași zi, 1 = a doua zi…) */
@@ -187,7 +224,7 @@ export function computePickupTimes(
   const m = /^(\d{1,2}):(\d{2})$/.exec(anchorTime ?? "");
   const anchorMin = m ? Number(m[1]) * 60 + Number(m[2]) : null;
   return stops.map((s) => {
-    if (anchorMin == null) {
+    if (anchorMin == null || s.offsetMin == null) {
       return { city: s.city, offsetMin: s.offsetMin, time: "—", dayShift: 0 };
     }
     const total = anchorMin + s.offsetMin;

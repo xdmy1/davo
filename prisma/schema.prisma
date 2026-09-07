@@ -41,6 +41,17 @@ model City {
   countryId String
   country   Country  @relation(fields: [countryId], references: [id])
 
+  // ===== Configurare din admin → Orașe (sursa de adevăr pentru picker-ele de pe
+  // davo.md ȘI rezervari.davo.md — baza e partajată). Toate aditive/nullable.
+  nameRu             String?  // numele în rusă (/ru); null = același ca RO
+  sortOrder          Int      @default(0) // ordinea în listă / pe traseu (crescător)
+  active             Boolean  @default(true) // false = ascuns din site, dar rămâne pentru rezervările vechi
+  pickupOffsetMin    Int?     // minute față de ora-ancoră a țării (orar ridicări / ora de pe bilet); null = necunoscut
+  // Doar pentru orașele MD: slug-urile țărilor destinație pentru care orașul e
+  // oferit PASAGERILOR (ex. ["anglia","belgia"]). Gol = nu se oferă la bilete
+  // (coletele văd toate orașele MD active).
+  passengerCountries String[] @default([])
+
   originRoutes      Route[] @relation("RouteOrigin")
   destinationRoutes Route[] @relation("RouteDestination")
 
@@ -48,6 +59,7 @@ model City {
 
   @@index([countryId])
   @@index([isOrigin])
+  @@index([active])
 }
 
 // ===== Operațiuni =====

@@ -15,7 +15,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn, countryLandingUrl } from "@/lib/utils";
-import { destinations, mdStopsForCountry } from "@/lib/data";
+import { destinations } from "@/lib/data";
+import { useGeo } from "@/components/geo/GeoProvider";
+import { mdStopsFor } from "@/lib/geoShared";
 import { CountryFlag, countryMeta, type CountryCode } from "@/components/ui/CountryFlag";
 import { CountryCityPicker, complementHide, getCountryFromValue } from "@/components/booking/CountryCityPicker";
 import { useLocale } from "@/lib/i18n/client";
@@ -31,6 +33,7 @@ const flagOrder: CountryCode[] = ["gb", "de", "be", "nl", "lu"];
 export default function Hero() {
   const locale = useLocale();
   const t = dict(locale);
+  const geo = useGeo();
 
   const [tab, setTab] = useState<Tab>("transport");
   const [serviceType, setServiceType] = useState("regular");
@@ -74,12 +77,12 @@ export default function Hero() {
   // Orașele MD permise depind de țara străină de pe partea opusă — dar doar
   // pentru bilete (tab transport); coletele se colectează din toată Moldova.
   const fromMdCities = useMemo(
-    () => (tab === "transport" ? mdStopsForCountry(toCountry) : null),
-    [tab, toCountry]
+    () => (tab === "transport" ? mdStopsFor(geo, toCountry) : null),
+    [geo, tab, toCountry]
   );
   const toMdCities = useMemo(
-    () => (tab === "transport" ? mdStopsForCountry(fromCountry) : null),
-    [tab, fromCountry]
+    () => (tab === "transport" ? mdStopsFor(geo, fromCountry) : null),
+    [geo, tab, fromCountry]
   );
 
   // Dacă userul comută `from` de pe MD pe străinătate (sau invers) și `to`

@@ -7,11 +7,11 @@ import { mdStopsForCountry } from "@/lib/data";
 import { ro } from "@/lib/i18n/dictionaries/ro";
 import { ru } from "@/lib/i18n/dictionaries/ru";
 
-// Orașele MD de îmbarcare pentru textele FAQ/meta — urmează restricțiile per
-// țară din MD_STOPS_BY_COUNTRY (lib/data.ts); țările fără listă proprie
-// (ex. Luxemburg) primesc lista implicită de pasageri.
-function mdPickupStops(destination: Destination): string[] {
-  return mdStopsForCountry(destination.name);
+// Orașele MD de îmbarcare pentru textele FAQ/meta. Pagina le dă din DB
+// (admin → Orașe, via `mdStopsFor(geo, …)`); fără override cădem pe listele
+// statice din lib/data.ts (MD_STOPS_BY_COUNTRY).
+function mdPickupStops(destination: Destination, override?: string[] | null): string[] {
+  return override && override.length > 0 ? override : mdStopsForCountry(destination.name);
 }
 
 function joinList(names: string[], and: string): string {
@@ -35,7 +35,8 @@ type FaqItem = { q: string; a: string };
 export function buildCountryFaq(
   destination: Destination,
   sched: Sched,
-  locale: Locale
+  locale: Locale,
+  mdStops?: string[] | null
 ): FaqItem[] {
   const country = localizeDestinationName(destination.slug, locale, destination.name);
   const price = destination.price || "120";
@@ -60,10 +61,10 @@ export function buildCountryFaq(
     items.push({
       q: `Из каких городов Молдовы можно отправиться?`,
       a: `Автобус DAVO Group забирает пассажиров из: ${joinList(
-        mdPickupStops(destination).map((n) => localizeCity(n, "ru")),
+        mdPickupStops(destination, mdStops).map((n) => localizeCity(n, "ru")),
         "и"
       )}.${
-        mdPickupStops(destination).includes("Chișinău")
+        mdPickupStops(destination, mdStops).includes("Chișinău")
           ? " Отправление — от офиса DAVO в Кишинёве (ул. Каля Иешилор 11/3)."
           : ""
       } При бронировании указываете свой город, а точку посадки согласуем по телефону.`,
@@ -98,8 +99,8 @@ export function buildCountryFaq(
   });
   items.push({
     q: `Din ce orașe din Moldova pot pleca?`,
-    a: `Autocarul DAVO Group preia pasageri din: ${joinList(mdPickupStops(destination), "și")}.${
-      mdPickupStops(destination).includes("Chișinău")
+    a: `Autocarul DAVO Group preia pasageri din: ${joinList(mdPickupStops(destination, mdStops), "și")}.${
+      mdPickupStops(destination, mdStops).includes("Chișinău")
         ? " Plecarea se face de la sediul DAVO din Chișinău (Calea Ieșilor 11/3)."
         : ""
     } La rezervare alegi orașul tău și coordonăm punctul exact prin telefon.`,
@@ -191,7 +192,8 @@ export function buildCityFaq(
 export function buildCountryMeta(
   destination: Destination,
   sched: Sched,
-  locale: Locale
+  locale: Locale,
+  mdStops?: string[] | null
 ): { title: string; description: string } {
   const country = localizeDestinationName(destination.slug, locale, destination.name);
   const price = destination.price || "120";
@@ -207,7 +209,7 @@ export function buildCountryMeta(
     return {
       title: `Транспорт Молдова ⇋ ${country} | Еженедельные рейсы${sched ? ` ${sched.outboundLabel}` : ""}`,
       description: `${localizedDesc}.${sn} ${destination.cities.length} городов доступно. Посадка пассажиров: ${joinList(
-        mdPickupStops(destination).map((n) => localizeCity(n, "ru")),
+        mdPickupStops(destination, mdStops).map((n) => localizeCity(n, "ru")),
         "и"
       )}. Wi-Fi Starlink, бесплатный обед, стюардесса 24/24. Цена от ${price}${currency}. Бронируйте онлайн.`,
     };
@@ -216,7 +218,7 @@ export function buildCountryMeta(
   const sn = sched ? ` Plecare ${sched.outboundLabel}, retur ${sched.returnLabel}.` : "";
   return {
     title: `Transport Moldova ⇋ ${country} | Curse săptămânale${sched ? ` ${sched.outboundLabel}` : ""}`,
-    description: `${desc}.${sn} ${destination.cities.length} orașe disponibile. Îmbarcare pasageri din ${joinList(mdPickupStops(destination), "și")}. Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Preț de la ${price}${currency}. Rezervă online.`,
+    description: `${desc}.${sn} ${destination.cities.length} orașe disponibile. Îmbarcare pasageri din ${joinList(mdPickupStops(destination, mdStops), "și")}. Wi-Fi Starlink, prânz gratuit, însoțitoare 24/24. Preț de la ${price}${currency}. Rezervă online.`,
   };
 }
 

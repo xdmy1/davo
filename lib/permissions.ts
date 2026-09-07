@@ -85,6 +85,13 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     api: ["/api/admin/countries", "/api/admin/geography"],
   },
   {
+    key: "cities",
+    label: "Orașe",
+    group: "Configurare",
+    ui: ["/admin/orase"],
+    api: ["/api/admin/cities"],
+  },
+  {
     key: "orare",
     label: "Orar ridicări",
     group: "Configurare",
