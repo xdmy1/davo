@@ -71,7 +71,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const required = ['firstName', 'lastName', 'email', 'phone', 'originCountry', 'originCity', 'destinationCountry', 'destinationCity', 'departureDate', 'price', 'currency']
+    // Emailul e opțional: mulți clienți înregistrați de operatori n-au email
+    // (ex. „Bilet retur" pentru o rezervare fără email) — fără el nu se trimite
+    // confirmarea, dar rezervarea și biletul se creează normal.
+    const required = ['firstName', 'lastName', 'phone', 'originCountry', 'originCity', 'destinationCountry', 'destinationCity', 'departureDate', 'price', 'currency']
     for (const f of required) {
       if (body[f] === undefined || body[f] === null || body[f] === '') {
         return NextResponse.json(
@@ -92,7 +95,8 @@ export async function POST(request: NextRequest) {
       ? body.payMethod
       : 'cash_on_pickup'
     const paymentStatus = payMethod === 'paid_in_advance' ? 'paid' : 'pending'
-    const sendEmail: boolean = body.sendEmail !== false
+    const emailClean = typeof body.email === 'string' ? body.email.trim() : ''
+    const sendEmail: boolean = body.sendEmail !== false && emailClean.length > 0
 
     const departureCityFull = `${String(body.originCity).trim()}, ${String(body.originCountry).trim()}`
     const arrivalCity = `${String(body.destinationCity).trim()}, ${String(body.destinationCountry).trim()}`
@@ -175,7 +179,7 @@ export async function POST(request: NextRequest) {
         returnDate,
         firstName: String(body.firstName).trim(),
         lastName: String(body.lastName).trim(),
-        email: String(body.email).trim(),
+        email: emailClean,
         phone: String(body.phone).trim(),
         adults: Math.max(1, Number(body.adults) || 1),
         children: Math.max(0, Number(body.children) || 0),

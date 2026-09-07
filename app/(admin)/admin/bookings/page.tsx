@@ -10,6 +10,7 @@ import {
   Filter,
   Plus,
   ArrowDownUp,
+  ArrowLeftRight,
   Pencil,
   X,
 } from "lucide-react";
@@ -43,7 +44,61 @@ type Booking = {
   passengerResponseAt: string | null;
   parcelDetails?: string | null;
   furnizor?: string | null;
+  adults?: number;
+  children?: number;
+  tripType?: string | null;
 };
+
+// Prefill pentru „Bilet retur": datele clientului + ruta inversată, copiate din
+// rezervarea existentă — adminul alege doar cursa și locurile.
+type ReturnPrefill = {
+  returnOf: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  originCountry: string;
+  originCity: string;
+  destCountry: string;
+  destCity: string;
+  adults: number;
+  children: number;
+  pricePerSeat: string;
+  currency: "EUR" | "GBP" | "MDL";
+  furnizor: string;
+  notes: string;
+};
+
+function splitCity(v: string): { city: string; tail: string | null } {
+  const i = v.lastIndexOf(",");
+  return i >= 0 ? { city: v.slice(0, i).trim(), tail: v.slice(i + 1).trim() || null } : { city: v.trim(), tail: null };
+}
+
+function buildReturnPrefill(b: Booking, countryOf: (city: string) => string | null): ReturnPrefill {
+  const from = splitCity(b.arrivalCity);
+  const to = splitCity(b.departureCity);
+  const pax = Math.max(1, (b.adults ?? 1) + (b.children ?? 0));
+  const legs = b.tripType === "round-trip" ? 2 : 1;
+  const perSeat = b.price > 0 ? Math.round((b.price / pax / legs) * 100) / 100 : 0;
+  const currency = (["EUR", "GBP", "MDL"] as const).find((c) => c === b.currency) ?? "EUR";
+  return {
+    returnOf: b.bookingNumber,
+    firstName: b.firstName,
+    lastName: b.lastName,
+    email: b.email,
+    phone: b.phone,
+    originCountry: countryOf(b.arrivalCity) ?? from.tail ?? "",
+    originCity: from.city,
+    destCountry: countryOf(b.departureCity) ?? to.tail ?? "",
+    destCity: to.city,
+    adults: Math.max(1, b.adults ?? 1),
+    children: Math.max(0, b.children ?? 0),
+    pricePerSeat: perSeat ? String(perSeat) : "",
+    currency,
+    furnizor: b.furnizor ?? "",
+    notes: `Retur al rezervării ${b.bookingNumber}`,
+  };
+}
 
 const responseOptions = [
   { value: "confirmed", label: "A confirmat", variant: "green" as const, icon: "✓" },
@@ -146,6 +201,8 @@ function periodRange(p: PeriodFilter, now: Date): { start: Date; end: Date } | n
 export default function BookingsPage() {
   const geo = useGeo();
   const countryOf = useMemo(() => makeCountryOf(buildCityToCountry(geo)), [geo]);
+  // „Bilet retur" pentru o rezervare existentă (deschide formularul manual prefilled).
+  const [returnFor, setReturnFor] = useState<Booking | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -491,6 +548,15 @@ export default function BookingsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          {b.type === "passenger" && b.status !== "cancelled" && b.tripType !== "round-trip" && (
+                            <button
+                              onClick={() => setReturnFor(b)}
+                              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-orange-600"
+                              title="Bilet retur — sensul invers, cu datele clientului deja completate"
+                            >
+                              <ArrowLeftRight className="h-4 w-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => setEditing(b)}
                             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-orange-600"
@@ -540,6 +606,17 @@ export default function BookingsPage() {
         />
       )}
 
+      {returnFor && (
+        <ManualBookingModal
+          initial={buildReturnPrefill(returnFor, countryOf)}
+          onClose={() => setReturnFor(null)}
+          onSaved={() => {
+            setReturnFor(null);
+            fetchBookings();
+          }}
+        />
+      )}
+
       {editing && (
         <EditBookingModal
           booking={editing}
@@ -562,47 +639,62 @@ function toLocalInput(d: Date) {
 
 const OTHER = "__other__";
 
+// Țară cunoscută → valoarea din select; altfel „Altă țară…" + text liber.
+function countrySelectFor(name: string): { select: string; custom: string } {
+  if (!name) return { select: OTHER, custom: "" };
+  if (name === "Moldova" || destinations.some((d) => d.name === name)) return { select: name, custom: "" };
+  return { select: OTHER, custom: name };
+}
+
 function ManualBookingModal({
+  initial,
   onClose,
   onSaved,
 }: {
+  /** „Bilet retur": datele clientului + ruta inversată, copiate dintr-o rezervare. */
+  initial?: ReturnPrefill;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState(initial?.firstName ?? "");
+  const [lastName, setLastName] = useState(initial?.lastName ?? "");
+  const [email, setEmail] = useState(initial?.email ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
 
-  const [originCountrySelect, setOriginCountrySelect] = useState<string>("Moldova");
-  const [originCountryCustom, setOriginCountryCustom] = useState("");
-  const [originCity, setOriginCity] = useState<string>("Chișinău");
+  const initOrigin = initial ? countrySelectFor(initial.originCountry) : { select: "Moldova", custom: "" };
+  const initDest = initial ? countrySelectFor(initial.destCountry) : { select: destinations[0]?.name ?? OTHER, custom: "" };
+  const [originCountrySelect, setOriginCountrySelect] = useState<string>(initOrigin.select);
+  const [originCountryCustom, setOriginCountryCustom] = useState(initOrigin.custom);
+  const [originCity, setOriginCity] = useState<string>(initial?.originCity ?? "Chișinău");
   const [originAddress, setOriginAddress] = useState("");
 
-  const [destCountrySelect, setDestCountrySelect] = useState<string>(destinations[0]?.name ?? OTHER);
-  const [destCountryCustom, setDestCountryCustom] = useState("");
-  const [destCity, setDestCity] = useState("");
+  const [destCountrySelect, setDestCountrySelect] = useState<string>(initDest.select);
+  const [destCountryCustom, setDestCountryCustom] = useState(initDest.custom);
+  const [destCity, setDestCity] = useState(initial?.destCity ?? "");
   const [destAddress, setDestAddress] = useState("");
 
   const [tripType, setTripType] = useState<"one-way" | "round-trip">("one-way");
+  // La retur data rămâne goală: se completează automat când alegi cursa, iar
+  // lista de curse arată toate plecările viitoare (nu doar o zi anume).
   const [departureDate, setDepartureDate] = useState(() => {
+    if (initial) return "";
     const d = new Date();
     d.setDate(d.getDate() + 7);
     d.setHours(20, 0, 0, 0);
     return toLocalInput(d);
   });
   const [returnDate, setReturnDate] = useState("");
-  const [adults, setAdults] = useState(1);
-  const [children, setChildren] = useState(0);
+  const [adults, setAdults] = useState(initial?.adults ?? 1);
+  const [children, setChildren] = useState(initial?.children ?? 0);
 
-  const [price, setPrice] = useState<string>("");
-  const [currency, setCurrency] = useState<"EUR" | "GBP" | "MDL">("GBP");
+  const [price, setPrice] = useState<string>(initial?.pricePerSeat ?? "");
+  const [currency, setCurrency] = useState<"EUR" | "GBP" | "MDL">(initial?.currency ?? "GBP");
   const [payMethod, setPayMethod] = useState<"cash_on_pickup" | "card_on_pickup" | "paid_in_advance">("cash_on_pickup");
 
   const [status, setStatus] = useState<"confirmed" | "pending">("confirmed");
   const [sendEmail, setSendEmail] = useState(true);
-  const [notes, setNotes] = useState("");
-  const [furnizor, setFurnizor] = useState("");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [furnizor, setFurnizor] = useState(initial?.furnizor ?? "");
 
   // Asociere cu o cursă existentă: previne suprapunerile de locuri între
   // rezervările manuale și cele publice. Opțional — dacă admin nu alege
@@ -857,9 +949,17 @@ function ManualBookingModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-          <Plus className="h-4 w-4 text-orange-500" />
-          <h3 className="text-base font-semibold text-slate-900">Rezervare manuală</h3>
+          {initial ? <ArrowLeftRight className="h-4 w-4 text-orange-500" /> : <Plus className="h-4 w-4 text-orange-500" />}
+          <h3 className="text-base font-semibold text-slate-900">
+            {initial ? `Bilet retur pentru ${initial.firstName} ${initial.lastName}`.trim() : "Rezervare manuală"}
+          </h3>
         </div>
+        {initial && (
+          <div className="mx-5 mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-900">
+            Datele clientului și ruta (inversată) sunt copiate din rezervarea <strong>{initial.returnOf}</strong>.
+            Alege cursa și locurile mai jos, verifică tariful și salvează.
+          </div>
+        )}
         <form className="grid gap-4 px-5 py-4" onSubmit={submit}>
           <Section title="Client">
             <div className="grid grid-cols-2 gap-3">
@@ -869,8 +969,13 @@ function ManualBookingModal({
               <Field label="Nume">
                 <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} required />
               </Field>
-              <Field label="Email">
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} required />
+              <Field label={initial ? "Email (opțional)" : "Email"}>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} required={!initial} />
+                {initial && !email.trim() && (
+                  <span className="mt-1 block text-[11px] text-slate-500">
+                    Rezervarea inițială n-are email — returul se creează fără email de confirmare (biletul îl dai tu).
+                  </span>
+                )}
               </Field>
               <Field label="Telefon">
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} required />
@@ -1013,7 +1118,14 @@ function ManualBookingModal({
             <Field label="Atașează la o cursă programată">
               <select
                 value={selectedTripId}
-                onChange={(e) => setSelectedTripId(e.target.value)}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedTripId(id);
+                  // Cursa dă data plecării — altfel data tastată și cea a cursei
+                  // s-ar putea despărți (la retur data pornește goală).
+                  const t = tripOptions.find((x) => x.id === id);
+                  if (t) setDepartureDate(toLocalInput(new Date(t.departureAt)));
+                }}
                 className={inputCls}
                 disabled={tripsLoading}
               >
