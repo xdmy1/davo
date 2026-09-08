@@ -548,13 +548,16 @@ export default function BookingsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Scris, nu doar iconiță: e acțiunea pe care operatorii o
+                              caută la telefon cu clientul („vreau și înapoi"), iar
+                              ⇄ singur, între alte trei iconițe, trecea neobservat. */}
                           {b.type === "passenger" && b.status !== "cancelled" && b.tripType !== "round-trip" && (
                             <button
                               onClick={() => setReturnFor(b)}
-                              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-orange-600"
+                              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-100"
                               title="Bilet retur — sensul invers, cu datele clientului deja completate"
                             >
-                              <ArrowLeftRight className="h-4 w-4" />
+                              <ArrowLeftRight className="h-3.5 w-3.5" /> Bilet retur
                             </button>
                           )}
                           <button
