@@ -12,13 +12,17 @@ import {
   Gauge,
   Wallet,
   AlertTriangle,
+  Pencil,
+  Layers,
   X,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import StatCard from "@/components/admin/StatCard";
+import { previewOutflow, type FifoLot, type FifoOutflow } from "@/lib/fuelFifo";
 
 type Tank = { capacity: number; liters: number };
 type Kind = "refill" | "dispense" | "loss";
+type Slice = { liters: number; pricePerLiter: number | null };
 type Entry = {
   id: string;
   kind: Kind;
@@ -30,6 +34,7 @@ type Entry = {
   balanceAfter: number;
   createdByName: string | null;
   createdAt: string;
+  slices: Slice[] | null; // la ieșiri: din ce loturi (FIFO) a venit motorina
 };
 type Stats = {
   dispensedThisMonth: number;
@@ -38,6 +43,7 @@ type Stats = {
   totalSpent: number;
   lostLiters: number;
   lostValue: number;
+  stockValue: number;
 };
 
 const nf = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 1 });
@@ -70,9 +76,10 @@ export default function FuelPage() {
   const [tank, setTank] = useState<Tank | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [lastRefillPrice, setLastRefillPrice] = useState<number | null>(null);
+  const [lots, setLots] = useState<FifoLot[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<null | "refill" | "dispense" | "loss">(null);
+  const [editing, setEditing] = useState<Entry | null>(null);
 
   async function load() {
     setLoading(true);
@@ -83,7 +90,7 @@ export default function FuelPage() {
         setTank(data.tank);
         setEntries(data.entries);
         setStats(data.stats);
-        setLastRefillPrice(data.lastRefillPrice ?? null);
+        setLots(data.lots ?? []);
       }
     } finally {
       setLoading(false);
@@ -121,6 +128,22 @@ export default function FuelPage() {
       return;
     }
     load();
+  }
+
+  async function savePrice(entry: Entry, pricePerLiter: number) {
+    const res = await fetch(`/api/admin/fuel/${entry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pricePerLiter }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.error ?? "Eroare la salvarea prețului");
+      return false;
+    }
+    setEditing(null);
+    load();
+    return true;
   }
 
   const pct = tank && tank.capacity > 0 ? Math.min(100, (tank.liters / tank.capacity) * 100) : 0;
@@ -162,6 +185,9 @@ export default function FuelPage() {
         <>
           {/* Tank gauge */}
           <TankGauge tank={tank} pct={pct} />
+
+          {/* Loturile rămase, în ordinea în care se consumă (FIFO) */}
+          <LotsPanel lots={lots} stockValue={stats?.stockValue ?? 0} />
 
           {/* Stats */}
           <div
@@ -226,7 +252,12 @@ export default function FuelPage() {
             ) : (
               <ul className="divide-y divide-slate-100">
                 {entries.map((e) => (
-                  <EntryRow key={e.id} entry={e} onDelete={() => remove(e)} />
+                  <EntryRow
+                    key={e.id}
+                    entry={e}
+                    onDelete={() => remove(e)}
+                    onEditPrice={e.kind === "refill" ? () => setEditing(e) : undefined}
+                  />
                 ))}
               </ul>
             )}
@@ -235,13 +266,16 @@ export default function FuelPage() {
       )}
 
       {modal === "dispense" && (
-        <DispenseModal lastRefillPrice={lastRefillPrice} onClose={() => setModal(null)} onSubmit={submit} />
+        <DispenseModal lots={lots} onClose={() => setModal(null)} onSubmit={submit} />
       )}
       {modal === "refill" && (
         <RefillModal tank={tank} onClose={() => setModal(null)} onSubmit={submit} />
       )}
       {modal === "loss" && (
-        <LossModal tank={tank} lastRefillPrice={lastRefillPrice} onClose={() => setModal(null)} onSubmit={submit} />
+        <LossModal tank={tank} lots={lots} onClose={() => setModal(null)} onSubmit={submit} />
+      )}
+      {editing && (
+        <PriceModal entry={editing} onClose={() => setEditing(null)} onSave={(p) => savePrice(editing, p)} />
       )}
     </div>
   );
@@ -298,16 +332,85 @@ function TankGauge({ tank, pct }: { tank: Tank | null; pct: number }) {
   );
 }
 
+function LotsPanel({ lots, stockValue }: { lots: FifoLot[]; stockValue: number }) {
+  if (lots.length === 0) return null;
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <Layers className="h-4 w-4 text-orange-500" /> Motorina din rezervor, pe loturi
+        </div>
+        {stockValue > 0 && <span className="text-xs text-slate-500">valoare stoc: <b className="text-slate-800">{fmtLei(stockValue)}</b></span>}
+      </div>
+      <p className="mt-1 text-xs text-slate-400">
+        Alimentările se scad întâi din primul lot, la prețul lui; când se termină, trec la următorul.
+      </p>
+      <ol className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-100">
+        {lots.map((l, i) => (
+          <li key={l.refillId} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+            <div className="flex items-center gap-2.5">
+              <span
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                  i === 0 ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <span className="font-semibold text-slate-900">{fmtL(l.liters)}</span>
+              <span className="text-xs text-slate-400">
+                adăugat {new Date(l.createdAt).toLocaleDateString("ro-RO", { day: "2-digit", month: "short" })}
+                {i === 0 ? " · se consumă acum" : ""}
+              </span>
+            </div>
+            <span className="font-semibold text-slate-700">
+              {l.pricePerLiter !== null ? `${money.format(l.pricePerLiter)} lei/l` : "fără preț"}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+// Costul unei ieșiri din rezervor (alimentare/pierdere), cu defalcare pe loturi.
+function OutflowCost({ out, tone, label }: { out: FifoOutflow; tone: "slate" | "red"; label: string }) {
+  const box = tone === "red" ? "bg-red-50 text-red-700" : "bg-slate-50 text-slate-500";
+  const total = tone === "red" ? "text-red-700" : "text-slate-900";
+  return (
+    <div className={`rounded-xl px-4 py-3 ${box}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
+        <span className={`text-lg font-bold ${total}`}>{out.cost !== null ? fmtLei(out.cost) : "—"}</span>
+      </div>
+      <div className="mt-1 text-xs">
+        {out.slices
+          .map((s) => `${fmtL(s.liters)} × ${s.pricePerLiter !== null ? `${money.format(s.pricePerLiter)} lei` : "fără preț"}`)
+          .join(" + ")}
+      </div>
+    </div>
+  );
+}
+
 const KIND_META = {
   refill: { label: "Adăugat în rezervor", icon: Droplet, box: "bg-blue-50 text-blue-600", amount: "text-blue-600", cost: "text-emerald-600", sign: "+" },
   dispense: { label: "Alimentare vehicul", icon: Truck, box: "bg-orange-50 text-orange-600", amount: "text-orange-600", cost: "text-slate-600", sign: "−" },
   loss: { label: "Pierdere / lipsă", icon: AlertTriangle, box: "bg-red-50 text-red-600", amount: "text-red-600", cost: "text-red-600", sign: "−" },
 } as const;
 
-function EntryRow({ entry, onDelete }: { entry: Entry; onDelete: () => void }) {
+function EntryRow({
+  entry,
+  onDelete,
+  onEditPrice,
+}: {
+  entry: Entry;
+  onDelete: () => void;
+  onEditPrice?: () => void;
+}) {
   const meta = KIND_META[entry.kind];
   const Icon = meta.icon;
   const cost = entry.pricePerLiter ? entry.liters * entry.pricePerLiter : null;
+  // Alimentare care a prins două (sau mai multe) loturi: arată defalcarea.
+  const split = entry.slices && entry.slices.length > 1 ? entry.slices : null;
   const date = new Date(entry.createdAt);
   const dateStr = date.toLocaleString("ro-RO", {
     day: "2-digit",
@@ -335,7 +438,17 @@ function EntryRow({ entry, onDelete }: { entry: Entry; onDelete: () => void }) {
         <div className="mt-0.5 text-[11px] text-slate-400">
           {dateStr}
           {entry.createdByName ? ` · ${entry.createdByName}` : ""} · rămas {fmtL(entry.balanceAfter)}
-          {entry.pricePerLiter ? ` · ${money.format(entry.pricePerLiter)} lei/l` : ""}
+          {!split && entry.pricePerLiter ? ` · ${money.format(entry.pricePerLiter)} lei/l` : ""}
+          {split && ` · ${split.map((s) => `${fmtL(s.liters)} × ${s.pricePerLiter !== null ? money.format(s.pricePerLiter) : "?"}`).join(" + ")} lei/l`}
+          {onEditPrice && (
+            <button
+              type="button"
+              onClick={onEditPrice}
+              className="ml-1.5 inline-flex items-center gap-0.5 rounded px-1 font-medium text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            >
+              <Pencil className="h-3 w-3" /> {entry.pricePerLiter ? "preț" : "adaugă preț"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -395,11 +508,11 @@ function ModalShell({
 const NOTE_CHIPS = ["Autobuz DAVO", "Autocar DAVO", "Mașină personală", "Mașina altcuiva"];
 
 function DispenseModal({
-  lastRefillPrice,
+  lots,
   onClose,
   onSubmit,
 }: {
-  lastRefillPrice: number | null;
+  lots: FifoLot[];
   onClose: () => void;
   onSubmit: (p: Record<string, unknown>) => Promise<boolean>;
 }) {
@@ -409,8 +522,9 @@ function DispenseModal({
   const [saving, setSaving] = useState(false);
 
   const litersNum = Number(liters);
-  const cost =
-    lastRefillPrice && Number.isFinite(litersNum) && litersNum > 0 ? litersNum * lastRefillPrice : null;
+  const stock = lots.reduce((s, l) => s + l.liters, 0);
+  const out = Number.isFinite(litersNum) && litersNum > 0 ? previewOutflow(lots, litersNum) : null;
+  const tooMuch = Number.isFinite(litersNum) && litersNum > stock + 0.001;
 
   async function handle(e: React.FormEvent) {
     e.preventDefault();
@@ -436,19 +550,9 @@ function DispenseModal({
           />
         </Field>
 
-        {cost !== null ? (
-          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cost la {money.format(lastRefillPrice!)} lei/l
-            </span>
-            <span className="text-lg font-bold text-slate-900">{fmtLei(cost)}</span>
-          </div>
-        ) : (
-          !lastRefillPrice && (
-            <p className="text-xs text-slate-400">
-              Adaugă o reumplere cu preț ca să vezi costul alimentării în lei.
-            </p>
-          )
+        {out && <OutflowCost out={out} tone="slate" label="Cost alimentare" />}
+        {tooMuch && (
+          <p className="text-xs font-medium text-red-600">În rezervor sunt doar {fmtL(stock)}.</p>
         )}
 
         <Field label="Număr înmatriculare">
@@ -494,7 +598,7 @@ function DispenseModal({
           <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
             Anulează
           </button>
-          <button type="submit" disabled={saving} className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60">
+          <button type="submit" disabled={saving || tooMuch} className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60">
             {saving ? "Se salvează..." : "Înregistrează alimentarea"}
           </button>
         </div>
@@ -557,10 +661,11 @@ function RefillModal({
             <input
               type="number"
               step="0.01"
-              min="0"
+              min="0.01"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className={inputCls}
+              required
               placeholder="ex. 24,3"
             />
           </Field>
@@ -596,12 +701,12 @@ function RefillModal({
 
 function LossModal({
   tank,
-  lastRefillPrice,
+  lots,
   onClose,
   onSubmit,
 }: {
   tank: Tank | null;
-  lastRefillPrice: number | null;
+  lots: FifoLot[];
   onClose: () => void;
   onSubmit: (p: Record<string, unknown>) => Promise<boolean>;
 }) {
@@ -614,7 +719,7 @@ function LossModal({
 
   const litersNum = Number(liters);
   const valid = Number.isFinite(litersNum) && litersNum > 0 && litersNum <= stock + 0.001;
-  const value = lastRefillPrice && valid ? litersNum * lastRefillPrice : null;
+  const out = valid ? previewOutflow(lots, litersNum) : null;
   const remaining = valid ? Math.max(0, stock - litersNum) : stock;
 
   async function handle(e: React.FormEvent) {
@@ -635,7 +740,7 @@ function LossModal({
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             Marchează motorina lipsă (furt, scurgere, diferență de măsură). Litrii se scad din
-            rezervor și se trec la pierderi, evaluați la prețul ultimului lot.
+            rezervor și se trec la pierderi, evaluați la prețul loturilor din care lipsesc (întâi cel mai vechi).
           </p>
         </div>
 
@@ -660,14 +765,7 @@ function LossModal({
           </button>
         </Field>
 
-        {value !== null && (
-          <div className="flex items-center justify-between rounded-xl bg-red-50 px-4 py-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-red-700">
-              Valoare pierdere la {money.format(lastRefillPrice!)} lei/l
-            </span>
-            <span className="text-lg font-bold text-red-700">{fmtLei(value)}</span>
-          </div>
-        )}
+        {out && <OutflowCost out={out} tone="red" label="Valoare pierdere" />}
 
         <div className="text-xs text-slate-500">
           Stoc după înregistrare: <span className="font-semibold text-slate-700">{fmtL(remaining)}</span>
@@ -692,6 +790,68 @@ function LossModal({
             className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
           >
             {saving ? "Se salvează..." : "Înregistrează pierderea"}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+function PriceModal({
+  entry,
+  onClose,
+  onSave,
+}: {
+  entry: Entry;
+  onClose: () => void;
+  onSave: (pricePerLiter: number) => Promise<boolean>;
+}) {
+  const [price, setPrice] = useState(entry.pricePerLiter ? String(entry.pricePerLiter) : "");
+  const [saving, setSaving] = useState(false);
+  const priceNum = Number(price);
+  const valid = Number.isFinite(priceNum) && priceNum > 0;
+
+  async function handle(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    const ok = await onSave(priceNum);
+    if (!ok) setSaving(false);
+  }
+
+  return (
+    <ModalShell
+      title="Corectează prețul"
+      subtitle={`Adăugarea de ${fmtL(entry.liters)} din ${new Date(entry.createdAt).toLocaleDateString("ro-RO", { day: "2-digit", month: "short" })}`}
+      onClose={onClose}
+    >
+      <form className="grid gap-4 px-5 py-4" onSubmit={handle}>
+        <Field label="Preț per litru (lei)">
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className={inputCls}
+            required
+            autoFocus
+          />
+        </Field>
+        {valid && (
+          <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Total achiziție</span>
+            <span className="text-lg font-bold text-emerald-700">{fmtLei(entry.liters * priceNum)}</span>
+          </div>
+        )}
+        <p className="text-xs text-slate-500">
+          Toate alimentările care au luat motorină din acest lot se recalculează automat la noul preț.
+        </p>
+        <div className="mt-2 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+          <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+            Anulează
+          </button>
+          <button type="submit" disabled={saving || !valid} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+            {saving ? "Se salvează..." : "Salvează prețul"}
           </button>
         </div>
       </form>

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, COOKIE_NAME } from "@/lib/session";
+import { replayFifo, FifoError } from "@/lib/fuelFifo";
+import { TANK_ID, DEFAULT_CAPACITY, LEDGER_TX_OPTIONS, lockTank, loadLedger, syncFuelLedger } from "@/lib/fuelLedger";
 
 export const dynamic = "force-dynamic";
-
-const TANK_ID = "1";
-const DEFAULT_CAPACITY = 9000;
 
 // Numele adminului logat, pentru snapshot pe fiecare operație.
 async function currentAdminName(req: NextRequest): Promise<string | null> {
@@ -19,33 +18,33 @@ async function currentAdminName(req: NextRequest): Promise<string | null> {
   return user?.name ?? null;
 }
 
-// Prețul lotului curent = ultima reumplere cu preț setat. Merge atât cu
-// clientul global cât și cu clientul de tranzacție.
-async function getLastRefillPrice(client: Pick<typeof prisma, "fuelEntry">): Promise<number | null> {
-  const last = await client.fuelEntry.findFirst({
-    where: { kind: "refill", pricePerLiter: { not: null } },
-    orderBy: { createdAt: "desc" },
-    select: { pricePerLiter: true },
-  });
-  return last?.pricePerLiter ?? null;
-}
-
-// Asigură existența singleton-ului rezervorului (idempotent).
-async function ensureTank() {
-  return prisma.fuelTank.upsert({
-    where: { id: TANK_ID },
-    update: {},
-    create: { id: TANK_ID, capacity: DEFAULT_CAPACITY, liters: 0 },
-  });
-}
-
 export async function GET() {
   try {
-    const tank = await ensureTank();
+    const tank = await prisma.fuelTank.upsert({
+      where: { id: TANK_ID },
+      update: {},
+      create: { id: TANK_ID, capacity: DEFAULT_CAPACITY, liters: 0 },
+    });
     const entries = await prisma.fuelEntry.findMany({
       orderBy: { createdAt: "desc" },
       take: 200,
     });
+
+    // Loturile rămase în rezervor (FIFO) + din ce loturi a venit fiecare ieșire.
+    // Doar citire — valorile din DB sunt ținute la zi de syncFuelLedger la fiecare scriere.
+    let lots: ReturnType<typeof replayFifo>["lots"] = [];
+    let slicesById = new Map<string, { liters: number; pricePerLiter: number | null }[]>();
+    try {
+      const fifo = replayFifo(await loadLedger(prisma));
+      lots = fifo.lots;
+      slicesById = new Map(
+        [...fifo.byId].flatMap(([id, r]) =>
+          r.slices ? [[id, r.slices.map((s) => ({ liters: s.liters, pricePerLiter: s.pricePerLiter }))] as const] : []
+        )
+      );
+    } catch (err) {
+      console.error("admin/fuel GET replay", err);
+    }
 
     // Sumar pentru luna curentă.
     const startOfMonth = new Date();
@@ -69,11 +68,7 @@ export async function GET() {
     });
     const totalSpent = pricedRefills.reduce((s, e) => s + e.liters * (e.pricePerLiter ?? 0), 0);
 
-    // Prețul lotului curent = prețul ultimei reumpleri cu preț setat. Folosit
-    // pentru a evalua în lei alimentările și pierderile.
-    const lastRefillPrice = await getLastRefillPrice(prisma);
-
-    // Total pierdut (furt/lipsă) evaluat la prețul de la momentul înregistrării.
+    // Total pierdut (furt/lipsă), evaluat FIFO din loturile din care a ieșit.
     const losses = await prisma.fuelEntry.findMany({
       where: { kind: "loss" },
       select: { liters: true, pricePerLiter: true },
@@ -81,11 +76,14 @@ export async function GET() {
     const lostLiters = losses.reduce((s, e) => s + e.liters, 0);
     const lostValue = losses.reduce((s, e) => s + e.liters * (e.pricePerLiter ?? 0), 0);
 
+    // Valoarea motorinei rămase în rezervor (loturile cu preț).
+    const stockValue = lots.reduce((s, l) => s + l.liters * (l.pricePerLiter ?? 0), 0);
+
     return NextResponse.json({
       success: true,
       tank: { capacity: tank.capacity, liters: tank.liters },
-      entries,
-      lastRefillPrice,
+      entries: entries.map((e) => ({ ...e, slices: slicesById.get(e.id) ?? null })),
+      lots,
       stats: {
         dispensedThisMonth,
         refilledThisMonth,
@@ -93,6 +91,7 @@ export async function GET() {
         totalSpent: round(totalSpent),
         lostLiters: round(lostLiters),
         lostValue: round(lostValue),
+        stockValue: round(stockValue),
       },
     });
   } catch (error) {
@@ -106,7 +105,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const kind: "refill" | "dispense" | "loss" =
       body?.kind === "refill" ? "refill" : body?.kind === "loss" ? "loss" : "dispense";
-    const liters = Number(body?.liters);
+    const liters = round(Number(body?.liters));
     const priceRaw = Number(body?.pricePerLiter);
     const pricePerLiter = Number.isFinite(priceRaw) && priceRaw > 0 ? round(priceRaw) : null;
     const plate = typeof body?.plate === "string" ? body.plate.trim() : "";
@@ -115,58 +114,53 @@ export async function POST(req: NextRequest) {
     if (!Number.isFinite(liters) || liters <= 0) {
       return NextResponse.json({ success: false, error: "Numărul de litri trebuie să fie mai mare ca 0." }, { status: 400 });
     }
+    // Fără prețul lotului, alimentările din el nu pot fi evaluate FIFO.
+    if (kind === "refill" && pricePerLiter === null) {
+      return NextResponse.json({ success: false, error: "Introdu prețul per litru al motorinei adăugate." }, { status: 400 });
+    }
 
     const createdByName = await currentAdminName(req);
 
     const result = await prisma.$transaction(async (tx) => {
-      const tank = await tx.fuelTank.upsert({
-        where: { id: TANK_ID },
-        update: {},
-        create: { id: TANK_ID, capacity: DEFAULT_CAPACITY, liters: 0 },
-      });
-
-      let nextLiters: number;
-      // Prețul de referință pentru evaluarea în lei a alimentărilor/pierderilor.
-      const refPrice = kind === "refill" ? pricePerLiter : await getLastRefillPrice(tx);
+      const tank = await lockTank(tx);
+      const ledger = await loadLedger(tx);
+      const current = replayFifo(ledger).balance;
 
       if (kind === "refill") {
-        nextLiters = tank.liters + liters;
-        if (nextLiters > tank.capacity + 0.001) {
-          throw new Error(
-            `Depășește capacitatea rezervorului (${tank.capacity} l). Stoc curent: ${round(tank.liters)} l, spațiu liber: ${round(tank.capacity - tank.liters)} l.`
+        if (current + liters > tank.capacity + 0.001) {
+          throw new FifoError(
+            `Depășește capacitatea rezervorului (${tank.capacity} l). Stoc curent: ${round(current)} l, spațiu liber: ${round(tank.capacity - current)} l.`
           );
         }
-      } else {
+      } else if (liters > current + 0.001) {
         // dispense (alimentare vehicul) și loss (pierdere/lipsă) scad din stoc.
-        if (liters > tank.liters + 0.001) {
-          throw new Error(
-            `Stoc insuficient. În rezervor sunt ${round(tank.liters)} l, ai cerut ${round(liters)} l.`
-          );
-        }
-        nextLiters = tank.liters - liters;
+        throw new FifoError(`Stoc insuficient. În rezervor sunt ${round(current)} l, ai cerut ${round(liters)} l.`);
       }
-      nextLiters = round(nextLiters);
 
-      const entry = await tx.fuelEntry.create({
+      // Operația nouă e mereu ultima în istoric, chiar dacă ceasul serverului
+      // ar fi cu câteva ms în urma celei precedente.
+      const last = ledger[ledger.length - 1];
+      const now = new Date();
+      const createdAt = last && last.createdAt >= now ? new Date(last.createdAt.getTime() + 1) : now;
+
+      const created = await tx.fuelEntry.create({
         data: {
           kind,
-          liters: round(liters),
-          // refill: prețul de achiziție; dispense/loss: prețul lotului curent (snapshot).
-          pricePerLiter: refPrice,
+          liters,
+          // refill: prețul de achiziție; dispense/loss: completat FIFO de syncFuelLedger.
+          pricePerLiter: kind === "refill" ? pricePerLiter : null,
           plate: kind === "dispense" ? plate || null : null,
           notes: notes || null,
-          balanceAfter: nextLiters,
+          balanceAfter: 0,
           createdByName,
+          createdAt,
         },
       });
 
-      await tx.fuelTank.update({
-        where: { id: TANK_ID },
-        data: { liters: nextLiters },
-      });
-
-      return { entry, liters: nextLiters, capacity: tank.capacity };
-    });
+      const fifo = await syncFuelLedger(tx);
+      const entry = await tx.fuelEntry.findUniqueOrThrow({ where: { id: created.id } });
+      return { entry, liters: fifo.balance, capacity: tank.capacity };
+    }, LEDGER_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,
@@ -174,7 +168,7 @@ export async function POST(req: NextRequest) {
       tank: { capacity: result.capacity, liters: result.liters },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Eroare la înregistrare";
+    const message = error instanceof FifoError ? error.message : "Eroare la înregistrare";
     console.error("admin/fuel POST", error);
     return NextResponse.json({ success: false, error: message }, { status: 400 });
   }
