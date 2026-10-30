@@ -503,3 +503,11 @@ model Invoice {
   @@index([type, issueDate])
   @@index([sourceProformaId])
 }
+
+// Numerele de înmatriculare care se alimentează din rezervor (pagina „Rezervor motorină”):
+// Adrian le adaugă / șterge din admin. Era o listă fixă în cod până la 30.10.2026.
+model FuelPlate {
+  id        String   @id @default(uuid())
+  plate     String   @unique
+  createdAt DateTime @default(now())
+}

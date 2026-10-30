@@ -15,8 +15,11 @@ import {
   Pencil,
   Layers,
   X,
+  UserPlus,
+  Hash,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
+import { canAccessUI, normalizeRole } from "@/lib/permissions";
 import StatCard from "@/components/admin/StatCard";
 import { previewOutflow, type FifoLot, type FifoOutflow } from "@/lib/fuelFifo";
 
@@ -51,26 +54,7 @@ const fmtL = (n: number) => `${nf.format(n)} l`;
 const money = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 2 });
 const fmtLei = (n: number) => `${money.format(n)} lei`;
 
-// Numerele de înmatriculare ale vehiculelor care se alimentează din rezervor.
-// Lista fixă (fără duplicate). Adaugă/scoate aici dacă se schimbă flota.
-const PLATES = [
-  "QQS 979",
-  "OKK 525",
-  "TUR 999",
-  "LOK 889",
-  "VXU 828",
-  "LCX 593",
-  "ZNQ 874",
-  "NVP 821",
-  "DAV 077",
-  "DAW 077",
-  "INS 840",
-  "MIY 525",
-  "DAW 777",
-  "NUX 023",
-  "BMB 993",
-  "AVD 092",
-];
+// Numerele de înmatriculare vin din baza de date (FuelPlate), editabile cu butonul „Numere”.
 
 export default function FuelPage() {
   const [tank, setTank] = useState<Tank | null>(null);
@@ -78,7 +62,29 @@ export default function FuelPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [lots, setLots] = useState<FifoLot[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<null | "refill" | "dispense" | "loss">(null);
+  const [modal, setModal] = useState<null | "refill" | "dispense" | "loss" | "plates" | "account">(null);
+  const [plates, setPlates] = useState<Plate[]>([]);
+  // „Cont rezervor” doar pentru cine poate crea conturi (secțiunea Conturi & Acces).
+  const [canManageAccounts, setCanManageAccounts] = useState(false);
+
+  async function loadPlates() {
+    const res = await fetch("/api/admin/fuel/plates");
+    const data = await res.json().catch(() => null);
+    if (data?.success) setPlates(data.plates);
+  }
+
+  useEffect(() => {
+    fetch("/api/admin/fuel/plates")
+      .then((r) => r.json())
+      .then((d) => d?.success && setPlates(d.plates))
+      .catch(() => {});
+    fetch("/api/admin/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.success) setCanManageAccounts(canAccessUI(normalizeRole(d.user.role), "/admin/conturi", d.user.permissions ?? []));
+      })
+      .catch(() => {});
+  }, []);
   const [editing, setEditing] = useState<Entry | null>(null);
 
   async function load() {
@@ -155,6 +161,20 @@ export default function FuelPage() {
         subtitle="Gestionează stocul de motorină și alimentările vehiculelor"
         actions={
           <div className="flex flex-wrap gap-2">
+            {canManageAccounts && (
+              <button
+                onClick={() => setModal("account")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                <UserPlus className="h-3.5 w-3.5 text-slate-500" /> Cont rezervor
+              </button>
+            )}
+            <button
+              onClick={() => setModal("plates")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              <Hash className="h-3.5 w-3.5 text-slate-500" /> Numere
+            </button>
             <button
               onClick={() => setModal("loss")}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-red-50 hover:text-red-600"
@@ -266,8 +286,10 @@ export default function FuelPage() {
       )}
 
       {modal === "dispense" && (
-        <DispenseModal lots={lots} onClose={() => setModal(null)} onSubmit={submit} />
+        <DispenseModal lots={lots} plates={plates.map((x) => x.plate)} onClose={() => setModal(null)} onSubmit={submit} />
       )}
+      {modal === "plates" && <PlatesModal plates={plates} onChanged={loadPlates} onClose={() => setModal(null)} />}
+      {modal === "account" && <FuelAccountModal onClose={() => setModal(null)} />}
       {modal === "refill" && (
         <RefillModal tank={tank} onClose={() => setModal(null)} onSubmit={submit} />
       )}
@@ -509,10 +531,12 @@ const NOTE_CHIPS = ["Autobuz DAVO", "Autocar DAVO", "Mașină personală", "Maș
 
 function DispenseModal({
   lots,
+  plates,
   onClose,
   onSubmit,
 }: {
   lots: FifoLot[];
+  plates: string[];
   onClose: () => void;
   onSubmit: (p: Record<string, unknown>) => Promise<boolean>;
 }) {
@@ -565,7 +589,7 @@ function DispenseModal({
             <option value="" disabled>
               Alege numărul...
             </option>
-            {PLATES.map((p) => (
+            {plates.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>
@@ -870,3 +894,124 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const inputCls =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-200";
+
+type Plate = { id: string; plate: string };
+
+// Lista numerelor care se alimentează din rezervor: adaugă / șterge. Alimentările vechi își păstrează numărul.
+function PlatesModal({ plates, onChanged, onClose }: { plates: Plate[]; onChanged: () => void; onClose: () => void }) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/admin/fuel/plates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plate: value }),
+    });
+    const data = await res.json().catch(() => null);
+    setBusy(false);
+    if (!data?.success) return setError(data?.error ?? "Nu am putut adăuga");
+    setValue("");
+    onChanged();
+  }
+
+  async function remove(p: Plate) {
+    if (!confirm(`Scoți ${p.plate} din listă? Alimentările vechi rămân cu numărul lor.`)) return;
+    const res = await fetch(`/api/admin/fuel/plates/${p.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
+    if (!data?.success) return alert(data?.error ?? "Nu am putut șterge");
+    onChanged();
+  }
+
+  return (
+    <ModalShell title="Numere de înmatriculare" subtitle="Vehiculele care se alimentează din rezervor" onClose={onClose}>
+      <div className="space-y-4 px-5 py-4">
+        <form onSubmit={add} className="flex gap-2">
+          <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="ex. DAW 077" className={inputCls} />
+          <button
+            type="submit"
+            disabled={busy || !value.trim()}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          >
+            <Plus className="h-3.5 w-3.5" /> Adaugă
+          </button>
+        </form>
+        {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+        <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
+          {plates.map((p) => (
+            <li key={p.id} className="flex items-center justify-between px-3 py-2">
+              <span className="font-mono text-sm font-semibold text-slate-800">{p.plate}</span>
+              <button onClick={() => remove(p)} aria-label={`Șterge ${p.plate}`} className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+          {!plates.length && <li className="px-3 py-4 text-center text-xs text-slate-400">Niciun număr încă.</li>}
+        </ul>
+      </div>
+    </ModalShell>
+  );
+}
+
+// Un cont nou care vede DOAR rezervorul (rol admin2 + permisiunea „fuel”), creat prin API-ul din „Conturi & Acces”.
+function FuelAccountModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/admin/accounts/davo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, role: "admin2", permissions: ["fuel"] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBusy(false);
+    if (!data?.success) return setError(data?.error ?? "Nu am putut crea contul");
+    setDone(form.email.trim().toLowerCase());
+  }
+
+  return (
+    <ModalShell title="Cont nou pentru rezervor" subtitle="Vede doar pagina „Rezervor motorină”" onClose={onClose}>
+      {done ? (
+        <div className="space-y-3 px-5 py-4 text-sm text-slate-700">
+          <p>
+            Contul <b>{done}</b> e creat. Intră pe <b>davo.md/login</b> cu emailul și parola date și vede doar rezervorul.
+          </p>
+          <p className="text-xs text-slate-500">Îl poți dezactiva sau schimba din „Conturi &amp; Acces”.</p>
+          <button onClick={onClose} className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+            Gata
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={create} className="space-y-3 px-5 py-4">
+          <Field label="Nume">
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputCls} required placeholder="ex. Ion Șofer" />
+          </Field>
+          <Field label="Email (pentru login)">
+            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputCls} required autoComplete="off" />
+          </Field>
+          <Field label="Parolă (minim 8 caractere)">
+            <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inputCls} required minLength={8} autoComplete="new-password" />
+          </Field>
+          {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          >
+            <UserPlus className="h-3.5 w-3.5" /> Creează contul
+          </button>
+        </form>
+      )}
+    </ModalShell>
+  );
+}
