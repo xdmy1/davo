@@ -791,7 +791,7 @@ export const ro = {
 
   // /politica-de-confidentialitate
   privacyPage: {
-    metaTitle: "Politica de confidențialitate | DAVO Group",
+    metaTitle: "Politica de confidențialitate",
     metaDescription:
       "Cum prelucrează DAVO GROUP S.R.L. datele personale ale pasagerilor, expeditorilor și destinatarilor: ce date, în ce scop, cui le transmitem, cât le păstrăm și ce drepturi aveți.",
     eyebrow: "Protecția datelor",
