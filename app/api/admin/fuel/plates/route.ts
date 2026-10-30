@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fuelAccess } from "@/lib/fuelAccess";
 import { prisma } from "@/lib/prisma";
 import { normalizePlate } from "@/lib/fuelPlates";
 
@@ -11,6 +12,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // Ștergeri, prețuri și numere: doar cu rezervorul complet (nu „doar alimentare”).
+  if ((await fuelAccess(req)) !== "full") {
+    return NextResponse.json({ success: false, error: "Doar cine administrează rezervorul poate face asta" }, { status: 403 });
+  }
   const body = (await req.json().catch(() => ({}))) as { plate?: unknown };
   const plate = normalizePlate(body.plate);
   if (!plate) return NextResponse.json({ success: false, error: "Scrie numărul de înmatriculare (ex. DAW 077)" }, { status: 400 });

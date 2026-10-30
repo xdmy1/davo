@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fuelAccess } from "@/lib/fuelAccess";
 import { prisma } from "@/lib/prisma";
 import { FifoError } from "@/lib/fuelFifo";
 import { LEDGER_TX_OPTIONS, lockTank, syncFuelLedger } from "@/lib/fuelLedger";
@@ -17,7 +18,11 @@ function userMessage(error: unknown, fallback: string): string {
 // Șterge o operație (corectare greșeli). Stocul, soldurile și costul FIFO al
 // tuturor operațiilor de după se recalculează din istoric. O reumplere a cărei
 // motorină a fost deja alimentată nu poate fi ștearsă (stocul ar deveni negativ).
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Ștergeri, prețuri și numere: doar cu rezervorul complet (nu „doar alimentare”).
+  if ((await fuelAccess(req)) !== "full") {
+    return NextResponse.json({ success: false, error: "Doar cine administrează rezervorul poate face asta" }, { status: 403 });
+  }
   try {
     const { id } = await params;
 
@@ -50,6 +55,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 // Corectează prețul per litru al unei reumpleri. Toate alimentările care au
 // consumat din lotul respectiv își recalculează costul (FIFO).
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Ștergeri, prețuri și numere: doar cu rezervorul complet (nu „doar alimentare”).
+  if ((await fuelAccess(req)) !== "full") {
+    return NextResponse.json({ success: false, error: "Doar cine administrează rezervorul poate face asta" }, { status: 403 });
+  }
   try {
     const { id } = await params;
     const body = await req.json();

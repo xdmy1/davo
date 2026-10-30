@@ -19,6 +19,9 @@ export type AdminSection = {
   ui: string[]; // prefixe de path UI
   api: string[]; // prefixe de path API deținute de secțiune
   apiDeps?: string[]; // prefixe API permise DOAR pe GET (lookup-uri de care depind formularele)
+  // Deschide paginile/API-urile altei secțiuni, cu drepturi restrânse aplicate de rutele ei
+  // (ex. „fuel_take”: rezervorul, dar doar alimentare — lib/fuelAccess.ts).
+  opens?: string[];
 };
 
 /**
@@ -134,6 +137,16 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     api: ["/api/admin/fuel"],
   },
   {
+    // Doar alimentare: vede rezervorul și alimentează orice mașină din listă; nu adaugă în rezervor,
+    // nu trece pierderi, nu șterge și nu schimbă prețuri sau numere (Damian, 30.10.2026).
+    key: "fuel_take",
+    label: "Rezervor — doar alimentare",
+    group: "Configurare",
+    ui: [],
+    api: [],
+    opens: ["fuel"],
+  },
+  {
     key: "emails",
     label: "Emailuri",
     group: "Comunicare",
@@ -208,6 +221,13 @@ export function effectivePermissions(role: Role, permissions?: string[] | null):
   return ROLE_PRESETS[role];
 }
 
+/** Cheile care deschid pagini: cele efective plus ce deschid ele (`opens`). */
+export function accessKeys(role: Role, permissions?: string[] | null): string[] {
+  const allowed = effectivePermissions(role, permissions);
+  const extra = ADMIN_SECTIONS.filter((s) => allowed.includes(s.key)).flatMap((s) => s.opens ?? []);
+  return [...new Set([...allowed, ...extra])];
+}
+
 /** Secțiunea căreia îi aparține un path de UI (prefixul cel mai lung). */
 export function sectionForUIPath(pathname: string): AdminSection | null {
   return longestMatch(pathname, (s) => s.ui);
@@ -220,7 +240,7 @@ export function canAccessUI(
 ): boolean {
   const section = sectionForUIPath(pathname);
   if (!section) return false; // path necunoscut → refuz implicit
-  return effectivePermissions(role, permissions).includes(section.key);
+  return accessKeys(role, permissions).includes(section.key);
 }
 
 export function canAccessAPI(
@@ -231,7 +251,7 @@ export function canAccessAPI(
 ): boolean {
   if (ALWAYS_ALLOWED_API.some((p) => prefixMatches(pathname, p))) return true;
 
-  const allowed = effectivePermissions(role, permissions);
+  const allowed = accessKeys(role, permissions);
 
   // Întâi API-urile deținute de secțiuni (orice metodă), apoi dependențele —
   // separat, fiindcă dependențele sunt permise doar pe citire.
@@ -257,7 +277,7 @@ export function canAccessAPI(
  * deci un path fără acces ar produce bucle de redirect.
  */
 export function homePathForRole(role: Role, permissions?: string[] | null): string {
-  const allowed = effectivePermissions(role, permissions);
+  const allowed = accessKeys(role, permissions);
 
   for (const section of ADMIN_SECTIONS) {
     if (!allowed.includes(section.key)) continue;
@@ -268,3 +288,13 @@ export function homePathForRole(role: Role, permissions?: string[] | null): stri
   // Niciun acces (permisiuni invalide) → login, nu /admin: altfel ar cicla.
   return "/login";
 }
+
+export type FuelAccess = "full" | "take" | null;
+
+export function fuelAccessOf(role: string | null | undefined, permissions: string[] | null | undefined): FuelAccess {
+  const keys = effectivePermissions(normalizeRole(role), permissions);
+  if (keys.includes("fuel")) return "full";
+  if (keys.includes("fuel_take")) return "take";
+  return null;
+}
+

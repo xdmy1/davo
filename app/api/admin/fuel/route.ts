@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { fuelAccess } from "@/lib/fuelAccess";
 import { verifyToken, COOKIE_NAME } from "@/lib/session";
 import { replayFifo, FifoError } from "@/lib/fuelFifo";
 import { TANK_ID, DEFAULT_CAPACITY, LEDGER_TX_OPTIONS, lockTank, loadLedger, syncFuelLedger } from "@/lib/fuelLedger";
@@ -102,9 +103,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const access = await fuelAccess(req);
+    if (!access) return NextResponse.json({ success: false, error: "Fără acces la rezervor" }, { status: 403 });
     const body = await req.json();
     const kind: "refill" | "dispense" | "loss" =
       body?.kind === "refill" ? "refill" : body?.kind === "loss" ? "loss" : "dispense";
+    // Contul „doar alimentare” poate doar să ia motorină.
+    if (access === "take" && kind !== "dispense") {
+      return NextResponse.json({ success: false, error: "Contul tău poate doar alimenta vehicule" }, { status: 403 });
+    }
     const liters = round(Number(body?.liters));
     const priceRaw = Number(body?.pricePerLiter);
     const pricePerLiter = Number.isFinite(priceRaw) && priceRaw > 0 ? round(priceRaw) : null;

@@ -19,7 +19,7 @@ import {
   Hash,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
-import { canAccessUI, normalizeRole } from "@/lib/permissions";
+import { canAccessUI, fuelAccessOf, normalizeRole } from "@/lib/permissions";
 import StatCard from "@/components/admin/StatCard";
 import { previewOutflow, type FifoLot, type FifoOutflow } from "@/lib/fuelFifo";
 
@@ -66,6 +66,8 @@ export default function FuelPage() {
   const [plates, setPlates] = useState<Plate[]>([]);
   // „Cont rezervor” doar pentru cine poate crea conturi (secțiunea Conturi & Acces).
   const [canManageAccounts, setCanManageAccounts] = useState(false);
+  // Contul „doar alimentare” (fuel_take): doar „Alimentează vehicul”, fără ștergeri sau prețuri.
+  const [takeOnly, setTakeOnly] = useState(false);
 
   async function loadPlates() {
     const res = await fetch("/api/admin/fuel/plates");
@@ -81,7 +83,9 @@ export default function FuelPage() {
     fetch("/api/admin/me")
       .then((r) => r.json())
       .then((d) => {
-        if (d?.success) setCanManageAccounts(canAccessUI(normalizeRole(d.user.role), "/admin/conturi", d.user.permissions ?? []));
+        if (!d?.success) return;
+        setCanManageAccounts(canAccessUI(normalizeRole(d.user.role), "/admin/conturi", d.user.permissions ?? []));
+        setTakeOnly(fuelAccessOf(d.user.role, d.user.permissions) === "take");
       })
       .catch(() => {});
   }, []);
@@ -169,6 +173,8 @@ export default function FuelPage() {
                 <UserPlus className="h-3.5 w-3.5 text-slate-500" /> Cont rezervor
               </button>
             )}
+            {!takeOnly && (
+            <>
             <button
               onClick={() => setModal("plates")}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -187,6 +193,8 @@ export default function FuelPage() {
             >
               <Droplet className="h-3.5 w-3.5 text-blue-500" /> Adaugă în rezervor
             </button>
+            </>
+            )}
             <button
               onClick={() => setModal("dispense")}
               className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600"
@@ -275,8 +283,8 @@ export default function FuelPage() {
                   <EntryRow
                     key={e.id}
                     entry={e}
-                    onDelete={() => remove(e)}
-                    onEditPrice={e.kind === "refill" ? () => setEditing(e) : undefined}
+                    onDelete={takeOnly ? undefined : () => remove(e)}
+                    onEditPrice={!takeOnly && e.kind === "refill" ? () => setEditing(e) : undefined}
                   />
                 ))}
               </ul>
@@ -425,7 +433,7 @@ function EntryRow({
   onEditPrice,
 }: {
   entry: Entry;
-  onDelete: () => void;
+  onDelete?: () => void;
   onEditPrice?: () => void;
 }) {
   const meta = KIND_META[entry.kind];
@@ -487,13 +495,15 @@ function EntryRow({
         )}
       </div>
 
-      <button
-        onClick={onDelete}
-        aria-label="Șterge"
-        className="shrink-0 rounded-md p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          aria-label="Șterge"
+          className="shrink-0 rounded-md p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
     </li>
   );
 }
@@ -957,9 +967,11 @@ function PlatesModal({ plates, onChanged, onClose }: { plates: Plate[]; onChange
   );
 }
 
-// Un cont nou care vede DOAR rezervorul (rol admin2 + permisiunea „fuel”), creat prin API-ul din „Conturi & Acces”.
+// Un cont nou care vede DOAR rezervorul (rol admin2), creat prin API-ul din „Conturi & Acces”:
+// „doar alimentare” (fuel_take) implicit, sau tot rezervorul (fuel).
 function FuelAccountModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [scope, setScope] = useState<"fuel_take" | "fuel">("fuel_take");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -971,7 +983,7 @@ function FuelAccountModal({ onClose }: { onClose: () => void }) {
     const res = await fetch("/api/admin/accounts/davo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, role: "admin2", permissions: ["fuel"] }),
+      body: JSON.stringify({ ...form, role: "admin2", permissions: [scope] }),
     });
     const data = await res.json().catch(() => null);
     setBusy(false);
@@ -1001,6 +1013,12 @@ function FuelAccountModal({ onClose }: { onClose: () => void }) {
           </Field>
           <Field label="Parolă (minim 8 caractere)">
             <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inputCls} required minLength={8} autoComplete="new-password" />
+          </Field>
+          <Field label="Ce poate face">
+            <select value={scope} onChange={(e) => setScope(e.target.value as "fuel_take" | "fuel")} className={inputCls}>
+              <option value="fuel_take">Doar alimentare (ia motorină pentru orice mașină)</option>
+              <option value="fuel">Tot rezervorul (adăugări, pierderi, ștergeri, numere)</option>
+            </select>
           </Field>
           {error && <p className="text-xs font-medium text-red-600">{error}</p>}
           <button
