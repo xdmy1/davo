@@ -438,3 +438,68 @@ model MaintenanceLog {
 
   @@index([itemId])
 }
+
+// ===== Proforme și facturi (admin → Facturi) =====
+// Seriile sunt separate pe tip (proforma DAV25xxx, invoice DAV26xxx), dar
+// numărul e unic global. Datele contului bancar sunt copiate pe document la
+// emitere, ca editarea lui lib/invoiceBanks.ts să nu rescrie facturile vechi.
+
+enum InvoiceType {
+  proforma
+  invoice
+}
+
+enum InvoiceStatus {
+  draft
+  issued
+  paid
+  cancelled
+}
+
+model Invoice {
+  id     String        @id @default(uuid())
+  type   InvoiceType
+  number String        @unique
+  status InvoiceStatus @default(draft)
+
+  issueDate DateTime  @db.Date
+  dueDate   DateTime? @db.Date
+  poNumber  String?
+  currency  String
+
+  // Snapshot cont bancar
+  bankAccountId     String
+  bankAccountName   String
+  bankAccountNumber String
+  bankIban          String
+  bankSwift         String
+  bankName          String
+
+  clientName     String
+  clientAddress  String  @default("")
+  clientCity     String?
+  clientCountry  String?
+  clientPostcode String?
+  clientVat      String?
+  clientEmail    String?
+
+  /// [{ description, taxRate, quantity, rate }]
+  items            Json
+  showTotalInWords Boolean @default(false)
+  notes            String?
+
+  /// null + status paid = achitat integral
+  amountPaid Float?
+  paidAt     DateTime? @db.Date
+
+  // Factura creată dintr-o proformă („Convertește în factură").
+  sourceProformaId String?
+  sourceProforma   Invoice?  @relation("ProformaToInvoice", fields: [sourceProformaId], references: [id], onDelete: SetNull)
+  invoices         Invoice[] @relation("ProformaToInvoice")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, issueDate])
+  @@index([sourceProformaId])
+}

@@ -55,6 +55,13 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     api: ["/api/admin/furnizori"],
   },
   {
+    key: "invoices",
+    label: "Facturi",
+    group: "Operare",
+    ui: ["/admin/facturi"],
+    api: ["/api/admin/invoices"],
+  },
+  {
     key: "seats",
     label: "Schemă autocar",
     group: "Operare",

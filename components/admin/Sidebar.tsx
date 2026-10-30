@@ -23,6 +23,7 @@ import {
   Briefcase,
   Clock,
   MapPinned,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessUI, normalizeRole, type Role } from "@/lib/permissions";
@@ -41,6 +42,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { label: "Rezervări", href: "/admin/bookings", icon: Ticket },
       { label: "Furnizori", href: "/admin/furnizori", icon: Briefcase },
+      { label: "Facturi", href: "/admin/facturi", icon: FileText },
       { label: "Schemă autocar", href: "/admin/seats", icon: Armchair },
       { label: "Curse", href: "/admin/trips", icon: CalendarClock },
       { label: "Mașini GPS", href: "/admin/vehicles", icon: MapPin },
