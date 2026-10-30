@@ -238,6 +238,7 @@ export default function Footer() {
                 <FooterLink href={lp("/harta-site")}>{t.footer.links.sitemap}</FooterLink>
                 <FooterLink href={lp("/termeni-pasageri")}>{t.footer.links.tcPassengers}</FooterLink>
                 <FooterLink href={lp("/termeni-colete")}>{t.footer.links.tcParcels}</FooterLink>
+                <FooterLink href={lp("/politica-de-confidentialitate")}>{t.footer.links.privacy}</FooterLink>
               </FooterColumn>
             </Reveal>
           </div>

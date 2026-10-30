@@ -32,6 +32,7 @@ const STATIC_ROUTES: { path: string; priority: number; changefreq: ChangeFreq }[
   { path: "/rechizitele-bancare", priority: 0.3, changefreq: "yearly" },
   { path: "/termeni-pasageri", priority: 0.3, changefreq: "yearly" },
   { path: "/termeni-colete", priority: 0.3, changefreq: "yearly" },
+  { path: "/politica-de-confidentialitate", priority: 0.3, changefreq: "yearly" },
 ];
 
 function escapeXml(s: string): string {

@@ -282,6 +282,7 @@ export const ro = {
       sitemap: "Harta site",
       tcPassengers: "T&C pasageri",
       tcParcels: "T&C colete",
+      privacy: "Confidențialitate",
     },
     transportMoldovaTo: (country: string) => `Transport Moldova - ${country}`,
     developedBy: "developed by",
@@ -630,6 +631,7 @@ export const ro = {
       { href: "/rechizitele-bancare", label: "Rechizite bancare" },
       { href: "/termeni-pasageri", label: "Termeni & Condiții pasageri" },
       { href: "/termeni-colete", label: "Termeni & Condiții colete" },
+      { href: "/politica-de-confidentialitate", label: "Politica de confidențialitate" },
     ],
   },
 
@@ -783,6 +785,87 @@ export const ro = {
         "Program punct de colectare: marți 09:00–14:00 · miercuri 08:00–20:00 · joi 08:00–12:00",
         "Telefon: +373 68 065 699 · +373 76 041 855",
         "Email: info@davo.md",
+      ] },
+    ],
+  },
+
+  // /politica-de-confidentialitate
+  privacyPage: {
+    metaTitle: "Politica de confidențialitate | DAVO Group",
+    metaDescription:
+      "Cum prelucrează DAVO GROUP S.R.L. datele personale ale pasagerilor, expeditorilor și destinatarilor: ce date, în ce scop, cui le transmitem, cât le păstrăm și ce drepturi aveți.",
+    eyebrow: "Protecția datelor",
+    title: "Politica de confidențialitate",
+    description:
+      "Ce date personale colectăm când rezervați o călătorie, trimiteți un colet sau ne scrieți, de ce le folosim și cum vă puteți exercita drepturile.",
+    lastUpdated: "Ultima actualizare:",
+    sections: [
+      { title: "1. Cine suntem", body: [
+        "Operatorul datelor cu caracter personal este DAVO GROUP S.R.L., IDNO 1013600041329, cu sediul în Calea Ieșilor 11/3, mun. Chișinău, MD-2069, Republica Moldova.",
+        "Prestăm servicii de transport de pasageri cu autocarul și de transport colete între Republica Moldova și Marea Britanie, Belgia, Țările de Jos, Germania și Luxemburg.",
+        "Contact: info@davo.md · +373 680 65 699.",
+        "Prelucrăm datele conform Legii nr. 133/2011 privind protecția datelor cu caracter personal și, acolo unde se aplică, conform Regulamentului (UE) 2016/679 (GDPR).",
+      ] },
+      { title: "2. Ce date prelucrăm", body: [
+        "Rezervări de călătorie: nume și prenume, telefon, email, ruta și data cursei, locurile alese, orașele de îmbarcare și coborâre, statutul plății, observațiile pe care ni le lăsați și, când e necesar pentru transportul internațional, datele actului de identitate (de exemplu seria pașaportului).",
+        "Colete: numele și telefoanele expeditorului și destinatarului, adresele de colectare și de livrare, descrierea conținutului, greutatea, prețul și statutul plății, precum și fotografii ale coletului făcute la preluare sau livrare.",
+        "Mesaje: conținutul conversațiilor cu noi pe WhatsApp, Viber, Telegram, SMS, email sau telefon, împreună cu numărul de telefon, numele de profil și data mesajelor.",
+        "Site: Google Analytics (Google LLC) folosește cookie-uri pentru a număra vizitele și paginile vizitate; Plausible Analytics măsoară vizitele fără cookie-uri. Serverul păstrează temporar jurnale tehnice (adresa IP, browserul, paginile accesate) pentru securitate. Coșul din pagina „Colet la cheie” se păstrează doar în browserul dumneavoastră.",
+      ] },
+      { title: "3. De ce folosim datele", body: [
+        "Pentru a înregistra și confirma rezervările, a emite biletele și a organiza îmbarcarea.",
+        "Pentru a efectua transportul pasagerilor și pentru a colecta, transporta și livra coletele.",
+        "Pentru a comunica cu dumneavoastră: confirmări, schimbări de orar, anunțuri de livrare și răspunsuri la întrebări, inclusiv prin mesaje WhatsApp Business și răspunsuri automate.",
+        "Pentru a ține evidența contabilă, a emite facturi și a respecta obligațiile legale (fiscale, vamale, de transport).",
+        "Pentru a înțelege cum este folosit site-ul și a-l îmbunătăți, precum și pentru a-l proteja de abuzuri.",
+      ] },
+      { title: "4. Temeiul legal", body: [
+        "Executarea contractului de transport sau pașii pe care îi faceți înainte de a-l încheia (rezervare, cerere de preț).",
+        "Obligații legale: contabilitate, cerințe fiscale, vamale și de transport.",
+        "Interesul nostru legitim: comunicarea despre serviciile pe care le-ați solicitat, securitatea site-ului și a sistemelor, apărarea în caz de litigii.",
+        "Consimțământul dumneavoastră: pentru cookie-urile de analiză și pentru mesajele pe care nu le-ați cerut direct. Puteți retrage consimțământul oricând.",
+      ] },
+      { title: "5. Cui transmitem datele", body: [
+        "Șoferilor și partenerilor de transport și livrare, doar în măsura necesară pentru îmbarcare sau pentru livrarea coletului (de exemplu numele și telefonul destinatarului, adresa de livrare).",
+        "Furnizorilor de servicii IT care lucrează în numele nostru: găzduirea site-ului și a bazelor de date pe servere din Uniunea Europeană (Germania), trimiterea emailurilor, trimiterea SMS-urilor și analiza traficului pe site.",
+        "Băncilor și furnizorilor de plăți, când achitați prin card sau transfer bancar.",
+        "Meta Platforms (WhatsApp), Viber și Telegram, când comunicăm prin aceste aplicații. Ele prelucrează datele și conform propriilor politici de confidențialitate.",
+        "Autorităților publice (de exemplu vamă, poliție de frontieră, organe fiscale), doar când legea o cere.",
+        "Nu vindem datele personale.",
+      ] },
+      { title: "6. Transferuri în alte țări", body: [
+        "Datele pot ajunge în țările pe ruta transportului (Marea Britanie, Belgia, Țările de Jos, Germania, Luxemburg), unde sunt necesare pentru îmbarcare sau livrare.",
+        "Unii furnizori (de exemplu Meta/WhatsApp, Google, serviciul de email) pot prelucra date în Statele Unite sau în alte țări din afara Republicii Moldova. În aceste cazuri ne bazăm pe garanțiile oferite de furnizori, cum ar fi clauzele contractuale standard, sau pe faptul că transferul este necesar pentru executarea contractului cu dumneavoastră.",
+      ] },
+      { title: "7. Cât timp păstrăm datele", body: [
+        "Datele rezervărilor și ale coletelor: pe durata serviciului și apoi atât cât cer legile contabile și fiscale (documentele contabile se păstrează de regulă câțiva ani, conform legislației Republicii Moldova).",
+        "Conversațiile cu clienții: atât cât sunt necesare pentru a vă servi și pentru eventuale reclamații, de regulă cel mult 3 ani de la ultimul contact.",
+        "Jurnalele tehnice ale serverului: o perioadă scurtă, pentru securitate.",
+        "Datele de analiză a site-ului: conform setărilor Google Analytics și Plausible.",
+        "După aceste termene datele se șterg sau se anonimizează.",
+      ] },
+      { title: "8. Drepturile dumneavoastră", body: [
+        "Aveți dreptul să aflați ce date avem despre dumneavoastră (acces), să cereți corectarea lor (rectificare), ștergerea lor, atunci când nu mai avem un motiv legal să le păstrăm, și să vă opuneți prelucrării bazate pe interesul nostru legitim sau în scop de marketing.",
+        "Puteți retrage oricând consimțământul dat, fără a afecta prelucrarea făcută înainte.",
+        "Pentru a vă exercita drepturile, scrieți-ne la info@davo.md. Vă putem cere să confirmați identitatea. Răspundem în termenele prevăzute de lege.",
+        "Dacă considerați că datele vă sunt prelucrate incorect, puteți depune o plângere la Centrul Național pentru Protecția Datelor cu Caracter Personal al Republicii Moldova (datepersonale.md). Dacă locuiți în UE sau în Marea Britanie, vă puteți adresa și autorității de protecție a datelor din țara dumneavoastră.",
+      ] },
+      { title: "9. Mesaje pe WhatsApp", body: [
+        "Folosim WhatsApp Business pentru a confirma rezervări, a anunța plecarea sau livrarea și a răspunde la întrebări. Unele răspunsuri sunt trimise automat.",
+        "Vă scriem pe WhatsApp doar dacă ne-ați dat numărul de telefon pentru o rezervare sau un colet ori dacă ne-ați scris primul.",
+        "Pentru a nu mai primi mesaje, scrieți STOP în conversație sau blocați numărul nostru în WhatsApp. Mesajele strict necesare pentru o rezervare în curs vi le putem transmite, la cerere, prin telefon sau SMS.",
+        "Mesajele trec prin serverele Meta Platforms. Pentru detalii, consultați Politica de confidențialitate WhatsApp.",
+      ] },
+      { title: "10. Securitate", body: [
+        "Folosim conexiuni criptate (HTTPS), acces cu parolă doar pentru angajații care au nevoie de date și copii de rezervă. Niciun sistem nu este însă complet sigur; dacă observați ceva suspect, anunțați-ne.",
+      ] },
+      { title: "11. Modificări", body: [
+        "Putem actualiza această politică. Versiunea curentă este publicată mereu pe această pagină, cu data ultimei actualizări.",
+      ] },
+      { title: "12. Contact pentru protecția datelor", body: [
+        "DAVO GROUP S.R.L., Calea Ieșilor 11/3, mun. Chișinău, MD-2069, Republica Moldova",
+        "Email: info@davo.md",
+        "Telefon: +373 680 65 699",
       ] },
     ],
   },
